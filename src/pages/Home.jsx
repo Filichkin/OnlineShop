@@ -1,13 +1,10 @@
-import { Link, NavLink } from "react-router-dom"
+import Header from "../components/Header"
 
 function Home() {
     return (
         <div>
+            <Header />
             Home Page
-            <NavLink to={"/"}>Home</NavLink>
-            <NavLink to={"about"}>About</NavLink>
-            <NavLink to={"product"}>Products</NavLink>
-            <NavLink to={"cart"}>Cart</NavLink>
         </div>
     )
 }
