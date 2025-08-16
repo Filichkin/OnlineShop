@@ -1,13 +1,13 @@
-import { Link } from "react-router-dom"
+import { Link, NavLink } from "react-router-dom"
 
 function Home() {
     return (
         <div>
             Home Page
-            <Link to={"/"}>Home</Link>
-            <Link to={"about"}>About</Link>
-            <Link to={"product"}>Products</Link>
-            <Link to={"cart"}>Cart</Link>
+            <NavLink to={"/"}>Home</NavLink>
+            <NavLink to={"about"}>About</NavLink>
+            <NavLink to={"product"}>Products</NavLink>
+            <NavLink to={"cart"}>Cart</NavLink>
         </div>
     )
 }
