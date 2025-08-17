@@ -7,6 +7,7 @@ function Header() {
             <NavLink to={"/"}>Home</NavLink>
             <NavLink to={"/about"}>About</NavLink>
             <NavLink to={"/product"}>Products</NavLink>
+            <NavLink to={"/categories"}>Categories</NavLink>
             <NavLink to={"/cart"}>Cart</NavLink>
             <hr />
         </>
