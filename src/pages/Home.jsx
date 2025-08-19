@@ -10,7 +10,11 @@ function Home() {
                 <li key={category.id}>
                     <Link to={`/category/${category.name}`}>
                       {category.name}
-                      <img src={category.img} alt={category.name} style={{ width: "150px" }}/>
+                      <img
+                        src={category.img} 
+                        alt={category.name} 
+                        style={{ width: "150px" }}
+                      />
                     </Link>
                 </li>
                 )
