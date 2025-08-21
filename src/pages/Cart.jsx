@@ -1,7 +1,14 @@
+import { Link, useNavigate } from "react-router-dom"
+
 function Cart() {
+    const navigate = useNavigate();
+
     return (
         <div>
-            Your shopping cart is empty
+          {/* <Link to={"/thanks"}>
+            <button>Order</button>
+          </Link> */}
+          <button onClick={() => navigate("/thanks")}>Order</button>
         </div>
     )
 }
