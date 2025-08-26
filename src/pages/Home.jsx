@@ -12,9 +12,10 @@ function Home() {
       <ul className="grid grid-cols-3 gap-4 px-5">
         {categories.map((category) => (
           <li key={category.id}>
-            <Link to={`/category/${category.name}`}>
-              {category.name}
-              <img src={category.img} alt={category.name} />
+            <Link className="relative flex flex-col items-center justify-center" to={`/category/${category.name}`}>
+              <span className="absolute z-10 text-xl font-semibold text-white">{category.name}</span>
+              <img className="rounded-md" src={category.img} alt={category.name} />
+              <div className="absolute inset-0 rounded-md opacity-40 bg-gray-950"></div>
             </Link>
           </li>
         ))}

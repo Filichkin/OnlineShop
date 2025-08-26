@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 
 function Header() {
   return (
-    <header className="flex justify-between px-5 py-8 bg-blue-200">
+    <header className="flex justify-between px-5 py-8 bg-blue-200 shadow-md">
       <img className="h-6" src="/logo.svg" alt="logo" />
       <nav>
         <ul className="flex gap-14">
