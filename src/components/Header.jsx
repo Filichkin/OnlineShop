@@ -8,17 +8,17 @@ function Header() {
         <ul className="flex gap-14">
           <li>
             <NavMenuLink to={"/"}>
-              Home
+              Главная
             </NavMenuLink>
           </li>
           <li>
             <NavMenuLink to={"/about"}>
-              About
+              О нас
             </NavMenuLink>
           </li>
           <li>
             <NavMenuLink to={"/cart"}>
-              Cart
+              Корзина
             </NavMenuLink>
           </li>
         </ul>

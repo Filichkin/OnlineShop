@@ -22,13 +22,13 @@ function Category() {
 
   return (
     <div>
-      <h1>Category {categoryId}</h1>
+      <h1>Категория {categoryId}</h1>
       <div>
-        <label htmlFor="maxPrice">Max Price </label>
+        <label htmlFor="maxPrice">Фильтр </label>
         <input
           type="number"
           id="maxPrice"
-          placeholder="Enter max price"
+          placeholder="Введите максимальную стоимость"
           value={searchParams.get("maxPrice") || ""}
           onChange={handleChange}
         />
