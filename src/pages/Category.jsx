@@ -43,6 +43,7 @@ function Category() {
           >
             <Link 
               className="relative flex flex-col items-center justify-center group"
+              state={{ products }}
               to={`/product/${product.id}`}
             >
               <span 
