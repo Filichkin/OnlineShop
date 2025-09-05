@@ -1,9 +1,10 @@
-import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
-import { products } from "../data/data";
+import { Link, useLoaderData, useLocation, useParams, useSearchParams } from "react-router-dom";
+// import { products } from "../data/data";
 
 function Category() {
   const { categoryId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
+  const products = useLoaderData();
 
   const location = useLocation();
   console.log(location);
