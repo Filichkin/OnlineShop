@@ -1,0 +1,151 @@
+{
+  "categories": [
+    { "id": "Electronics", "name": "Электроника", "img": "/electronics.png" },
+    { "id": "Clothing", "name": "Одежда", "img": "clothing.png" },
+    { "id": "Books", "name": "Книги", "img": "/books.png" },
+    { "id": "Furniture", "name": "Для дома", "img": "/furniture.png" },
+    { "id": "Outdoor", "name": "Туризм", "img": "/outdoor.png" }
+  ],
+  "products": [
+    {
+      "id": 1,
+      "categoryId": "Электроника",
+      "name": "Laptop",
+      "price": 1200,
+      "img": "/laptop.png"
+    },
+    {
+      "id": 2,
+      "categoryId": "Электроника",
+      "name": "Smartphone",
+      "price": 800,
+      "img": "/smartphone.png"
+    },
+    {
+      "id": 3,
+      "categoryId": "Электроника",
+      "name": "Headphones",
+      "price": 150,
+      "img": "/headphones.png"
+    },
+    {
+      "id": 4,
+      "categoryId": "Электроника",
+      "name": "Monitor",
+      "price": 300,
+      "img": "/monitor.png"
+    },
+    {
+      "id": 5,
+      "categoryId": "Одежда",
+      "name": "T-Shirt",
+      "price": 20,
+      "img": "/t-shirt.png"
+    },
+    {
+      "id": 6,
+      "categoryId": "Одежда",
+      "name": "Jeans",
+      "price": 50,
+      "img": "/jeans.png"
+    },
+    {
+      "id": 7,
+      "categoryId": "Одежда",
+      "name": "Jacket",
+      "price": 100,
+      "img": "/jacket.png"
+    },
+    {
+      "id": 8,
+      "categoryId": "Одежда",
+      "name": "Sneakers",
+      "price": 70,
+      "img": "/sneakers.png"
+    },
+    {
+      "id": 9,
+      "categoryId": "Книги",
+      "name": "Novel",
+      "price": 15,
+      "img": "/novel.png"
+    },
+    {
+      "id": 10,
+      "categoryId": "Книги",
+      "name": "Textbook",
+      "price": 40,
+      "img": "/textbook.png"
+    },
+    {
+      "id": 11,
+      "categoryId": "Книги",
+      "name": "Magazine",
+      "price": 10,
+      "img": "/magazine.png"
+    },
+    {
+      "id": 12,
+      "categoryId": "Книги",
+      "name": "Comic Book",
+      "price": 12,
+      "img": "/comicBook.png"
+    },
+    {
+      "id": 13,
+      "categoryId": "Для дома",
+      "name": "Desk Chair",
+      "price": 200,
+      "img": "/deskChair.png"
+    },
+    {
+      "id": 14,
+      "categoryId": "Для дома",
+      "name": "Table",
+      "price": 150,
+      "img": "/table.png"
+    },
+    {
+      "id": 15,
+      "categoryId": "Для дома",
+      "name": "Bookshelf",
+      "price": 120,
+      "img": "/bookshelf.png"
+    },
+    {
+      "id": 16,
+      "categoryId": "Для дома",
+      "name": "Lamp",
+      "price": 80,
+      "img": "/lamp.png"
+    },
+    {
+      "id": 17,
+      "categoryId": "Туризм",
+      "name": "Bicycle",
+      "price": 500,
+      "img": "/bicycle.png"
+    },
+    {
+      "id": 18,
+      "categoryId": "Туризм",
+      "name": "Scooter",
+      "price": 300,
+      "img": "/scooter.png"
+    },
+    {
+      "id": 19,
+      "categoryId": "Туризм",
+      "name": "Roller Skates",
+      "price": 150,
+      "img": "/rollerSkates.png"
+    },
+    {
+      "id": 20,
+      "categoryId": "Туризм",
+      "name": "Skateboard",
+      "price": 120,
+      "img": "/skateboard.png"
+    }
+  ]
+}
