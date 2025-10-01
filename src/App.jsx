@@ -21,10 +21,16 @@ const router = createBrowserRouter(
       path: "/", 
       element: <Layout />,
       children: [
-        { index: true, element: <Home />, loader: fetchCategoryLoader, errorElement: <ErrorBoundary /> },
+        { index: true, element: 
+          <Home />
+        , loader: fetchCategoryLoader, errorElement: <ErrorBoundary /> },
         { path: "old-home", element: <Navigate to={"/"} /> },
-        { path: "about", element: <About /> },
-        { path: "cart", element: <Cart /> },
+        { path: "about", element:         
+        <About />        
+        },
+        { path: "cart", element:
+        <Cart /> 
+        },
         {path: "thanks", element: <Thanks />},
         {path: "category/:categoryId", element: <Category />, loader: fetchProductLoader, errorElement: <ErrorBoundary /> },
         {path: "product/:productId", element: <ProductDetails />},
