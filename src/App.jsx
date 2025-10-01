@@ -1,17 +1,18 @@
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
+import { lazy } from "react";
 
-import About from "./pages/About";
-import Cart from "./pages/Cart";
-import Category from "./pages/Category";
-import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
-import ProductDetails from "./pages/ProductDetails";
-
 import Layout from "./components/Layout";
 import Thanks from "./pages/Thanks";
 import fetchCategoryLoader from "./loaders/categoryLoader";
 import fetchProductLoader from "./loaders/productsLoader";
 import ErrorBoundary from "./components/ErrorBoundary";
+
+const Home = lazy(() => import("./pages/Home"));
+const About = lazy(() => import("./pages/About"));
+const Cart = lazy(() => import("./pages/Cart"));
+const Category = lazy(() => import("./pages/Category"));
+const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 
 
 const router = createBrowserRouter(
