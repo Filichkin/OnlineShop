@@ -70,6 +70,8 @@ npm install
 ### Запуск в режиме разработки:
 ```bash
 npm run dev
+
+npm run start:api
 ```
 
 ### Сборка для продакшена:
