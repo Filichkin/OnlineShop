@@ -1,10 +1,10 @@
 import { Link, useLoaderData, useLocation } from "react-router-dom";
 
-// import { categories } from "../data/data";
+import { categories } from "../data/data";
 
 function Home() {
   const location = useLocation();
-  const categories = useLoaderData();
+  // const categories = useLoaderData();
 
   return (
     <div className="py-10">

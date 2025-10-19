@@ -1,10 +1,10 @@
 import { useLocation, useParams } from "react-router-dom";
-// import { products } from "../data/data";
+import { products } from "../data/data";
 
 function ProductDetails() {
   const { productId } = useParams();
   const location = useLocation();
-  const { products } = location.state || [];
+  // const { products } = location.state || [];
 
   const product = products.find((p) => parseInt(p.id) === parseInt(productId, 10));
 

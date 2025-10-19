@@ -18,7 +18,7 @@ import novelImg from "../assets/images/novel.png";
 import textbookImg from "../assets/images/textbook.png";
 import magazineImg from "../assets/images/magazine.png";
 import comicBookImg from "../assets/images/comicBook.png";
-import deskChairImg from "../assets/images/deskChair.png";
+import deskChairImg from "../assets/images/deskСhair.png";
 import tableImg from "../assets/images/table.png";
 import bookshelfImg from "../assets/images/bookshelf.png";
 import lampImg from "../assets/images/lamp.png";

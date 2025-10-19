@@ -13,35 +13,36 @@ const About = lazy(() => import("./pages/About"));
 const Cart = lazy(() => import("./pages/Cart"));
 const Category = lazy(() => import("./pages/Category"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
-
-
-const router = createBrowserRouter(
-  [
-    {
-      path: "/", 
-      element: <Layout />,
-      children: [
-        { index: true, element: 
-          <Home />
-        , loader: fetchCategoryLoader, errorElement: <ErrorBoundary /> },
-        { path: "old-home", element: <Navigate to={"/"} /> },
-        { path: "about", element:         
-        <About />        
-        },
-        { path: "cart", element:
-        <Cart /> 
-        },
-        {path: "thanks", element: <Thanks />},
-        {path: "category/:categoryId", element: <Category />, loader: fetchProductLoader, errorElement: <ErrorBoundary /> },
-        {path: "product/:productId", element: <ProductDetails />},
-        {path: "*", element: <NotFound />}
-      ],
-    }
-  ]
-)
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <Layout />,
+    hydrateFallbackElement: <div className="text-center">Загрузка...</div>,
+    children: [
+      {
+        index: true,
+        element: <Home />,
+        loader: fetchCategoryLoader,
+        errorElement: <ErrorBoundary />,
+      },
+      { path: "old-home", element: <Navigate to="/" /> },
+      { path: "about", element: <About /> },
+      { path: "cart", element: <Cart /> },
+      { path: "thanks", element: <Thanks /> },
+      {
+        path: "category/:categoryId",
+        element: <Category />,
+        loader: fetchProductLoader,
+        errorElement: <ErrorBoundary />,
+      },
+      { path: "product/:productId", element: <ProductDetails /> },
+      { path: "*", element: <NotFound /> },
+    ],
+  },
+]);
 
 function App() {
-  return <RouterProvider router={router}/>;
+  return <RouterProvider router={router} />;
 }
 
 export default App;
