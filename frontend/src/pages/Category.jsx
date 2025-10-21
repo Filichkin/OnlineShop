@@ -1,5 +1,6 @@
 import { Link, useLoaderData, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { products } from "../data/data";
+import AddToCartButton from "../UI/AddToCartButton";
 
 function Category() {
   const { categoryId } = useParams();
@@ -19,6 +20,12 @@ function Category() {
   function handleChange(e) {
     const value = e.target.value;
     setSearchParams(value ? { maxPrice: value } : {});
+  }
+
+  function handleAddToCart(product) {
+    console.log('Добавление товара в корзину:', product);
+    // Здесь будет логика добавления товара в корзину
+    // Пока просто выводим в консоль
   }
 
   return (
@@ -54,6 +61,16 @@ function Category() {
               <img className="rounded-md" src={product.img} alt={product.name} />
               <div className="absolute inset-0 bg-gray-900 rounded-md opacity-40"></div>
             </Link>
+            {/* Кнопка добавления в корзину */}
+            <div 
+              className="absolute bottom-2 right-2 z-20"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <AddToCartButton 
+                product={product} 
+                onAddToCart={handleAddToCart}
+              />
+            </div>
           </li>
         ))}
       </ul>{" "}
