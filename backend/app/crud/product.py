@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.crud.base import CRUDBase
 from app.models.product import Product
@@ -22,7 +23,12 @@ class CRUDProduct(CRUDBase):
     ) -> Optional[Product]:
         """Получить активный продукт по ID"""
         result = await session.execute(
-            select(Product).where(
+            select(Product)
+            .options(
+                selectinload(Product.images),
+                selectinload(Product.category)
+            )
+            .where(
                 Product.id == product_id,
                 Product.is_active.is_(True)
             )
