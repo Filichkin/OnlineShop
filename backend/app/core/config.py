@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional
 
 from pydantic import EmailStr
@@ -42,10 +43,20 @@ class Constants:
     REGISTER_PREFIX = '/auth'
     USERS_PREFIX = '/users'
     USERS_TAGS = ('users',)
+    CATEGORIES_PREFIX = '/categories'
+    CATEGORIES_TAGS = ('categories',)
+    PRODUCTS_PREFIX = '/products'
+    PRODUCTS_TAGS = ('products',)
     JWT_TOKEN_URL = 'auth/jwt/login'
     JWT_AUTH_BACKEND_NAME = 'jwt'
     NAME_MIN_LEN = 1
     NAME_MAX_LEN = 100
+
+    # Директории для хранения
+    UPLOAD_DIR = Path('media')
+    PRODUCTS_DIR = UPLOAD_DIR / 'products'
+    CATEGORIES_DIR = UPLOAD_DIR / 'categories'
+    ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
 
 
 class Messages:
