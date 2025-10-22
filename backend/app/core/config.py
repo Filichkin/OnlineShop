@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional
 
 from pydantic import EmailStr
@@ -46,6 +47,12 @@ class Constants:
     JWT_AUTH_BACKEND_NAME = 'jwt'
     NAME_MIN_LEN = 1
     NAME_MAX_LEN = 100
+
+    # Директории для хранения
+    UPLOAD_DIR = Path('media')
+    PRODUCTS_DIR = UPLOAD_DIR / 'products'
+    CATEGORIES_DIR = UPLOAD_DIR / 'categories'
+    ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
 
 
 class Messages:
