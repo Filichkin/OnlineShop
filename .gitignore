@@ -178,3 +178,5 @@ conversations.json
 
 # Results
 results/
+
+.DS_Store
