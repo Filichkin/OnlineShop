@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    Boolean,
     Column,
     Float,
     ForeignKey,
@@ -17,6 +18,12 @@ class Category(Base):
     name = Column(String, nullable=False, unique=True)
     description = Column(String)
     image_url = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    image = relationship(
+        'Media',
+        back_populates='category',
+        uselist=False
+    )
 
     products = relationship(
         'Product',
@@ -30,6 +37,7 @@ class Product(Base):
     name = Column(String, nullable=False)
     description = Column(String)
     price = Column(Float, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
     category_id = Column(
         Integer,
         ForeignKey('categories.id'),

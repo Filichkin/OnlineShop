@@ -16,6 +16,7 @@ class ProductBase(BaseModel):
         gt=0,
         description='Цена должна быть больше 0'
         )
+    is_active: bool = Field(default=True)
     category_id: int = Field(..., gt=0)
 
 
@@ -36,6 +37,16 @@ class ProductCreate(BaseModel):
     category_id: int = Field(..., description='ID категории')
     description: Optional[str] = Field(None, description='Описание')
     # images: List[UploadFile] - не указываем, т.к. Pydantic не поддерживает
+
+
+class ProductUpdate(BaseModel):
+    """Схема для обновления продукта"""
+
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=2000)
+    price: Optional[float] = Field(None, gt=0)
+    is_active: Optional[bool] = None
+    category_id: Optional[int] = Field(None, gt=0)
 
     class Config:
         json_schema_extra = {

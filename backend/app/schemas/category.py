@@ -9,6 +9,7 @@ class CategoryBase(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
+    is_active: bool = Field(default=True)
 
 
 class CategoryCreate(BaseModel):
@@ -23,6 +24,14 @@ class CategoryCreate(BaseModel):
 
     name: str = Field(..., description='Название категории')
     description: Optional[str] = Field(None, description='Описание категории')
+
+
+class CategoryUpdate(BaseModel):
+    """Схема для обновления категории"""
+
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    is_active: Optional[bool] = None
 
     class Config:
         json_schema_extra = {

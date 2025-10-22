@@ -43,6 +43,10 @@ class Constants:
     REGISTER_PREFIX = '/auth'
     USERS_PREFIX = '/users'
     USERS_TAGS = ('users',)
+    CATEGORIES_PREFIX = '/categories'
+    CATEGORIES_TAGS = ('categories',)
+    PRODUCTS_PREFIX = '/products'
+    PRODUCTS_TAGS = ('products',)
     JWT_TOKEN_URL = 'auth/jwt/login'
     JWT_AUTH_BACKEND_NAME = 'jwt'
     NAME_MIN_LEN = 1
