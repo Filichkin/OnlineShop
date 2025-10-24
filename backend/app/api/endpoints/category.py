@@ -1,8 +1,7 @@
-from pathlib import Path
 from typing import List
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.validators import (
@@ -15,30 +14,24 @@ from app.api.validators import (
 )
 from app.core.constants import Constants
 from app.core.db import get_async_session
-from app.core.storage import save_images, delete_image_files
+from app.core.limiter import limiter
 from app.core.user import current_superuser
 from app.crud.category import category_crud
 from app.crud.product import product_crud
-from app.models.media import Media, MediaType
-from app.models.product import Product
+from app.models.media import Media
 from app.models.user import User
 from app.schemas.category import (
     CategoryDetailResponse,
     CategoryResponse
 )
 from app.schemas.product import (
-    ProductCreate,
     ProductDetailResponse,
     ProductListResponse,
-    ProductResponse,
-    ProductUpdate
+    ProductResponse
 )
 
 
 router = APIRouter()
-
-# Import limiter for rate limiting
-from app.core.limiter import limiter
 
 
 @router.get(
@@ -325,69 +318,14 @@ async def create_category_product(
     # Комплексная валидация создания продукта
     await validate_product_creation(name, category_id, images, session)
 
-    image_urls = []
-    saved_files = []
-
-    try:
-        # Сохраняем изображения
-        image_urls = await save_images(
-            files=images,
-            directory=Constants.PRODUCTS_DIR,
-            prefix='product'
-        )
-        # Track saved file paths for cleanup
-        saved_files = [
-            Constants.PRODUCTS_DIR / Path(url).name for url in image_urls
-        ]
-
-        # Создаем продукт
-        product_data = ProductCreate(
-            name=name,
-            price=price,
-            category_id=category_id,
-            description=description,
-            is_active=True
-        )
-
-        # Добавляем данные продукта вручную
-        product_dict = product_data.model_dump()
-
-        # Создаем объект продукта
-        db_product = Product(**product_dict)
-        session.add(db_product)
-        await session.commit()
-        await session.refresh(db_product)
-
-        # Создаем записи Media для изображений
-        for idx, image_url in enumerate(image_urls):
-            media_obj = Media(
-                url=image_url,
-                media_type=MediaType.PRODUCT,
-                order=idx,
-                # Первое изображение - главное
-                is_main=(idx == Constants.FIRST_IMAGE_INDEX),
-                product_id=db_product.id
-            )
-            session.add(media_obj)
-
-        await session.commit()
-        await session.refresh(db_product)
-
-        return db_product
-
-    except Exception as e:
-        # Rollback database transaction
-        await session.rollback()
-
-        # Clean up uploaded files if database operation failed
-        for file_path in saved_files:
-            try:
-                file_path.unlink(missing_ok=True)
-            except Exception:
-                pass  # Ignore cleanup errors
-
-        # Re-raise the original exception
-        raise
+    return await category_crud.create_product_with_images(
+        name=name,
+        price=price,
+        category_id=category_id,
+        description=description,
+        images=images,
+        session=session
+    )
 
 
 @router.patch(
@@ -429,89 +367,15 @@ async def update_category_product(
         session=session
     )
 
-    image_urls = []
-    saved_files = []
-    old_images = []
-
-    try:
-        # Обновляем данные
-        update_data = ProductUpdate()
-        if name is not None:
-            update_data.name = name
-        if price is not None:
-            update_data.price = price
-        if description is not None:
-            update_data.description = description
-        if is_active is not None:
-            update_data.is_active = is_active
-
-        # Обновляем изображения, если загружены новые
-        if images:
-            # Get old images for potential cleanup
-            old_media_result = await session.execute(
-                select(Media).where(Media.product_id == db_product.id)
-            )
-            old_images = old_media_result.scalars().all()
-            old_image_urls = [media.url for media in old_images]
-
-            image_urls = await save_images(
-                files=images,
-                directory=Constants.PRODUCTS_DIR,
-                prefix='product'
-            )
-            # Track saved file paths for cleanup
-            saved_files = [
-                Constants.PRODUCTS_DIR / Path(url).name for url in image_urls
-            ]
-
-            # Удаляем старые изображения продукта из БД
-            await session.execute(
-                delete(Media)
-                .where(Media.product_id == db_product.id)
-            )
-
-            # Создаем новые записи Media для изображений
-            for idx, image_url in enumerate(image_urls):
-                media_obj = Media(
-                    url=image_url,
-                    media_type=MediaType.PRODUCT,
-                    order=idx,
-                    # Первое изображение - главное
-                    is_main=(idx == Constants.FIRST_IMAGE_INDEX),
-                    product_id=db_product.id
-                )
-                session.add(media_obj)
-
-        # Применяем обновления
-        if update_data.model_dump(exclude_unset=True):
-            db_product = await product_crud.update(
-                db_obj=db_product,
-                obj_in=update_data,
-                session=session
-            )
-
-        await session.commit()
-        await session.refresh(db_product)
-
-        # Delete old image files from filesystem AFTER successful commit
-        if images and old_image_urls:
-            await delete_image_files(old_image_urls)
-
-        return db_product
-
-    except Exception as e:
-        # Rollback database transaction
-        await session.rollback()
-
-        # Clean up newly uploaded files if database operation failed
-        for file_path in saved_files:
-            try:
-                file_path.unlink(missing_ok=True)
-            except Exception:
-                pass  # Ignore cleanup errors
-
-        # Re-raise the original exception
-        raise
+    return await category_crud.update_product_with_images(
+        db_product=db_product,
+        name=name,
+        price=price,
+        description=description,
+        is_active=is_active,
+        images=images,
+        session=session
+    )
 
 
 @router.delete(
