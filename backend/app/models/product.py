@@ -22,7 +22,8 @@ class Category(Base):
     image = relationship(
         'Media',
         back_populates='category',
-        uselist=False
+        uselist=False,
+        lazy='select'
     )
 
     products = relationship(

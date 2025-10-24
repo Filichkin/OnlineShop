@@ -6,18 +6,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Constants
 from app.core.db import get_async_session
-from app.core.storage import save_image, save_images
+from app.core.storage import save_images
 from app.core.user import current_superuser
 from app.crud.category import category_crud
 from app.crud.product import product_crud
 from app.models.media import Media, MediaType
-from app.models.product import Category, Product
+from app.models.product import Product
 from app.models.user import User
 from app.schemas.category import (
-    CategoryCreate,
     CategoryDetailResponse,
-    CategoryResponse,
-    CategoryUpdate
+    CategoryResponse
 )
 from app.schemas.product import (
     ProductCreate,
@@ -60,11 +58,16 @@ async def get_category(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить категорию по ID"""
-    db_category = await category_crud.get_active(
+    db_category = await category_crud.get_with_image(
         category_id=category_id,
         session=session
     )
     if not db_category:
+        raise HTTPException(
+            status_code=404,
+            detail='Категория не найдена'
+        )
+    if not db_category.is_active:
         raise HTTPException(
             status_code=404,
             detail='Категория не найдена'
@@ -86,42 +89,12 @@ async def create_category(
     current_user: User = Depends(current_superuser)
 ):
     """Создать новую категорию"""
-    # Проверяем, что категория с таким именем не существует
-    existing_category = await category_crud.get_by_name(
-        name=name,
-        session=session
-    )
-    if existing_category:
-        raise HTTPException(
-            status_code=400,
-            detail='Категория с таким именем уже существует'
-        )
-
-    # Сохраняем изображение ПЕРЕД созданием категории
-    image_url = await save_image(
-        file=image,
-        directory=Constants.CATEGORIES_DIR,
-        prefix='category'
-    )
-
-    # Создаем категорию с уже готовым image_url
-    category_data = CategoryCreate(
+    return await category_crud.create_with_image(
         name=name,
         description=description,
-        is_active=True
+        image_file=image,
+        session=session
     )
-
-    # Добавляем image_url вручную в данные категории
-    category_dict = category_data.model_dump()
-    category_dict['image_url'] = image_url
-
-    # Создаем объект категории с image_url
-    db_category = Category(**category_dict)
-    session.add(db_category)
-    await session.commit()
-    await session.refresh(db_category)
-
-    return db_category
 
 
 @router.patch(
@@ -140,55 +113,14 @@ async def update_category(
     current_user: User = Depends(current_superuser)
 ):
     """Обновить категорию"""
-    db_category = await category_crud.get(
-        obj_id=category_id,
+    return await category_crud.update_with_image(
+        category_id=category_id,
+        name=name,
+        description=description,
+        is_active=is_active,
+        image_file=image,
         session=session
     )
-    if not db_category:
-        raise HTTPException(
-            status_code=404,
-            detail='Категория не найдена'
-        )
-
-    # Проверяем уникальность имени, если оно изменяется
-    if name and name != db_category.name:
-        existing_category = await category_crud.get_by_name(
-            name=name,
-            session=session
-        )
-        if existing_category:
-            raise HTTPException(
-                status_code=400,
-                detail='Категория с таким именем уже существует'
-            )
-
-    # Обновляем данные
-    update_data = CategoryUpdate()
-    if name is not None:
-        update_data.name = name
-    if description is not None:
-        update_data.description = description
-    if is_active is not None:
-        update_data.is_active = is_active
-
-    # Обновляем изображение, если загружено новое
-    if image:
-        image_url = await save_image(
-            file=image,
-            directory=Constants.CATEGORIES_DIR,
-            prefix='category'
-        )
-        db_category.image_url = image_url
-
-    # Применяем обновления
-    if update_data.model_dump(exclude_unset=True):
-        db_category = await category_crud.update(
-            db_obj=db_category,
-            obj_in=update_data,
-            session=session
-        )
-
-    return db_category
 
 
 @router.delete(

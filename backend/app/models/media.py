@@ -1,4 +1,5 @@
 import enum
+from uuid import UUID, uuid4
 
 from sqlalchemy import (
     Boolean,
@@ -8,7 +9,8 @@ from sqlalchemy import (
     ForeignKey,
     String,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 from app.core.db import Base
@@ -22,6 +24,11 @@ class MediaType(str, enum.Enum):
 class Media(Base):
     __tablename__ = 'media'
 
+    id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
     url = Column(String, nullable=False)
     media_type = Column(Enum(MediaType), nullable=False)
     order = Column(Integer, default=0)

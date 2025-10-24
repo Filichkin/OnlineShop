@@ -1,4 +1,6 @@
 # app/schemas/media.py
+from uuid import UUID
+
 from pydantic import BaseModel
 
 from app.models.media import MediaType
@@ -40,7 +42,7 @@ class MediaCreate(MediaBase):
 
 
 class MediaResponse(MediaBase):
-    id: int
+    id: UUID
     product_id: int | None = None
     category_id: int | None = None
 

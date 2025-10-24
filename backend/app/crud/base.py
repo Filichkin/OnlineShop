@@ -1,4 +1,5 @@
-from typing import Optional
+from typing import Optional, Union
+from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
@@ -14,7 +15,7 @@ class CRUDBase:
 
     async def get(
             self,
-            obj_id: int,
+            obj_id: Union[int, UUID],
             session: AsyncSession,
     ):
         db_obj = await session.execute(
