@@ -3,7 +3,6 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     Boolean,
-    Column,
     Enum,
     Integer,
     ForeignKey,
@@ -12,7 +11,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-
+from app.core.constants import Constants
 from app.core.db import Base
 
 
@@ -22,36 +21,39 @@ class MediaType(str, enum.Enum):
 
 
 class Media(Base):
-    __tablename__ = 'media'
-
     id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         primary_key=True,
         default=uuid4,
     )
-    url = Column(String, nullable=False)
-    media_type = Column(Enum(MediaType), nullable=False)
-    order = Column(Integer, default=0)
-    is_main = Column(Boolean, default=False)
-    product_id = Column(
+
+    url: Mapped[str] = mapped_column(String, nullable=False)
+    media_type: Mapped[MediaType] = mapped_column(
+        Enum(MediaType), nullable=False
+    )
+    order: Mapped[int] = mapped_column(
+        Integer, default=Constants.MEDIA_ORDER_DEFAULT
+    )
+    is_main: Mapped[bool] = mapped_column(Boolean, default=False)
+    product_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey('products.id', ondelete='CASCADE'),
         nullable=True
-        )
-    category_id = Column(
+    )
+    category_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey('categories.id', ondelete='CASCADE'),
         nullable=True
-        )
+    )
     product = relationship(
         'Product',
         back_populates='images'
-        )
+    )
     category = relationship(
         'Category',
         back_populates='image',
         uselist=False
-        )
+    )
 
     def __repr__(self):
         return (

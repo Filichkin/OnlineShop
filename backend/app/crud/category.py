@@ -6,7 +6,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.config import Constants
+from app.core.constants import Constants
 from app.core.storage import save_image
 from app.crud.base import CRUDBase
 from app.models.media import Media, MediaType
@@ -63,8 +63,8 @@ class CRUDCategory(CRUDBase):
     async def get_multi_active(
         self,
         session: AsyncSession,
-        skip: int = 0,
-        limit: int = 100,
+        skip: int = Constants.DEFAULT_SKIP,
+        limit: int = Constants.DEFAULT_LIMIT,
     ):
         """Получить список активных категорий"""
         result = await session.execute(
@@ -103,7 +103,7 @@ class CRUDCategory(CRUDBase):
         )
         if existing_category:
             raise HTTPException(
-                status_code=400,
+                status_code=Constants.HTTP_400_BAD_REQUEST,
                 detail='Категория с таким именем уже существует'
             )
 
@@ -135,7 +135,7 @@ class CRUDCategory(CRUDBase):
         media_obj = Media(
             url=image_url,
             media_type=MediaType.CATEGORY,
-            order=0,
+            order=Constants.MEDIA_ORDER_DEFAULT,
             is_main=True,
             category_id=db_category.id
         )
@@ -181,7 +181,7 @@ class CRUDCategory(CRUDBase):
         )
         if not db_category:
             raise HTTPException(
-                status_code=404,
+                status_code=Constants.HTTP_404_NOT_FOUND,
                 detail='Категория не найдена'
             )
 
@@ -193,7 +193,7 @@ class CRUDCategory(CRUDBase):
             )
             if existing_category:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=Constants.HTTP_400_BAD_REQUEST,
                     detail='Категория с таким именем уже существует'
                 )
 
@@ -225,7 +225,7 @@ class CRUDCategory(CRUDBase):
             media_obj = Media(
                 url=image_url,
                 media_type=MediaType.CATEGORY,
-                order=0,
+                order=Constants.MEDIA_ORDER_DEFAULT,
                 is_main=True,
                 category_id=db_category.id
             )

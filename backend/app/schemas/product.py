@@ -2,6 +2,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
+from app.core.constants import Constants
 from app.schemas.category import CategoryResponse
 from app.schemas.media import MediaResponse
 
@@ -9,15 +10,22 @@ from app.schemas.media import MediaResponse
 class ProductBase(BaseModel):
     """Базовые поля продукта"""
 
-    name: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=2000)
+    name: str = Field(
+        ...,
+        min_length=Constants.PRODUCT_NAME_MIN_LEN,
+        max_length=Constants.PRODUCT_NAME_MAX_LEN
+        )
+    description: Optional[str] = Field(
+        None,
+        max_length=Constants.PRODUCT_DESCRIPTION_MAX_LEN
+        )
     price: float = Field(
         ...,
-        gt=0,
+        gt=Constants.PRICE_MIN_VALUE,
         description='Цена должна быть больше 0'
         )
     is_active: bool = Field(default=True)
-    category_id: int = Field(..., gt=0)
+    category_id: int = Field(..., gt=Constants.CATEGORY_ID_MIN_VALUE)
 
 
 class ProductCreate(BaseModel):
@@ -42,11 +50,21 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     """Схема для обновления продукта"""
 
-    name: Optional[str] = Field(None, min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=2000)
-    price: Optional[float] = Field(None, gt=0)
+    name: Optional[str] = Field(
+        None,
+        min_length=Constants.PRODUCT_NAME_MIN_LEN,
+        max_length=Constants.PRODUCT_NAME_MAX_LEN
+        )
+    description: Optional[str] = Field(
+        None,
+        max_length=Constants.PRODUCT_DESCRIPTION_MAX_LEN
+        )
+    price: Optional[float] = Field(None, gt=Constants.PRICE_MIN_VALUE)
     is_active: Optional[bool] = None
-    category_id: Optional[int] = Field(None, gt=0)
+    category_id: Optional[int] = Field(
+        None,
+        gt=Constants.CATEGORY_ID_MIN_VALUE
+        )
 
     class Config:
         json_schema_extra = {
