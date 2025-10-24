@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.constants import Constants
 from app.crud.base import CRUDBase
 from app.models.product import Product
 from app.schemas.product import ProductCreate, ProductUpdate
@@ -38,8 +39,8 @@ class CRUDProduct(CRUDBase):
     async def get_multi_active(
         self,
         session: AsyncSession,
-        skip: int = 0,
-        limit: int = 100,
+        skip: int = Constants.DEFAULT_SKIP,
+        limit: int = Constants.DEFAULT_LIMIT,
     ):
         """Получить список активных продуктов"""
         result = await session.execute(
@@ -54,8 +55,8 @@ class CRUDProduct(CRUDBase):
         self,
         category_id: int,
         session: AsyncSession,
-        skip: int = 0,
-        limit: int = 100,
+        skip: int = Constants.DEFAULT_SKIP,
+        limit: int = Constants.DEFAULT_LIMIT,
     ):
         """Получить активные продукты по категории"""
         result = await session.execute(
@@ -84,8 +85,8 @@ class CRUDProduct(CRUDBase):
         self,
         name_pattern: str,
         session: AsyncSession,
-        skip: int = 0,
-        limit: int = 100,
+        skip: int = Constants.DEFAULT_SKIP,
+        limit: int = Constants.DEFAULT_LIMIT,
     ):
         """Поиск активных продуктов по части имени"""
         result = await session.execute(
@@ -104,8 +105,8 @@ class CRUDProduct(CRUDBase):
         min_price: float,
         max_price: float,
         session: AsyncSession,
-        skip: int = 0,
-        limit: int = 100,
+        skip: int = Constants.DEFAULT_SKIP,
+        limit: int = Constants.DEFAULT_LIMIT,
     ):
         """Получить активные продукты в диапазоне цен"""
         result = await session.execute(

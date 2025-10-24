@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import Constants
 from app.core.db import get_async_session
 from app.crud.product import product_crud
 from app.models.media import Media
@@ -12,6 +13,7 @@ from app.schemas.product import (
     ProductDetailResponse,
     ProductListResponse
 )
+
 
 router = APIRouter()
 
@@ -23,8 +25,8 @@ router = APIRouter()
     description='Получить список всех активных продуктов с фильтрацией'
 )
 async def get_products(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Constants.DEFAULT_SKIP,
+    limit: int = Constants.DEFAULT_LIMIT,
     category_id: Optional[int] = Query(
         None, description='Фильтр по категории'
     ),
@@ -123,7 +125,7 @@ async def get_product(
     )
     if not db_product:
         raise HTTPException(
-            status_code=404,
+            status_code=Constants.HTTP_404_NOT_FOUND,
             detail='Продукт не найден'
         )
     return db_product

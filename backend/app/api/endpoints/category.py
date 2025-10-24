@@ -1,10 +1,18 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import Constants
+from app.api.validators import (
+    validate_category_and_product_relationship,
+    validate_category_creation,
+    validate_category_exists,
+    validate_category_update,
+    validate_product_creation,
+    validate_product_update
+)
+from app.core.constants import Constants
 from app.core.db import get_async_session
 from app.core.storage import save_images
 from app.core.user import current_superuser
@@ -25,6 +33,7 @@ from app.schemas.product import (
     ProductUpdate
 )
 
+
 router = APIRouter()
 
 
@@ -35,8 +44,8 @@ router = APIRouter()
     description='Получить список всех активных категорий'
 )
 async def get_categories(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Constants.DEFAULT_SKIP,
+    limit: int = Constants.DEFAULT_LIMIT,
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить список активных категорий"""
@@ -58,20 +67,14 @@ async def get_category(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить категорию по ID"""
+    # Проверяем существование и активность категории
+    await validate_category_exists(category_id, session, must_be_active=True)
+
+    # Получаем категорию с изображением
     db_category = await category_crud.get_with_image(
         category_id=category_id,
         session=session
     )
-    if not db_category:
-        raise HTTPException(
-            status_code=404,
-            detail='Категория не найдена'
-        )
-    if not db_category.is_active:
-        raise HTTPException(
-            status_code=404,
-            detail='Категория не найдена'
-        )
     return db_category
 
 
@@ -89,6 +92,9 @@ async def create_category(
     current_user: User = Depends(current_superuser)
 ):
     """Создать новую категорию"""
+    # Валидируем создание категории
+    await validate_category_creation(name, session)
+
     return await category_crud.create_with_image(
         name=name,
         description=description,
@@ -113,6 +119,9 @@ async def update_category(
     current_user: User = Depends(current_superuser)
 ):
     """Обновить категорию"""
+    # Валидируем обновление категории
+    await validate_category_update(category_id, name, session)
+
     return await category_crud.update_with_image(
         category_id=category_id,
         name=name,
@@ -135,15 +144,14 @@ async def delete_category(
     current_user: User = Depends(current_superuser)
 ):
     """Мягкое удаление категории"""
+    # Проверяем существование категории
+    await validate_category_exists(category_id, session, must_be_active=False)
+
+    # Получаем категорию для удаления
     db_category = await category_crud.get(
         obj_id=category_id,
         session=session
     )
-    if not db_category:
-        raise HTTPException(
-            status_code=404,
-            detail='Категория не найдена'
-        )
 
     return await category_crud.soft_delete(
         db_obj=db_category,
@@ -163,15 +171,14 @@ async def restore_category(
     current_user: User = Depends(current_superuser)
 ):
     """Восстановить категорию"""
+    # Проверяем существование категории
+    await validate_category_exists(category_id, session, must_be_active=False)
+
+    # Получаем категорию для восстановления
     db_category = await category_crud.get(
         obj_id=category_id,
         session=session
     )
-    if not db_category:
-        raise HTTPException(
-            status_code=404,
-            detail='Категория не найдена'
-        )
 
     return await category_crud.restore(
         db_obj=db_category,
@@ -187,21 +194,19 @@ async def restore_category(
 )
 async def get_category_products(
     category_id: int,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Constants.DEFAULT_SKIP,
+    limit: int = Constants.DEFAULT_LIMIT,
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить продукты категории"""
-    # Проверяем существование категории
+    # Проверяем существование и активность категории
+    await validate_category_exists(category_id, session, must_be_active=True)
+
+    # Получаем категорию для передачи в ответ
     category = await category_crud.get_active(
         category_id=category_id,
         session=session
     )
-    if not category:
-        raise HTTPException(
-            status_code=404,
-            detail='Категория не найдена'
-        )
 
     # Получаем продукты категории
     products = await product_crud.get_by_category(
@@ -252,35 +257,16 @@ async def get_category_product(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить продукт из категории"""
-    # Проверяем существование категории
-    category = await category_crud.get_active(
-        category_id=category_id,
-        session=session
+    # Комплексная проверка существования категории, продукта и их связи
+    await validate_category_and_product_relationship(
+        category_id, product_id, session
     )
-    if not category:
-        raise HTTPException(
-            status_code=404,
-            detail='Категория не найдена'
-        )
 
     # Получаем продукт
     product = await product_crud.get_active(
         product_id=product_id,
         session=session
     )
-    if not product:
-        raise HTTPException(
-            status_code=404,
-            detail='Продукт не найден'
-        )
-
-    # Проверяем, что продукт принадлежит категории
-    if product.category_id != category_id:
-        raise HTTPException(
-            status_code=404,
-            detail='Продукт не найден в данной категории'
-        )
-
     return product
 
 
@@ -303,34 +289,8 @@ async def create_category_product(
     current_user: User = Depends(current_superuser)
 ):
     """Создать новый продукт в категории"""
-    # Проверяем, что категория существует и активна
-    db_category = await category_crud.get_active(
-        category_id=category_id,
-        session=session
-    )
-    if not db_category:
-        raise HTTPException(
-            status_code=400,
-            detail='Категория не найдена или неактивна'
-        )
-
-    # Проверяем, что продукт с таким именем не существует
-    existing_product = await product_crud.get_by_name(
-        name=name,
-        session=session
-    )
-    if existing_product:
-        raise HTTPException(
-            status_code=400,
-            detail='Продукт с таким именем уже существует'
-        )
-
-    # Валидируем количество изображений
-    if len(images) < 1:
-        raise HTTPException(
-            status_code=400,
-            detail='Необходимо загрузить минимум одно изображение'
-        )
+    # Комплексная валидация создания продукта
+    await validate_product_creation(name, category_id, images, session)
 
     # Сохраняем изображения
     image_urls = await save_images(
@@ -363,7 +323,8 @@ async def create_category_product(
             url=image_url,
             media_type=MediaType.PRODUCT,
             order=idx,
-            is_main=(idx == 0),  # Первое изображение - главное
+            # Первое изображение - главное
+            is_main=(idx == Constants.FIRST_IMAGE_INDEX),
             product_id=db_product.id
         )
         session.add(media_obj)
@@ -395,46 +356,16 @@ async def update_category_product(
     current_user: User = Depends(current_superuser)
 ):
     """Обновить продукт в категории"""
-    # Проверяем существование категории
-    category = await category_crud.get_active(
-        category_id=category_id,
-        session=session
+    # Комплексная валидация обновления продукта
+    await validate_product_update(
+        product_id, category_id, name, images, session
     )
-    if not category:
-        raise HTTPException(
-            status_code=404,
-            detail='Категория не найдена'
-        )
 
-    # Получаем продукт
+    # Получаем продукт для обновления
     db_product = await product_crud.get(
         obj_id=product_id,
         session=session
     )
-    if not db_product:
-        raise HTTPException(
-            status_code=404,
-            detail='Продукт не найден'
-        )
-
-    # Проверяем, что продукт принадлежит категории
-    if db_product.category_id != category_id:
-        raise HTTPException(
-            status_code=404,
-            detail='Продукт не найден в данной категории'
-        )
-
-    # Проверяем уникальность имени, если оно изменяется
-    if name and name != db_product.name:
-        existing_product = await product_crud.get_by_name(
-            name=name,
-            session=session
-        )
-        if existing_product:
-            raise HTTPException(
-                status_code=400,
-                detail='Продукт с таким именем уже существует'
-            )
 
     # Обновляем данные
     update_data = ProductUpdate()
@@ -449,11 +380,6 @@ async def update_category_product(
 
     # Обновляем изображения, если загружены новые
     if images:
-        if len(images) < 1:
-            raise HTTPException(
-                status_code=400,
-                detail='Необходимо загрузить минимум одно изображение'
-            )
 
         image_urls = await save_images(
             files=images,
@@ -473,7 +399,8 @@ async def update_category_product(
                 url=image_url,
                 media_type=MediaType.PRODUCT,
                 order=idx,
-                is_main=(idx == 0),  # Первое изображение - главное
+                # Первое изображение - главное
+                is_main=(idx == Constants.FIRST_IMAGE_INDEX),
                 product_id=db_product.id
             )
             session.add(media_obj)
@@ -502,34 +429,16 @@ async def delete_category_product(
     current_user: User = Depends(current_superuser)
 ):
     """Мягкое удаление продукта из категории"""
-    # Проверяем существование категории
-    category = await category_crud.get_active(
-        category_id=category_id,
-        session=session
+    # Комплексная проверка существования категории, продукта и их связи
+    await validate_category_and_product_relationship(
+        category_id, product_id, session
     )
-    if not category:
-        raise HTTPException(
-            status_code=404,
-            detail='Категория не найдена'
-        )
 
-    # Получаем продукт
+    # Получаем продукт для удаления
     db_product = await product_crud.get(
         obj_id=product_id,
         session=session
     )
-    if not db_product:
-        raise HTTPException(
-            status_code=404,
-            detail='Продукт не найден'
-        )
-
-    # Проверяем, что продукт принадлежит категории
-    if db_product.category_id != category_id:
-        raise HTTPException(
-            status_code=404,
-            detail='Продукт не найден в данной категории'
-        )
 
     return await product_crud.soft_delete(
         db_obj=db_product,
@@ -550,34 +459,16 @@ async def restore_category_product(
     current_user: User = Depends(current_superuser)
 ):
     """Восстановить продукт в категории"""
-    # Проверяем существование категории
-    category = await category_crud.get_active(
-        category_id=category_id,
-        session=session
+    # Комплексная проверка существования категории, продукта и их связи
+    await validate_category_and_product_relationship(
+        category_id, product_id, session
     )
-    if not category:
-        raise HTTPException(
-            status_code=404,
-            detail='Категория не найдена'
-        )
 
-    # Получаем продукт
+    # Получаем продукт для восстановления
     db_product = await product_crud.get(
         obj_id=product_id,
         session=session
     )
-    if not db_product:
-        raise HTTPException(
-            status_code=404,
-            detail='Продукт не найден'
-        )
-
-    # Проверяем, что продукт принадлежит категории
-    if db_product.category_id != category_id:
-        raise HTTPException(
-            status_code=404,
-            detail='Продукт не найден в данной категории'
-        )
 
     return await product_crud.restore(
         db_obj=db_product,

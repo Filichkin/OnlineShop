@@ -3,13 +3,14 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from app.core.constants import Constants
 from app.models.media import MediaType
 
 
 class MediaBase(BaseModel):
     url: str
     media_type: MediaType
-    order: int = 0
+    order: int = Constants.MEDIA_ORDER_DEFAULT
     is_main: bool = False
 
     class Config:

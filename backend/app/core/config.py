@@ -1,8 +1,9 @@
-from pathlib import Path
 from typing import Optional
 
 from pydantic import EmailStr
 from pydantic_settings import BaseSettings
+
+from app.core.constants import Constants
 
 
 class Settings(BaseSettings):
@@ -11,8 +12,7 @@ class Settings(BaseSettings):
     secret: str = 'SECRET'
     first_superuser_email: Optional[EmailStr] = None
     first_superuser_password: Optional[str] = None
-    jwt_token_lifetime: int = 3600
-    user_password_min_len: int = 8
+    jwt_token_lifetime: int = Constants.JWT_TOKEN_LIFETIME
 
     postgres_port: int
     postgres_password: str
@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = '../infra/.env'
+        extra = 'ignore'  # Игнорировать дополнительные поля
 
 
 settings = Settings()
@@ -35,33 +36,3 @@ def get_async_db_url() -> str:
         f'{settings.postgres_host}:{settings.postgres_port}/'
         f'{settings.postgres_db}'
     )
-
-
-class Constants:
-    AUTH_PREFIX = '/auth/jwt'
-    AUTH_TAGS = ('auth',)
-    REGISTER_PREFIX = '/auth'
-    USERS_PREFIX = '/users'
-    USERS_TAGS = ('users',)
-    CATEGORIES_PREFIX = '/categories'
-    CATEGORIES_TAGS = ('categories',)
-    PRODUCTS_PREFIX = '/products'
-    PRODUCTS_TAGS = ('products',)
-    JWT_TOKEN_URL = 'auth/jwt/login'
-    JWT_AUTH_BACKEND_NAME = 'jwt'
-    NAME_MIN_LEN = 1
-    NAME_MAX_LEN = 100
-
-    # Директории для хранения
-    UPLOAD_DIR = Path('media')
-    PRODUCTS_DIR = UPLOAD_DIR / 'products'
-    CATEGORIES_DIR = UPLOAD_DIR / 'categories'
-    ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
-
-
-class Messages:
-    PASSWORD_TOO_SHORT = (
-        f'Password must be not less {settings.user_password_min_len}'
-    )
-    EMAIL_IN_PASSWORD = 'Password should`t contain email'
-    USER_REGISTERED = 'User registered: '

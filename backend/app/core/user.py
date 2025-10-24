@@ -16,7 +16,9 @@ from fastapi_users.authentication import (
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import Constants, Messages, settings
+from app.core.config import settings
+from app.core.constants import Constants
+from app.core.messages import Messages
 from app.core.db import get_async_session
 from app.models.user import User
 from app.schemas.user import UserCreate
@@ -54,7 +56,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         password: str,
         user: Union[UserCreate, User],
     ) -> None:
-        if len(password) < settings.user_password_min_len:
+        if len(password) < Constants.USER_PASSWORD_MIN_LEN:
             raise InvalidPasswordException(
                 reason=Messages.PASSWORD_TOO_SHORT,
             )

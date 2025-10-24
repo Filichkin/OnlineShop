@@ -1,13 +1,12 @@
+from typing import Optional
+
 from sqlalchemy import (
-    Boolean,
-    Column,
     Float,
     ForeignKey,
     Integer,
     String
 )
-from sqlalchemy.orm import relationship
-
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
 
@@ -15,10 +14,10 @@ from app.core.db import Base
 class Category(Base):
     __tablename__ = 'categories'
 
-    name = Column(String, nullable=False, unique=True)
-    description = Column(String)
-    image_url = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    description: Mapped[Optional[str]] = mapped_column(String)
+    image_url: Mapped[str] = mapped_column(String, nullable=False)
+
     image = relationship(
         'Media',
         back_populates='category',
@@ -29,28 +28,42 @@ class Category(Base):
     products = relationship(
         'Product',
         back_populates='category'
+    )
+
+    def __repr__(self):
+        return (
+            f'Category(id={self.id}, name={self.name}, '
+            f'description={self.description}, '
+            f'image_url={self.image_url})'
         )
 
 
 class Product(Base):
     __tablename__ = 'products'
 
-    name = Column(String, nullable=False)
-    description = Column(String)
-    price = Column(Float, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
-    category_id = Column(
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String)
+    price: Mapped[float] = mapped_column(Float, nullable=False)
+    category_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey('categories.id'),
         nullable=False
-        )
+    )
 
     category = relationship(
         'Category',
         back_populates='products'
-        )
+    )
     images = relationship(
         'Media',
         back_populates='product',
         cascade='all, delete-orphan'
+    )
+
+    def __repr__(self):
+        return (
+            f'Product(id={self.id}, name={self.name}, '
+            f'description={self.description}, '
+            f'price={self.price}, '
+            f'category_id={self.category_id})'
         )
