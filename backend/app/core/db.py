@@ -11,6 +11,7 @@ from sqlalchemy.orm import (
 )
 
 from app.core.config import get_async_db_url
+from app.core.constants import Constants
 
 
 def utcnow() -> datetime:
@@ -43,11 +44,40 @@ class PreBase:
 
 Base = declarative_base(cls=PreBase)
 
-engine = create_async_engine(get_async_db_url())
+# Create engine with proper connection pool configuration
+engine = create_async_engine(
+    get_async_db_url(),
+    # Connection pool settings for production
+    pool_size=Constants.DB_POOL_SIZE,
+    max_overflow=Constants.DB_MAX_OVERFLOW,
+    pool_timeout=Constants.DB_POOL_TIMEOUT,
+    pool_recycle=Constants.DB_POOL_RECYCLE,
+    # Enable connection health checks
+    pool_pre_ping=True,
+    # Echo SQL queries in development (set to False in production)
+    echo=False,
+)
 
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession)
+# Configure session factory with proper settings for async operations
+AsyncSessionLocal = sessionmaker(
+    engine,
+    class_=AsyncSession,
+    # Don't expire objects on commit for async sessions
+    expire_on_commit=False,
+    # Enable autoflush for better control
+    autoflush=True,
+)
 
 
 async def get_async_session():
+    """
+    Dependency for getting async database sessions
+
+    Yields:
+        AsyncSession: Database session
+
+    Note:
+        Session is automatically closed after use
+    """
     async with AsyncSessionLocal() as async_session:
         yield async_session

@@ -88,11 +88,23 @@ class CRUDProduct(CRUDBase):
         skip: int = Constants.DEFAULT_SKIP,
         limit: int = Constants.DEFAULT_LIMIT,
     ):
-        """Поиск активных продуктов по части имени"""
+        """
+        Поиск активных продуктов по части имени
+
+        Escapes LIKE wildcards to prevent wildcard injection attacks
+        """
+        # Escape LIKE special characters (% and _) to prevent injection
+        escaped_pattern = (
+            name_pattern
+            .replace('\\', '\\\\')  # Escape backslash first
+            .replace('%', '\\%')     # Escape percent wildcard
+            .replace('_', '\\_')     # Escape underscore wildcard
+        )
+
         result = await session.execute(
             select(Product)
             .where(
-                Product.name.ilike(f'%{name_pattern}%'),
+                Product.name.ilike(f'%{escaped_pattern}%', escape='\\'),
                 Product.is_active.is_(True)
             )
             .offset(skip)
