@@ -1,6 +1,7 @@
+from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,7 +15,7 @@ from app.api.validators import (
 )
 from app.core.constants import Constants
 from app.core.db import get_async_session
-from app.core.storage import save_images
+from app.core.storage import save_images, delete_image_files
 from app.core.user import current_superuser
 from app.crud.category import category_crud
 from app.crud.product import product_crud
@@ -36,6 +37,9 @@ from app.schemas.product import (
 
 router = APIRouter()
 
+# Import limiter for rate limiting
+from app.core.limiter import limiter
+
 
 @router.get(
     '/',
@@ -44,8 +48,17 @@ router = APIRouter()
     description='Получить список всех активных категорий'
 )
 async def get_categories(
-    skip: int = Constants.DEFAULT_SKIP,
-    limit: int = Constants.DEFAULT_LIMIT,
+    skip: int = Query(
+        Constants.DEFAULT_SKIP,
+        ge=0,
+        description='Количество элементов для пропуска'
+    ),
+    limit: int = Query(
+        Constants.DEFAULT_LIMIT,
+        ge=1,
+        le=Constants.MAX_LIMIT,
+        description='Количество элементов для возврата'
+    ),
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить список активных категорий"""
@@ -84,7 +97,9 @@ async def get_category(
     summary='Создать категорию',
     description='Создать новую категорию с изображением'
 )
+@limiter.limit(Constants.RATE_LIMIT_CATEGORY_CREATE)
 async def create_category(
+    request: Request,
     name: str = Form(..., description='Название категории'),
     description: str = Form(None, description='Описание категории'),
     image: UploadFile = File(..., description='Изображение категории'),
@@ -109,7 +124,9 @@ async def create_category(
     summary='Обновить категорию',
     description='Обновить информацию о категории'
 )
+@limiter.limit(Constants.RATE_LIMIT_CATEGORY_UPDATE)
 async def update_category(
+    request: Request,
     category_id: int,
     name: str = Form(None, description='Название категории'),
     description: str = Form(None, description='Описание категории'),
@@ -194,8 +211,17 @@ async def restore_category(
 )
 async def get_category_products(
     category_id: int,
-    skip: int = Constants.DEFAULT_SKIP,
-    limit: int = Constants.DEFAULT_LIMIT,
+    skip: int = Query(
+        Constants.DEFAULT_SKIP,
+        ge=0,
+        description='Количество элементов для пропуска'
+    ),
+    limit: int = Query(
+        Constants.DEFAULT_LIMIT,
+        ge=1,
+        le=Constants.MAX_LIMIT,
+        description='Количество элементов для возврата'
+    ),
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить продукты категории"""
@@ -276,10 +302,17 @@ async def get_category_product(
     summary='Создать продукт в категории',
     description='Создать новый продукт в указанной категории'
 )
+@limiter.limit(Constants.RATE_LIMIT_PRODUCT_CREATE)
 async def create_category_product(
+    request: Request,
     category_id: int,
     name: str = Form(..., description='Название продукта'),
-    price: float = Form(..., description='Цена продукта'),
+    price: float = Form(
+        ...,
+        ge=Constants.PRICE_MIN_VALUE,
+        le=Constants.PRICE_MAX_VALUE,
+        description='Цена продукта'
+    ),
     description: str = Form(None, description='Описание продукта'),
     images: List[UploadFile] = File(
         ...,
@@ -292,47 +325,69 @@ async def create_category_product(
     # Комплексная валидация создания продукта
     await validate_product_creation(name, category_id, images, session)
 
-    # Сохраняем изображения
-    image_urls = await save_images(
-        files=images,
-        directory=Constants.PRODUCTS_DIR,
-        prefix='product'
-    )
+    image_urls = []
+    saved_files = []
 
-    # Создаем продукт
-    product_data = ProductCreate(
-        name=name,
-        price=price,
-        category_id=category_id,
-        description=description,
-        is_active=True
-    )
-
-    # Добавляем данные продукта вручную
-    product_dict = product_data.model_dump()
-
-    # Создаем объект продукта
-    db_product = Product(**product_dict)
-    session.add(db_product)
-    await session.commit()
-    await session.refresh(db_product)
-
-    # Создаем записи Media для изображений
-    for idx, image_url in enumerate(image_urls):
-        media_obj = Media(
-            url=image_url,
-            media_type=MediaType.PRODUCT,
-            order=idx,
-            # Первое изображение - главное
-            is_main=(idx == Constants.FIRST_IMAGE_INDEX),
-            product_id=db_product.id
+    try:
+        # Сохраняем изображения
+        image_urls = await save_images(
+            files=images,
+            directory=Constants.PRODUCTS_DIR,
+            prefix='product'
         )
-        session.add(media_obj)
+        # Track saved file paths for cleanup
+        saved_files = [
+            Constants.PRODUCTS_DIR / Path(url).name for url in image_urls
+        ]
 
-    await session.commit()
-    await session.refresh(db_product)
+        # Создаем продукт
+        product_data = ProductCreate(
+            name=name,
+            price=price,
+            category_id=category_id,
+            description=description,
+            is_active=True
+        )
 
-    return db_product
+        # Добавляем данные продукта вручную
+        product_dict = product_data.model_dump()
+
+        # Создаем объект продукта
+        db_product = Product(**product_dict)
+        session.add(db_product)
+        await session.commit()
+        await session.refresh(db_product)
+
+        # Создаем записи Media для изображений
+        for idx, image_url in enumerate(image_urls):
+            media_obj = Media(
+                url=image_url,
+                media_type=MediaType.PRODUCT,
+                order=idx,
+                # Первое изображение - главное
+                is_main=(idx == Constants.FIRST_IMAGE_INDEX),
+                product_id=db_product.id
+            )
+            session.add(media_obj)
+
+        await session.commit()
+        await session.refresh(db_product)
+
+        return db_product
+
+    except Exception as e:
+        # Rollback database transaction
+        await session.rollback()
+
+        # Clean up uploaded files if database operation failed
+        for file_path in saved_files:
+            try:
+                file_path.unlink(missing_ok=True)
+            except Exception:
+                pass  # Ignore cleanup errors
+
+        # Re-raise the original exception
+        raise
 
 
 @router.patch(
@@ -341,11 +396,18 @@ async def create_category_product(
     summary='Обновить продукт в категории',
     description='Обновить информацию о продукте в категории'
 )
+@limiter.limit(Constants.RATE_LIMIT_PRODUCT_UPDATE)
 async def update_category_product(
+    request: Request,
     category_id: int,
     product_id: int,
     name: str = Form(None, description='Название продукта'),
-    price: float = Form(None, description='Цена продукта'),
+    price: float = Form(
+        None,
+        ge=Constants.PRICE_MIN_VALUE,
+        le=Constants.PRICE_MAX_VALUE,
+        description='Цена продукта'
+    ),
     description: str = Form(None, description='Описание продукта'),
     images: List[UploadFile] = File(
         None,
@@ -367,53 +429,89 @@ async def update_category_product(
         session=session
     )
 
-    # Обновляем данные
-    update_data = ProductUpdate()
-    if name is not None:
-        update_data.name = name
-    if price is not None:
-        update_data.price = price
-    if description is not None:
-        update_data.description = description
-    if is_active is not None:
-        update_data.is_active = is_active
+    image_urls = []
+    saved_files = []
+    old_images = []
 
-    # Обновляем изображения, если загружены новые
-    if images:
+    try:
+        # Обновляем данные
+        update_data = ProductUpdate()
+        if name is not None:
+            update_data.name = name
+        if price is not None:
+            update_data.price = price
+        if description is not None:
+            update_data.description = description
+        if is_active is not None:
+            update_data.is_active = is_active
 
-        image_urls = await save_images(
-            files=images,
-            directory=Constants.PRODUCTS_DIR,
-            prefix='product'
-        )
-
-        # Удаляем старые изображения продукта
-        await session.execute(
-            delete(Media)
-            .where(Media.product_id == db_product.id)
-        )
-
-        # Создаем новые записи Media для изображений
-        for idx, image_url in enumerate(image_urls):
-            media_obj = Media(
-                url=image_url,
-                media_type=MediaType.PRODUCT,
-                order=idx,
-                # Первое изображение - главное
-                is_main=(idx == Constants.FIRST_IMAGE_INDEX),
-                product_id=db_product.id
+        # Обновляем изображения, если загружены новые
+        if images:
+            # Get old images for potential cleanup
+            old_media_result = await session.execute(
+                select(Media).where(Media.product_id == db_product.id)
             )
-            session.add(media_obj)
+            old_images = old_media_result.scalars().all()
+            old_image_urls = [media.url for media in old_images]
 
-    # Применяем обновления
-    if update_data.model_dump(exclude_unset=True):
-        db_product = await product_crud.update(
-            db_obj=db_product,
-            obj_in=update_data,
-            session=session
-        )
+            image_urls = await save_images(
+                files=images,
+                directory=Constants.PRODUCTS_DIR,
+                prefix='product'
+            )
+            # Track saved file paths for cleanup
+            saved_files = [
+                Constants.PRODUCTS_DIR / Path(url).name for url in image_urls
+            ]
 
-    return db_product
+            # Удаляем старые изображения продукта из БД
+            await session.execute(
+                delete(Media)
+                .where(Media.product_id == db_product.id)
+            )
+
+            # Создаем новые записи Media для изображений
+            for idx, image_url in enumerate(image_urls):
+                media_obj = Media(
+                    url=image_url,
+                    media_type=MediaType.PRODUCT,
+                    order=idx,
+                    # Первое изображение - главное
+                    is_main=(idx == Constants.FIRST_IMAGE_INDEX),
+                    product_id=db_product.id
+                )
+                session.add(media_obj)
+
+        # Применяем обновления
+        if update_data.model_dump(exclude_unset=True):
+            db_product = await product_crud.update(
+                db_obj=db_product,
+                obj_in=update_data,
+                session=session
+            )
+
+        await session.commit()
+        await session.refresh(db_product)
+
+        # Delete old image files from filesystem AFTER successful commit
+        if images and old_image_urls:
+            await delete_image_files(old_image_urls)
+
+        return db_product
+
+    except Exception as e:
+        # Rollback database transaction
+        await session.rollback()
+
+        # Clean up newly uploaded files if database operation failed
+        for file_path in saved_files:
+            try:
+                file_path.unlink(missing_ok=True)
+            except Exception:
+                pass  # Ignore cleanup errors
+
+        # Re-raise the original exception
+        raise
 
 
 @router.delete(

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.constants import Constants
-from app.core.storage import save_image
+from app.core.storage import save_image, delete_image_file
 from app.crud.base import CRUDBase
 from app.models.media import Media, MediaType
 from app.models.product import Category
@@ -208,6 +208,13 @@ class CRUDCategory(CRUDBase):
 
         # Обновляем изображение, если загружено новое
         if image_file:
+            # Get old image URLs before deleting from database
+            old_media_result = await session.execute(
+                select(Media).where(Media.category_id == db_category.id)
+            )
+            old_media = old_media_result.scalars().all()
+            old_image_urls = [media.url for media in old_media]
+
             image_url = await save_image(
                 file=image_file,
                 directory=Constants.CATEGORIES_DIR,
@@ -241,6 +248,11 @@ class CRUDCategory(CRUDBase):
 
         await session.commit()
         await session.refresh(db_category)
+
+        # Delete old image files from filesystem AFTER successful commit
+        if image_file and old_image_urls:
+            for old_url in old_image_urls:
+                await delete_image_file(old_url)
 
         return db_category
 

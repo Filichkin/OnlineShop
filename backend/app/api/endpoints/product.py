@@ -25,23 +25,48 @@ router = APIRouter()
     description='Получить список всех активных продуктов с фильтрацией'
 )
 async def get_products(
-    skip: int = Constants.DEFAULT_SKIP,
-    limit: int = Constants.DEFAULT_LIMIT,
+    skip: int = Query(
+        Constants.DEFAULT_SKIP,
+        ge=0,
+        description='Количество элементов для пропуска'
+    ),
+    limit: int = Query(
+        Constants.DEFAULT_LIMIT,
+        ge=1,
+        le=Constants.MAX_LIMIT,
+        description='Количество элементов для возврата'
+    ),
     category_id: Optional[int] = Query(
         None, description='Фильтр по категории'
     ),
     search: Optional[str] = Query(
-        None, description='Поиск по названию'
+        None,
+        max_length=Constants.SEARCH_STRING_MAX_LENGTH,
+        description='Поиск по названию'
     ),
     min_price: Optional[float] = Query(
-        None, description='Минимальная цена'
+        None,
+        ge=Constants.PRICE_MIN_VALUE,
+        le=Constants.PRICE_MAX_VALUE,
+        description='Минимальная цена'
     ),
     max_price: Optional[float] = Query(
-        None, description='Максимальная цена'
+        None,
+        ge=Constants.PRICE_MIN_VALUE,
+        le=Constants.PRICE_MAX_VALUE,
+        description='Максимальная цена'
     ),
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить список активных продуктов с фильтрацией"""
+    # Validate price range if both are provided
+    if min_price is not None and max_price is not None:
+        if min_price > max_price:
+            raise HTTPException(
+                status_code=Constants.HTTP_400_BAD_REQUEST,
+                detail='min_price cannot be greater than max_price'
+            )
+
     if category_id:
         products = await product_crud.get_by_category(
             category_id=category_id,
@@ -50,6 +75,14 @@ async def get_products(
             limit=limit
         )
     elif search:
+        # Validate and sanitize search string
+        search = search.strip()
+        if not search:
+            raise HTTPException(
+                status_code=Constants.HTTP_400_BAD_REQUEST,
+                detail='Search string cannot be empty or whitespace only'
+            )
+
         products = await product_crud.search_by_name(
             name_pattern=search,
             session=session,
