@@ -415,7 +415,12 @@ const CategoryManager = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">
-                                ${product.price}
+                                {new Intl.NumberFormat('ru-RU', {
+                                  style: 'currency',
+                                  currency: 'RUB',
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 0
+                                }).format(product.price)}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
