@@ -19,6 +19,7 @@ const ProductManager = () => {
     description: '',
     price: '',
     category_id: '',
+    is_active: true,
     images: null,
   });
 
@@ -61,6 +62,7 @@ const ProductManager = () => {
     formDataToSend.append('name', formData.name);
     formDataToSend.append('description', formData.description);
     formDataToSend.append('price', formData.price);
+    formDataToSend.append('is_active', formData.is_active.toString());
     
     if (formData.images && formData.images.length > 0) {
       formData.images.forEach((image, index) => {
@@ -103,6 +105,7 @@ const ProductManager = () => {
       description: product.description || '',
       price: product.price.toString(),
       category_id: product.category_id.toString(),
+      is_active: product.is_active,
       images: null,
     });
     setShowModal(true);
@@ -129,6 +132,7 @@ const ProductManager = () => {
       description: '', 
       price: '', 
       category_id: '', 
+      is_active: true,
       images: null 
     });
     dispatch(clearError());
@@ -231,9 +235,6 @@ const ProductManager = () => {
                   Название
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Описание
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Цена
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -275,14 +276,14 @@ const ProductManager = () => {
                       {product.name}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 max-w-xs truncate">
-                      {product.description || 'Нет описания'}
-                    </div>
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      ${product.price}
+                      {new Intl.NumberFormat('ru-RU', {
+                        style: 'currency',
+                        currency: 'RUB',
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      }).format(product.price)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -319,7 +320,7 @@ const ProductManager = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
                     Продукты не найдены
                   </td>
                 </tr>
@@ -421,6 +422,21 @@ const ProductManager = () => {
                     onChange={handleFileChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   />
+                </div>
+
+                <div className="mb-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      name="is_active"
+                      checked={formData.is_active}
+                      onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                      className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">
+                      Продукт активен
+                    </span>
+                  </label>
                 </div>
 
                 <div className="flex justify-end space-x-3">
