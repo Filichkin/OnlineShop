@@ -431,34 +431,30 @@ const ProductManager = () => {
                   </label>
                 </div>
 
-                <div className="flex justify-between">
-                  <div>
-                    {editingProduct && (
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(editingProduct)}
-                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-                      >
-                        Удалить
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex space-x-3">
+                <div className="flex justify-end space-x-3">
+                  {editingProduct && (
                     <button
                       type="button"
-                      onClick={handleCloseModal}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md"
+                      onClick={() => handleDelete(editingProduct)}
+                      className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
                     >
-                      Отмена
+                      Удалить
                     </button>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:opacity-50"
-                    >
-                      {loading ? 'Сохранение...' : 'Сохранить'}
-                    </button>
-                  </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:opacity-50"
+                  >
+                    {loading ? 'Сохранение...' : 'Сохранить'}
+                  </button>
                 </div>
               </form>
             </div>
