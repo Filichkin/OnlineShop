@@ -254,15 +254,21 @@ const ProductManager = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {product.main_image ? (
                       <img
-                        src={product.main_image}
+                        src={`http://127.0.0.1:8000/${product.main_image}`}
                         alt={product.name}
                         className="h-12 w-12 rounded-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
                       />
-                    ) : (
-                      <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
-                        <span className="text-gray-400 text-xs">Нет фото</span>
-                      </div>
-                    )}
+                    ) : null}
+                    <div 
+                      className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center"
+                      style={{ display: product.main_image ? 'none' : 'flex' }}
+                    >
+                      <span className="text-gray-400 text-xs">Нет фото</span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">

@@ -43,4 +43,4 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(main_router)
 
 # Mount static files
-app.mount("/media", StaticFiles(directory="media"), name="media")
+app.mount('/media', StaticFiles(directory='media'), name='media')
