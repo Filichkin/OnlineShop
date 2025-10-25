@@ -168,7 +168,7 @@ const CategoryManager = () => {
                     <div className="flex-shrink-0">
                       {category.image_url ? (
                         <img
-                          src={category.image_url}
+                          src={`http://127.0.0.1:8000/${category.image_url}`}
                           alt={category.name}
                           className="h-16 w-16 rounded-lg object-cover"
                           onError={(e) => {
@@ -311,7 +311,7 @@ const CategoryManager = () => {
                 <div className="flex items-center space-x-4">
                   {selectedCategory.image_url && (
                     <img
-                      src={selectedCategory.image_url}
+                      src={`http://127.0.0.1:8000/${selectedCategory.image_url}`}
                       alt={selectedCategory.name}
                       className="h-16 w-16 rounded-lg object-cover"
                     />
