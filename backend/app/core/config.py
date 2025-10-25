@@ -62,7 +62,11 @@ class Settings(BaseSettings):
 
     @field_validator('first_superuser_password')
     @classmethod
-    def validate_superuser_password(cls, v: Optional[str], info: ValidationInfo) -> Optional[str]:
+    def validate_superuser_password(
+        cls,
+        v: Optional[str],
+        info: ValidationInfo
+    ) -> Optional[str]:
         """Validate superuser password strength"""
         # Skip validation if not set (will be handled by database init)
         if v is None:

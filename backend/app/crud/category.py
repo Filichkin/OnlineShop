@@ -344,6 +344,17 @@ class CRUDCategory(CRUDBase):
             await session.commit()
             await session.refresh(db_product)
 
+            # Загружаем связанные данные для корректного ответа
+            result = await session.execute(
+                select(Product)
+                .options(
+                    selectinload(Product.images),
+                    selectinload(Product.category)
+                )
+                .where(Product.id == db_product.id)
+            )
+            db_product = result.scalars().first()
+
             return db_product
 
         except Exception:
@@ -435,6 +446,17 @@ class CRUDCategory(CRUDBase):
 
             await session.commit()
             await session.refresh(db_product)
+
+            # Загружаем связанные данные для корректного ответа
+            result = await session.execute(
+                select(Product)
+                .options(
+                    selectinload(Product.images),
+                    selectinload(Product.category)
+                )
+                .where(Product.id == db_product.id)
+            )
+            db_product = result.scalars().first()
 
             # Delete old image files from filesystem AFTER successful commit
             if images and old_images:
