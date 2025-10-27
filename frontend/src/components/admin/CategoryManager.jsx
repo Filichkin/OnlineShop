@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { 
-  fetchCategories, 
-  createCategory, 
-  updateCategory, 
+import {
+  fetchCategories,
+  createCategory,
+  updateCategory,
   deleteCategory,
-  clearError 
+  clearError
 } from '../../store/slices/categoriesSlice';
 import { fetchProducts } from '../../store/slices/productsSlice';
+import { getImageUrl, formatPrice } from '../../utils';
 
 const CategoryManager = () => {
   const [showModal, setShowModal] = useState(false);
@@ -21,6 +22,10 @@ const CategoryManager = () => {
     is_active: true,
   });
 
+  const modalRef = useRef(null);
+  const detailModalRef = useRef(null);
+  const addButtonRef = useRef(null);
+
   const dispatch = useDispatch();
   const { categories, loading, error } = useSelector((state) => state.categories);
   const { products: categoryProducts, loading: productsLoading } = useSelector((state) => state.products);
@@ -28,6 +33,34 @@ const CategoryManager = () => {
   useEffect(() => {
     dispatch(fetchCategories());
   }, [dispatch]);
+
+  // Focus management for category form modal
+  useEffect(() => {
+    if (showModal && modalRef.current) {
+      const previouslyFocusedElement = document.activeElement;
+      modalRef.current.focus();
+
+      return () => {
+        if (previouslyFocusedElement && previouslyFocusedElement.focus) {
+          previouslyFocusedElement.focus();
+        }
+      };
+    }
+  }, [showModal]);
+
+  // Focus management for detail modal
+  useEffect(() => {
+    if (showProducts && detailModalRef.current) {
+      const previouslyFocusedElement = document.activeElement;
+      detailModalRef.current.focus();
+
+      return () => {
+        if (previouslyFocusedElement && previouslyFocusedElement.focus) {
+          previouslyFocusedElement.focus();
+        }
+      };
+    }
+  }, [showProducts]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -123,6 +156,7 @@ const CategoryManager = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Управление категориями</h2>
         <button
+          ref={addButtonRef}
           onClick={() => setShowModal(true)}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
         >
@@ -168,8 +202,8 @@ const CategoryManager = () => {
                     <div className="flex-shrink-0">
                       {category.image_url ? (
                         <img
-                          src={`http://127.0.0.1:8000/${category.image_url}`}
-                          alt={category.name}
+                          src={getImageUrl(category.image_url)}
+                          alt={`${category.name} category`}
                           className="h-16 w-16 rounded-lg object-cover"
                           onError={(e) => {
                             e.target.style.display = 'none';
@@ -177,7 +211,7 @@ const CategoryManager = () => {
                           }}
                         />
                       ) : null}
-                      <div 
+                      <div
                         className="h-16 w-16 rounded-lg bg-gray-200 flex items-center justify-center"
                         style={{ display: category.image_url ? 'none' : 'flex' }}
                       >
@@ -212,10 +246,26 @@ const CategoryManager = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[60]">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div
+          className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[60]"
+          onClick={handleCloseModal}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              handleCloseModal();
+            }
+          }}
+        >
+          <div
+            ref={modalRef}
+            className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="category-modal-title"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <h3 id="category-modal-title" className="text-lg font-medium text-gray-900 mb-4">
                 {editingCategory ? 'Редактировать категорию' : 'Добавить категорию'}
               </h3>
               
@@ -304,20 +354,36 @@ const CategoryManager = () => {
 
       {/* Category Detail Modal */}
       {showProducts && selectedCategory && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[55]">
-          <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
+        <div
+          className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[55]"
+          onClick={handleCloseProducts}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              handleCloseProducts();
+            }
+          }}
+        >
+          <div
+            ref={detailModalRef}
+            className="relative top-10 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="category-detail-modal-title"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mt-3">
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center space-x-4">
                   {selectedCategory.image_url && (
                     <img
-                      src={`http://127.0.0.1:8000/${selectedCategory.image_url}`}
-                      alt={selectedCategory.name}
+                      src={getImageUrl(selectedCategory.image_url)}
+                      alt={`${selectedCategory.name} category`}
                       className="h-16 w-16 rounded-lg object-cover"
                     />
                   )}
                   <div>
-                    <h3 className="text-2xl font-bold text-gray-900">
+                    <h3 id="category-detail-modal-title" className="text-2xl font-bold text-gray-900">
                       {selectedCategory.name}
                     </h3>
                     <p className="text-gray-600">
@@ -387,8 +453,8 @@ const CategoryManager = () => {
                             <td className="px-6 py-4 whitespace-nowrap">
                               {product.main_image ? (
                                 <img
-                                  src={`http://127.0.0.1:8000/${product.main_image}`}
-                                  alt={product.name}
+                                  src={getImageUrl(product.main_image)}
+                                  alt={`${product.name} product image`}
                                   className="h-12 w-12 rounded-full object-cover"
                                   onError={(e) => {
                                     e.target.style.display = 'none';
@@ -396,7 +462,7 @@ const CategoryManager = () => {
                                   }}
                                 />
                               ) : null}
-                              <div 
+                              <div
                                 className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center"
                                 style={{ display: product.main_image ? 'none' : 'flex' }}
                               >
@@ -415,12 +481,7 @@ const CategoryManager = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">
-                                {new Intl.NumberFormat('ru-RU', {
-                                  style: 'currency',
-                                  currency: 'RUB',
-                                  minimumFractionDigits: 0,
-                                  maximumFractionDigits: 0
-                                }).format(product.price)}
+                                {formatPrice(product.price)}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
