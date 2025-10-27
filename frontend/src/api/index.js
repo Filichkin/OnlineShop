@@ -75,6 +75,13 @@ export const categoriesAPI = {
     if (!response.ok) throw new Error('Failed to fetch category products');
     return response.json();
   },
+
+  // Получить продукт категории
+  getCategoryProduct: async (categoryId, productId) => {
+    const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/products/${productId}`);
+    if (!response.ok) throw new Error('Failed to fetch category product');
+    return response.json();
+  },
 };
 
 // API для продуктов

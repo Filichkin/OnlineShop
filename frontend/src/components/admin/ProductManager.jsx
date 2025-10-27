@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { 
-  fetchProducts, 
-  createProduct, 
-  updateProduct, 
+import {
+  fetchProducts,
+  createProduct,
+  updateProduct,
   deleteProduct,
-  clearError 
+  clearError
 } from '../../store/slices/productsSlice';
 import { fetchCategories } from '../../store/slices/categoriesSlice';
+import { getImageUrl, formatPrice } from '../../utils';
 
 const ProductManager = () => {
   const [showModal, setShowModal] = useState(false);
@@ -23,6 +24,9 @@ const ProductManager = () => {
     images: null,
   });
 
+  const modalRef = useRef(null);
+  const addButtonRef = useRef(null);
+
   const dispatch = useDispatch();
   const { products, loading, error } = useSelector((state) => state.products);
   const { categories } = useSelector((state) => state.categories);
@@ -32,13 +36,33 @@ const ProductManager = () => {
     dispatch(fetchCategories());
   }, [dispatch]);
 
-  // Фильтрация продуктов
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = !selectedCategory || product.category_id.toString() === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // Focus management for modal
+  useEffect(() => {
+    if (showModal && modalRef.current) {
+      // Save the currently focused element
+      const previouslyFocusedElement = document.activeElement;
+
+      // Focus the modal
+      modalRef.current.focus();
+
+      // Return focus when modal closes
+      return () => {
+        if (previouslyFocusedElement && previouslyFocusedElement.focus) {
+          previouslyFocusedElement.focus();
+        }
+      };
+    }
+  }, [showModal]);
+
+  // Memoized filtered products for performance
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesCategory = !selectedCategory || product.category_id.toString() === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchTerm, selectedCategory]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -143,6 +167,7 @@ const ProductManager = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Управление продуктами</h2>
         <button
+          ref={addButtonRef}
           onClick={() => setShowModal(true)}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
         >
@@ -255,8 +280,8 @@ const ProductManager = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {product.main_image ? (
                       <img
-                        src={`http://127.0.0.1:8000/${product.main_image}`}
-                        alt={product.name}
+                        src={getImageUrl(product.main_image)}
+                        alt={`${product.name} product image`}
                         className="h-12 w-12 rounded-full object-cover"
                         onError={(e) => {
                           e.target.style.display = 'none';
@@ -264,7 +289,7 @@ const ProductManager = () => {
                         }}
                       />
                     ) : null}
-                    <div 
+                    <div
                       className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center"
                       style={{ display: product.main_image ? 'none' : 'flex' }}
                     >
@@ -278,12 +303,7 @@ const ProductManager = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      {new Intl.NumberFormat('ru-RU', {
-                        style: 'currency',
-                        currency: 'RUB',
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                      }).format(product.price)}
+                      {formatPrice(product.price)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -324,10 +344,26 @@ const ProductManager = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[60]">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div
+          className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[60]"
+          onClick={handleCloseModal}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              handleCloseModal();
+            }
+          }}
+        >
+          <div
+            ref={modalRef}
+            className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="product-modal-title"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <h3 id="product-modal-title" className="text-lg font-medium text-gray-900 mb-4">
                 {editingProduct ? 'Редактировать продукт' : 'Добавить продукт'}
               </h3>
               
