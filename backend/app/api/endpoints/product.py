@@ -22,7 +22,7 @@ router = APIRouter()
     '/',
     response_model=List[ProductListResponse],
     summary='Получить список продуктов',
-    description='Получить список всех активных продуктов с фильтрацией'
+    description='Получить список продуктов с фильтрацией'
 )
 async def get_products(
     skip: int = Query(
@@ -56,9 +56,12 @@ async def get_products(
         le=Constants.PRICE_MAX_VALUE,
         description='Максимальная цена'
     ),
+    is_active: Optional[bool] = Query(
+        True, description='Фильтр по статусу активности'
+    ),
     session: AsyncSession = Depends(get_async_session)
 ):
-    """Получить список активных продуктов с фильтрацией"""
+    """Получить список продуктов с фильтрацией"""
     # Validate price range if both are provided
     if min_price is not None and max_price is not None:
         if min_price > max_price:
@@ -72,7 +75,8 @@ async def get_products(
             category_id=category_id,
             session=session,
             skip=skip,
-            limit=limit
+            limit=limit,
+            is_active=is_active
         )
     elif search:
         # Validate and sanitize search string
@@ -87,7 +91,8 @@ async def get_products(
             name_pattern=search,
             session=session,
             skip=skip,
-            limit=limit
+            limit=limit,
+            is_active=is_active
         )
     elif min_price is not None and max_price is not None:
         products = await product_crud.get_by_price_range(
@@ -95,13 +100,15 @@ async def get_products(
             max_price=max_price,
             session=session,
             skip=skip,
-            limit=limit
+            limit=limit,
+            is_active=is_active
         )
     else:
-        products = await product_crud.get_multi_active(
+        products = await product_crud.get_multi(
             session=session,
             skip=skip,
-            limit=limit
+            limit=limit,
+            is_active=is_active
         )
 
     # Получаем главные изображения для всех продуктов одним запросом
@@ -149,12 +156,16 @@ async def get_products(
 )
 async def get_product(
     product_id: int,
+    is_active: Optional[bool] = Query(
+        True, description='Фильтр по статусу активности'
+    ),
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить продукт по ID"""
-    db_product = await product_crud.get_active(
+    db_product = await product_crud.get_with_status(
         product_id=product_id,
-        session=session
+        session=session,
+        is_active=is_active
     )
     if not db_product:
         raise HTTPException(

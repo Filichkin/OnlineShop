@@ -17,24 +17,58 @@ class CRUDProduct(CRUDBase):
     def __init__(self):
         super().__init__(Product)
 
+    async def get_with_status(
+        self,
+        product_id: int,
+        session: AsyncSession,
+        is_active: Optional[bool] = None,
+    ) -> Optional[Product]:
+        """Получить продукт по ID с опциональной фильтрацией по статусу"""
+        query = select(Product).options(
+            selectinload(Product.images),
+            selectinload(Product.category)
+        ).where(Product.id == product_id)
+
+        if is_active is not None:
+            query = query.where(Product.is_active.is_(is_active))
+
+        result = await session.execute(query)
+        return result.scalars().first()
+
+    async def get_multi(
+        self,
+        session: AsyncSession,
+        skip: int = Constants.DEFAULT_SKIP,
+        limit: int = Constants.DEFAULT_LIMIT,
+        is_active: Optional[bool] = None,
+    ):
+        """Получить список продуктов с опциональной фильтрацией по статусу"""
+        query = select(Product)
+
+        if is_active is not None:
+            query = query.where(Product.is_active.is_(is_active))
+
+        result = await session.execute(
+            query.offset(skip).limit(limit)
+        )
+        return result.scalars().all()
+
+    # Оставляем старые методы для обратной совместимости
     async def get_active(
         self,
         product_id: int,
         session: AsyncSession,
     ) -> Optional[Product]:
-        """Получить активный продукт по ID"""
-        result = await session.execute(
-            select(Product)
-            .options(
-                selectinload(Product.images),
-                selectinload(Product.category)
-            )
-            .where(
-                Product.id == product_id,
-                Product.is_active.is_(True)
-            )
-        )
-        return result.scalars().first()
+        """Получить активный продукт по ID (устаревший метод)"""
+        return await self.get_with_status(product_id, session, is_active=True)
+
+    async def get_with_relations(
+        self,
+        product_id: int,
+        session: AsyncSession,
+    ) -> Optional[Product]:
+        """Получить продукт по ID с загруженными связанными данными"""
+        return await self.get_with_status(product_id, session, is_active=None)
 
     async def get_multi_active(
         self,
@@ -42,14 +76,8 @@ class CRUDProduct(CRUDBase):
         skip: int = Constants.DEFAULT_SKIP,
         limit: int = Constants.DEFAULT_LIMIT,
     ):
-        """Получить список активных продуктов"""
-        result = await session.execute(
-            select(Product)
-            .where(Product.is_active.is_(True))
-            .offset(skip)
-            .limit(limit)
-        )
-        return result.scalars().all()
+        """Получить список активных продуктов (устаревший метод)"""
+        return await self.get_multi(session, skip, limit, is_active=True)
 
     async def get_by_category(
         self,
@@ -57,16 +85,19 @@ class CRUDProduct(CRUDBase):
         session: AsyncSession,
         skip: int = Constants.DEFAULT_SKIP,
         limit: int = Constants.DEFAULT_LIMIT,
+        is_active: Optional[bool] = None,
     ):
-        """Получить активные продукты по категории"""
+        """
+        Получить продукты по категории
+        с опциональной фильтрацией по статусу
+        """
+        query = select(Product).where(Product.category_id == category_id)
+
+        if is_active is not None:
+            query = query.where(Product.is_active.is_(is_active))
+
         result = await session.execute(
-            select(Product)
-            .where(
-                Product.category_id == category_id,
-                Product.is_active.is_(True)
-            )
-            .offset(skip)
-            .limit(limit)
+            query.offset(skip).limit(limit)
         )
         return result.scalars().all()
 
@@ -87,9 +118,10 @@ class CRUDProduct(CRUDBase):
         session: AsyncSession,
         skip: int = Constants.DEFAULT_SKIP,
         limit: int = Constants.DEFAULT_LIMIT,
+        is_active: Optional[bool] = None,
     ):
         """
-        Поиск активных продуктов по части имени
+        Поиск продуктов по части имени с опциональной фильтрацией по статусу
 
         Escapes LIKE wildcards to prevent wildcard injection attacks
         """
@@ -101,14 +133,15 @@ class CRUDProduct(CRUDBase):
             .replace('_', '\\_')     # Escape underscore wildcard
         )
 
+        query = select(Product).where(
+            Product.name.ilike(f'%{escaped_pattern}%', escape='\\')
+        )
+
+        if is_active is not None:
+            query = query.where(Product.is_active.is_(is_active))
+
         result = await session.execute(
-            select(Product)
-            .where(
-                Product.name.ilike(f'%{escaped_pattern}%', escape='\\'),
-                Product.is_active.is_(True)
-            )
-            .offset(skip)
-            .limit(limit)
+            query.offset(skip).limit(limit)
         )
         return result.scalars().all()
 
@@ -119,17 +152,22 @@ class CRUDProduct(CRUDBase):
         session: AsyncSession,
         skip: int = Constants.DEFAULT_SKIP,
         limit: int = Constants.DEFAULT_LIMIT,
+        is_active: Optional[bool] = None,
     ):
-        """Получить активные продукты в диапазоне цен"""
+        """
+        Получить продукты в диапазоне цен
+        с опциональной фильтрацией по статусу
+        """
+        query = select(Product).where(
+            Product.price >= min_price,
+            Product.price <= max_price
+        )
+
+        if is_active is not None:
+            query = query.where(Product.is_active.is_(is_active))
+
         result = await session.execute(
-            select(Product)
-            .where(
-                Product.price >= min_price,
-                Product.price <= max_price,
-                Product.is_active.is_(True)
-            )
-            .offset(skip)
-            .limit(limit)
+            query.offset(skip).limit(limit)
         )
         return result.scalars().all()
 

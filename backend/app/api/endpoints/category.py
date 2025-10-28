@@ -1,6 +1,8 @@
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
+from fastapi import (
+    APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
+)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,7 +40,7 @@ router = APIRouter()
     '/',
     response_model=List[CategoryResponse],
     summary='Получить список категорий',
-    description='Получить список всех активных категорий'
+    description='Получить список категорий с фильтрацией'
 )
 async def get_categories(
     skip: int = Query(
@@ -52,13 +54,17 @@ async def get_categories(
         le=Constants.MAX_LIMIT,
         description='Количество элементов для возврата'
     ),
+    is_active: Optional[bool] = Query(
+        True, description='Фильтр по статусу активности'
+    ),
     session: AsyncSession = Depends(get_async_session)
 ):
-    """Получить список активных категорий"""
-    return await category_crud.get_multi_active(
+    """Получить список категорий с фильтрацией"""
+    return await category_crud.get_multi_with_status(
         session=session,
         skip=skip,
-        limit=limit
+        limit=limit,
+        is_active=is_active
     )
 
 
@@ -70,6 +76,9 @@ async def get_categories(
 )
 async def get_category(
     category_id: int,
+    is_active: Optional[bool] = Query(
+        True, description='Фильтр по статусу активности'
+    ),
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить категорию по ID"""
@@ -77,9 +86,10 @@ async def get_category(
     await validate_category_exists(category_id, session, must_be_active=True)
 
     # Получаем категорию с изображением
-    db_category = await category_crud.get_with_image(
+    db_category = await category_crud.get_with_status(
         category_id=category_id,
-        session=session
+        session=session,
+        is_active=is_active
     )
     return db_category
 
@@ -315,17 +325,28 @@ async def create_category_product(
     current_user: User = Depends(current_superuser)
 ):
     """Создать новый продукт в категории"""
-    # Комплексная валидация создания продукта
-    await validate_product_creation(name, category_id, images, session)
+    try:
+        # Комплексная валидация создания продукта
+        await validate_product_creation(name, category_id, images, session)
 
-    return await category_crud.create_product_with_images(
-        name=name,
-        price=price,
-        category_id=category_id,
-        description=description,
-        images=images,
-        session=session
-    )
+        return await category_crud.create_product_with_images(
+            name=name,
+            price=price,
+            category_id=category_id,
+            description=description,
+            images=images,
+            session=session
+        )
+    except HTTPException:
+        # Перебрасываем HTTPException как есть
+        raise
+    except Exception as e:
+        # Логируем детали ошибки для отладки
+        print(f'Unexpected error creating product: {e}')
+        raise HTTPException(
+            status_code=500,
+            detail='Внутренняя ошибка сервера при создании продукта'
+        )
 
 
 @router.patch(
@@ -361,9 +382,10 @@ async def update_category_product(
         product_id, category_id, name, images, session
     )
 
-    # Получаем продукт для обновления
-    db_product = await product_crud.get(
-        obj_id=product_id,
+    # Получаем продукт для обновления с загруженными связанными данными
+    # В админ панели можем обновлять как активные, так и неактивные продукты
+    db_product = await product_crud.get_with_status(
+        product_id=product_id,
         session=session
     )
 
@@ -396,9 +418,9 @@ async def delete_category_product(
         category_id, product_id, session
     )
 
-    # Получаем продукт для удаления
-    db_product = await product_crud.get(
-        obj_id=product_id,
+    # Получаем продукт для удаления с загруженными связанными данными
+    db_product = await product_crud.get_with_relations(
+        product_id=product_id,
         session=session
     )
 
@@ -426,9 +448,9 @@ async def restore_category_product(
         category_id, product_id, session
     )
 
-    # Получаем продукт для восстановления
-    db_product = await product_crud.get(
-        obj_id=product_id,
+    # Получаем продукт для восстановления с загруженными связанными данными
+    db_product = await product_crud.get_with_relations(
+        product_id=product_id,
         session=session
     )
 

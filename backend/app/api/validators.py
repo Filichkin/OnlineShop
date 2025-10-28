@@ -70,8 +70,8 @@ async def validate_product_exists(
             session=session
         )
     else:
-        product = await product_crud.get(
-            obj_id=product_id,
+        product = await product_crud.get_with_status(
+            product_id=product_id,
             session=session
         )
 
@@ -98,10 +98,13 @@ async def validate_product_belongs_to_category(
     Raises:
         HTTPException: Если продукт не принадлежит категории
     """
-    product = await product_crud.get(
-        obj_id=product_id,
-        session=session
+    from sqlalchemy import select
+    from app.models.product import Product
+
+    result = await session.execute(
+        select(Product).where(Product.id == product_id)
     )
+    product = result.scalars().first()
 
     if not product:
         raise HTTPException(

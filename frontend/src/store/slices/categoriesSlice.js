@@ -4,16 +4,18 @@ import { categoriesAPI } from '../../api';
 // Асинхронные действия
 export const fetchCategories = createAsyncThunk(
   'categories/fetchCategories',
-  async ({ skip = 0, limit = 10 } = {}) => {
-    const response = await categoriesAPI.getCategories(skip, limit);
+  async ({ skip = 0, limit = 10, isActive = true } = {}) => {
+    // Убеждаемся, что isActive не null
+    const activeFilter = isActive === null ? undefined : isActive;
+    const response = await categoriesAPI.getCategories(skip, limit, activeFilter);
     return response;
   }
 );
 
 export const fetchCategory = createAsyncThunk(
   'categories/fetchCategory',
-  async (categoryId) => {
-    const response = await categoriesAPI.getCategory(categoryId);
+  async ({ categoryId, isActive = true }) => {
+    const response = await categoriesAPI.getCategory(categoryId, isActive);
     return response;
   }
 );
@@ -55,6 +57,9 @@ const initialState = {
   currentCategory: null,
   loading: false,
   error: null,
+  filters: {
+    isActive: true,
+  },
   pagination: {
     skip: 0,
     limit: 10,
@@ -71,6 +76,14 @@ const categoriesSlice = createSlice({
     },
     clearCurrentCategory: (state) => {
       state.currentCategory = null;
+    },
+    setFilters: (state, action) => {
+      state.filters = { ...state.filters, ...action.payload };
+    },
+    clearFilters: (state) => {
+      state.filters = {
+        isActive: true,
+      };
     },
     setPagination: (state, action) => {
       state.pagination = { ...state.pagination, ...action.payload };
@@ -173,5 +186,11 @@ const categoriesSlice = createSlice({
   },
 });
 
-export const { clearError, clearCurrentCategory, setPagination } = categoriesSlice.actions;
+export const { 
+  clearError, 
+  clearCurrentCategory, 
+  setFilters, 
+  clearFilters, 
+  setPagination 
+} = categoriesSlice.actions;
 export default categoriesSlice.reducer;

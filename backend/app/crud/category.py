@@ -66,20 +66,51 @@ class CRUDCategory(CRUDBase):
         )
         return result.scalars().first()
 
+    async def get_with_status(
+        self,
+        category_id: int,
+        session: AsyncSession,
+        is_active: Optional[bool] = None,
+    ) -> Optional[Category]:
+        """Получить категорию по ID с опциональной фильтрацией по статусу"""
+        query = select(Category).options(selectinload(Category.image)).where(
+            Category.id == category_id
+        )
+
+        if is_active is not None:
+            query = query.where(Category.is_active.is_(is_active))
+
+        result = await session.execute(query)
+        return result.scalars().first()
+
+    async def get_multi_with_status(
+        self,
+        session: AsyncSession,
+        skip: int = Constants.DEFAULT_SKIP,
+        limit: int = Constants.DEFAULT_LIMIT,
+        is_active: Optional[bool] = None,
+    ):
+        """Получить список категорий с опциональной фильтрацией по статусу"""
+        query = select(Category)
+
+        if is_active is not None:
+            query = query.where(Category.is_active.is_(is_active))
+
+        result = await session.execute(
+            query.offset(skip).limit(limit)
+        )
+        return result.scalars().all()
+
     async def get_multi_active(
         self,
         session: AsyncSession,
         skip: int = Constants.DEFAULT_SKIP,
         limit: int = Constants.DEFAULT_LIMIT,
     ):
-        """Получить список активных категорий"""
-        result = await session.execute(
-            select(Category)
-            .where(Category.is_active.is_(True))
-            .offset(skip)
-            .limit(limit)
+        """Получить список активных категорий (устаревший метод)"""
+        return await self.get_multi_with_status(
+            session, skip, limit, is_active=True
         )
-        return result.scalars().all()
 
     async def create(
         self,
@@ -382,6 +413,9 @@ class CRUDCategory(CRUDBase):
         session: AsyncSession,
     ) -> Product:
         """Обновить продукт с изображениями"""
+        if db_product is None:
+            raise ValueError('Продукт не найден')
+
         image_urls = []
         saved_files = []
         old_images = []
