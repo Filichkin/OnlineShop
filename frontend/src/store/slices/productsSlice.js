@@ -4,25 +4,36 @@ import { productsAPI } from '../../api';
 // Асинхронные действия
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
-  async ({ skip = 0, limit = 10, categoryId = null, search = null, minPrice = null, maxPrice = null } = {}) => {
-    const response = await productsAPI.getProducts(skip, limit, categoryId, search, minPrice, maxPrice);
+  async ({ skip = 0, limit = 10, categoryId = null, search = null, minPrice = null, maxPrice = null, isActive = true } = {}) => {
+    // Убеждаемся, что isActive не null
+    const activeFilter = isActive === null ? undefined : isActive;
+    const response = await productsAPI.getProducts(skip, limit, categoryId, search, minPrice, maxPrice, activeFilter);
     return response;
   }
 );
 
 export const fetchProduct = createAsyncThunk(
   'products/fetchProduct',
-  async (productId) => {
-    const response = await productsAPI.getProduct(productId);
+  async ({ productId, isActive = true }) => {
+    const response = await productsAPI.getProduct(productId, isActive);
     return response;
   }
 );
 
 export const createProduct = createAsyncThunk(
   'products/createProduct',
-  async ({ categoryId, formData }) => {
-    const response = await productsAPI.createProduct(categoryId, formData);
-    return response;
+  async ({ categoryId, formData }, { rejectWithValue }) => {
+    try {
+      const response = await productsAPI.createProduct(categoryId, formData);
+      return response;
+    } catch (error) {
+      // Если ошибка содержит детальную информацию от сервера
+      if (error.response && error.response.data && error.response.data.detail) {
+        return rejectWithValue(error.response.data);
+      }
+      // Иначе возвращаем общую ошибку
+      return rejectWithValue({ detail: error.message || 'Ошибка при создании продукта' });
+    }
   }
 );
 
@@ -60,6 +71,7 @@ const initialState = {
     search: null,
     minPrice: null,
     maxPrice: null,
+    isActive: true,
   },
   pagination: {
     skip: 0,
@@ -87,6 +99,7 @@ const productsSlice = createSlice({
         search: null,
         minPrice: null,
         maxPrice: null,
+        isActive: true,
       };
     },
     setPagination: (state, action) => {
@@ -134,7 +147,14 @@ const productsSlice = createSlice({
       })
       .addCase(createProduct.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        // Извлекаем детальное сообщение об ошибке из ответа сервера
+        if (action.payload && action.payload.detail) {
+          state.error = action.payload.detail;
+        } else if (action.error.message) {
+          state.error = action.error.message;
+        } else {
+          state.error = 'Ошибка при создании продукта';
+        }
       })
       
       // Обновление продукта

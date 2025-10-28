@@ -15,6 +15,7 @@ const ProductManager = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -32,9 +33,17 @@ const ProductManager = () => {
   const { categories } = useSelector((state) => state.categories);
 
   useEffect(() => {
-    dispatch(fetchProducts());
+    // Определяем параметр isActive на основе фильтра статуса
+    let isActive = true; // по умолчанию только активные
+    if (statusFilter === 'inactive') {
+      isActive = false;
+    } else if (statusFilter === 'all') {
+      isActive = undefined; // все продукты (не передаем параметр)
+    }
+    
+    dispatch(fetchProducts({ isActive }));
     dispatch(fetchCategories());
-  }, [dispatch]);
+  }, [dispatch, statusFilter]);
 
   // Focus management for modal
   useEffect(() => {
@@ -57,12 +66,27 @@ const ProductManager = () => {
   // Memoized filtered products for performance
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
+      // Проверяем, что product существует и имеет необходимые свойства
+      if (!product || !product.name) {
+        return false;
+      }
+      
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesCategory = !selectedCategory || product.category_id.toString() === selectedCategory;
-      return matchesSearch && matchesCategory;
+      const matchesCategory = !selectedCategory || (product.category_id && product.category_id.toString() === selectedCategory);
+      
+      // Фильтрация по статусу уже происходит на уровне API, но можем добавить дополнительную фильтрацию
+      let matchesStatus = true;
+      if (statusFilter === 'active') {
+        matchesStatus = product.is_active === true;
+      } else if (statusFilter === 'inactive') {
+        matchesStatus = product.is_active === false;
+      }
+      // Если statusFilter === 'all', то matchesStatus остается true
+      
+      return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [products, searchTerm, selectedCategory]);
+  }, [products, searchTerm, selectedCategory, statusFilter]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -102,6 +126,8 @@ const ProductManager = () => {
           formData: formDataToSend 
         })).unwrap();
       } else {
+        // Добавляем category_id в FormData для создания продукта
+        formDataToSend.append('category_id', formData.category_id);
         await dispatch(createProduct({ 
           categoryId: formData.category_id, 
           formData: formDataToSend 
@@ -123,12 +149,13 @@ const ProductManager = () => {
   };
 
   const handleEdit = (product) => {
+    dispatch(clearError());
     setEditingProduct(product);
     setFormData({
       name: product.name,
       description: product.description || '',
-      price: product.price.toString(),
-      category_id: product.category_id.toString(),
+      price: product.price ? product.price.toString() : '0',
+      category_id: product.category_id ? product.category_id.toString() : '',
       is_active: product.is_active,
       images: null,
     });
@@ -142,11 +169,14 @@ const ProductManager = () => {
           categoryId: product.category_id, 
           productId: product.id 
         })).unwrap();
+        // Закрываем модальное окно после успешного удаления
+        handleCloseModal();
       } catch (err) {
         // Ошибка уже обработана в slice
       }
     }
   };
+
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -168,7 +198,10 @@ const ProductManager = () => {
         <h2 className="text-2xl font-bold text-gray-900">Управление продуктами</h2>
         <button
           ref={addButtonRef}
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            dispatch(clearError());
+            setShowModal(true);
+          }}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
         >
           Добавить продукт
@@ -177,7 +210,7 @@ const ProductManager = () => {
 
       {/* Фильтры */}
       <div className="mb-6 bg-white p-4 rounded-lg shadow">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Поиск по названию или описанию
@@ -207,6 +240,20 @@ const ProductManager = () => {
               ))}
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Фильтр по статусу
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="all">Все продукты</option>
+              <option value="active">Только активные</option>
+              <option value="inactive">Только неактивные</option>
+            </select>
+          </div>
         </div>
         <div className="mt-4 flex justify-between items-center">
           <div className="text-sm text-gray-500">
@@ -216,6 +263,7 @@ const ProductManager = () => {
             onClick={() => {
               setSearchTerm('');
               setSelectedCategory('');
+              setStatusFilter('all');
             }}
             className="text-sm text-indigo-600 hover:text-indigo-900"
           >

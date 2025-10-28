@@ -15,6 +15,7 @@ const CategoryManager = () => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [showProducts, setShowProducts] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -31,8 +32,16 @@ const CategoryManager = () => {
   const { products: categoryProducts, loading: productsLoading } = useSelector((state) => state.products);
 
   useEffect(() => {
-    dispatch(fetchCategories());
-  }, [dispatch]);
+    // Определяем параметр isActive на основе фильтра статуса
+    let isActive = true; // по умолчанию только активные
+    if (statusFilter === 'inactive') {
+      isActive = false;
+    } else if (statusFilter === 'all') {
+      isActive = undefined; // все категории (не передаем параметр)
+    }
+    
+    dispatch(fetchCategories({ isActive }));
+  }, [dispatch, statusFilter]);
 
   // Focus management for category form modal
   useEffect(() => {
@@ -162,6 +171,29 @@ const CategoryManager = () => {
         >
           Добавить категорию
         </button>
+      </div>
+
+      {/* Фильтры */}
+      <div className="mb-6 bg-white p-4 rounded-lg shadow">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <label className="block text-sm font-medium text-gray-700">
+              Фильтр по статусу
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="all">Все категории</option>
+              <option value="active">Только активные</option>
+              <option value="inactive">Только неактивные</option>
+            </select>
+          </div>
+          <div className="text-sm text-gray-500">
+            Найдено: {categories.length} категорий
+          </div>
+        </div>
       </div>
 
       {error && (

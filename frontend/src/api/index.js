@@ -14,15 +14,32 @@ const getAuthHeaders = () => {
 // API для категорий
 export const categoriesAPI = {
   // Получить все категории
-  getCategories: async (skip = 0, limit = 10) => {
-    const response = await fetch(`${API_BASE_URL}/categories/?skip=${skip}&limit=${limit}`);
+  getCategories: async (skip = 0, limit = 10, isActive = true) => {
+    const params = new URLSearchParams({
+      skip: skip.toString(),
+      limit: limit.toString(),
+    });
+    
+    // Добавляем is_active только если он не undefined
+    if (isActive !== undefined) {
+      params.append('is_active', isActive.toString());
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/categories/?${params}`);
     if (!response.ok) throw new Error('Failed to fetch categories');
     return response.json();
   },
 
   // Получить категорию по ID
-  getCategory: async (categoryId) => {
-    const response = await fetch(`${API_BASE_URL}/categories/${categoryId}`);
+  getCategory: async (categoryId, isActive = true) => {
+    const params = new URLSearchParams();
+    
+    // Добавляем is_active только если он не undefined
+    if (isActive !== undefined) {
+      params.append('is_active', isActive.toString());
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/categories/${categoryId}?${params}`);
     if (!response.ok) throw new Error('Failed to fetch category');
     return response.json();
   },
@@ -87,11 +104,16 @@ export const categoriesAPI = {
 // API для продуктов
 export const productsAPI = {
   // Получить все продукты
-  getProducts: async (skip = 0, limit = 10, categoryId = null, search = null, minPrice = null, maxPrice = null) => {
+  getProducts: async (skip = 0, limit = 10, categoryId = null, search = null, minPrice = null, maxPrice = null, isActive = true) => {
     const params = new URLSearchParams({
       skip: skip.toString(),
       limit: limit.toString(),
     });
+    
+    // Добавляем is_active только если он не undefined
+    if (isActive !== undefined) {
+      params.append('is_active', isActive.toString());
+    }
     
     if (categoryId) params.append('category_id', categoryId);
     if (search) params.append('search', search);
@@ -104,8 +126,15 @@ export const productsAPI = {
   },
 
   // Получить продукт по ID
-  getProduct: async (productId) => {
-    const response = await fetch(`${API_BASE_URL}/products/${productId}`);
+  getProduct: async (productId, isActive = true) => {
+    const params = new URLSearchParams();
+    
+    // Добавляем is_active только если он не undefined
+    if (isActive !== undefined) {
+      params.append('is_active', isActive.toString());
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/products/${productId}?${params}`);
     if (!response.ok) throw new Error('Failed to fetch product');
     return response.json();
   },
@@ -117,7 +146,12 @@ export const productsAPI = {
       headers: getAuthHeaders(),
       body: formData,
     });
-    if (!response.ok) throw new Error('Failed to create product');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = new Error(errorData.detail || 'Failed to create product');
+      error.response = { data: errorData };
+      throw error;
+    }
     return response.json();
   },
 
