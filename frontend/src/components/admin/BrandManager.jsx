@@ -174,7 +174,7 @@ const BrandManager = () => {
                 <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                   Статус
                 </th>
-                <th className='px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64'>
                   Действия
                 </th>
               </tr>
@@ -200,25 +200,25 @@ const BrandManager = () => {
                         {brand.is_active ? 'Активен' : 'Неактивен'}
                       </span>
                     </td>
-                    <td className='px-6 py-4 text-right text-sm font-medium'>
-                      <div className='flex justify-end gap-4'>
+                    <td className='px-6 py-4 text-sm font-medium w-64'>
+                      <div className='flex gap-4'>
                         <button
                           onClick={() => handleEdit(brand)}
-                          className='text-indigo-600 hover:text-indigo-900'
+                          className='text-indigo-600 hover:text-indigo-900 whitespace-nowrap'
                         >
                           Редактировать
                         </button>
                         {brand.is_active ? (
                           <button
                             onClick={() => handleDelete(brand.id)}
-                            className='text-red-600 hover:text-red-900'
+                            className='text-red-600 hover:text-red-900 whitespace-nowrap'
                           >
                             Удалить
                           </button>
                         ) : (
                           <button
                             onClick={() => handleRestore(brand.id)}
-                            className='text-green-600 hover:text-green-900'
+                            className='text-green-600 hover:text-green-900 whitespace-nowrap'
                           >
                             Восстановить
                           </button>
