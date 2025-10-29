@@ -49,42 +49,51 @@ function Category() {
           Продукты не найдены
         </p>
       ) : (
-        <ul className="grid grid-cols-3 gap-5 px-5">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredProducts.map((product) => (
-            <li
-              className="relative flex flex-col items-center justify-center group" 
+            <div
               key={product.id}
+              className="flex flex-col bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
             >
+              {/* Изображение товара */}
               <Link 
-                className="relative flex flex-col items-center justify-center group"
                 to={`/product/${product.id}`}
                 state={{ categoryId }}
+                className="block w-full aspect-square overflow-hidden bg-gray-100"
               >
-                <span 
-                  className="absolute z-10 text-xl font-semibold text-center text-white transition-all group-hover:text-2xl"
-                >
-                  {product.name} <br /> {formatPrice(product.price)}
-                </span>
                 <img
-                  className="rounded-md"
                   src={getImageUrl(product.main_image)}
-                  alt={`${product.name} - ${formatPrice(product.price)} - Click to view details`}
+                  alt={product.name}
+                  className="object-contain w-full h-full transition-transform duration-300 hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gray-900 rounded-md opacity-40"></div>
               </Link>
-              {/* Кнопка добавления в корзину */}
-              <div 
-                className="absolute bottom-2 right-2 z-20"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <AddToCartButton 
-                  product={product} 
-                  onAddToCart={handleAddToCart}
-                />
+              
+              {/* Информация о товаре */}
+              <div className="flex flex-col flex-grow p-4 border-t border-gray-200">
+                <Link 
+                  to={`/product/${product.id}`}
+                  state={{ categoryId }}
+                  className="hover:text-blue-600 transition-colors"
+                >
+                  <h3 className="text-base font-semibold text-gray-800 mb-3 line-clamp-2 min-h-[3rem]">
+                    {product.name}
+                  </h3>
+                </Link>
+                
+                {/* Цена и кнопка */}
+                <div className="mt-auto flex items-center justify-between gap-3">
+                  <span className="text-xl font-bold text-gray-900 whitespace-nowrap">
+                    {formatPrice(product.price)}
+                  </span>
+                  <AddToCartButton 
+                    product={product} 
+                    onAddToCart={handleAddToCart}
+                  />
+                </div>
               </div>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
