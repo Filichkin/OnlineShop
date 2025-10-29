@@ -487,7 +487,8 @@ class CRUDCategory(CRUDBase):
                     exclude_unset=True
                 ).items():
                     setattr(db_product, field, value)
-                session.add(db_product)
+                # НЕ добавляем db_product в session,
+                # так как он уже отслеживается
 
             await session.commit()
             await session.refresh(db_product)

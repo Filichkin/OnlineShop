@@ -110,6 +110,7 @@ class ProductResponse(ProductBase):
 class ProductDetailResponse(ProductResponse):
     """Детальная схема с изображениями, категорией и брендом"""
     images: List[MediaResponse] = []
+    main_image: Optional[str] = None
     category: CategoryResponse
     brand: BrandResponse
 

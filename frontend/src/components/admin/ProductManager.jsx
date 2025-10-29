@@ -10,6 +10,7 @@ import {
 import { fetchCategories } from '../../store/slices/categoriesSlice';
 import { getImageUrl, formatPrice } from '../../utils';
 import { brandsAPI } from '../../api';
+import ProductImageManager from './ProductImageManager';
 
 const ProductManager = () => {
   const [showModal, setShowModal] = useState(false);
@@ -18,6 +19,7 @@ const ProductManager = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [brands, setBrands] = useState([]);
+  const [selectedProductId, setSelectedProductId] = useState(null); // Для менеджера изображений
   const [formData, setFormData] = useState({
     name: '',
     part_number: '',
@@ -129,20 +131,49 @@ const ProductManager = () => {
     formDataToSend.append('brand_id', formData.brand_id);
     formDataToSend.append('is_active', formData.is_active.toString());
     
-    if (formData.images && formData.images.length > 0) {
-      formData.images.forEach((image, index) => {
-        formDataToSend.append('images', image);
-      });
-    }
+    // НЕ добавляем изображения в FormData для редактирования
+    // Они будут обработаны отдельно через новый API
 
     try {
       if (editingProduct) {
+        // Обновляем продукт БЕЗ изображений
         await dispatch(updateProduct({ 
           categoryId: editingProduct.category_id,
           productId: editingProduct.id, 
           formData: formDataToSend 
         })).unwrap();
+        
+        // Если есть новые изображения, добавляем их через новый API
+        if (formData.images && formData.images.length > 0) {
+          try {
+            const imageFormData = new FormData();
+            formData.images.forEach((image) => {
+              imageFormData.append('images', image);
+            });
+            
+            const response = await fetch(
+              `http://localhost:8000/products/${editingProduct.id}/images`,
+              {
+                method: 'POST',
+                body: imageFormData,
+              }
+            );
+            
+            if (!response.ok) {
+              console.warn('Не удалось добавить изображения:', await response.text());
+            }
+          } catch (imageError) {
+            console.warn('Ошибка при добавлении изображений:', imageError);
+          }
+        }
       } else {
+        // Для создания продукта добавляем изображения в FormData
+        if (formData.images && formData.images.length > 0) {
+          formData.images.forEach((image) => {
+            formDataToSend.append('images', image);
+          });
+        }
+        
         // Добавляем category_id в FormData для создания продукта
         formDataToSend.append('category_id', formData.category_id);
         await dispatch(createProduct({ 
@@ -555,13 +586,63 @@ const ProductManager = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Изображения
                   </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
+                  
+                  {editingProduct ? (
+                    <div className="space-y-3">
+                      <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-sm font-medium text-purple-900">
+                              Управление изображениями продукта
+                            </h4>
+                            <p className="text-xs text-purple-700 mt-1">
+                              Добавляйте, удаляйте, устанавливайте главное изображение и меняйте порядок
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowModal(false);
+                              setSelectedProductId(editingProduct.id);
+                            }}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium flex items-center gap-2"
+                          >
+                            <span>📸</span>
+                            <span>Управление изображениями</span>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="text-xs text-gray-500">
+                        💡 Для быстрого добавления изображений используйте поле ниже
+                      </div>
+                      
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleFileChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                      
+                      <div className="text-xs text-blue-600 mt-1">
+                        ⚠️ Изображения будут добавлены после сохранения продукта
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleFileChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Выберите изображения для загрузки при создании продукта
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-4">
@@ -608,6 +689,18 @@ const ProductManager = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Менеджер изображений */}
+      {selectedProductId && (
+        <ProductImageManager
+          productId={selectedProductId}
+          onClose={() => {
+            setSelectedProductId(null);
+            // Перезагружаем продукты после изменений
+            dispatch(fetchProducts({ isActive: statusFilter === 'all' ? undefined : statusFilter === 'active' }));
+          }}
+        />
       )}
     </div>
   );

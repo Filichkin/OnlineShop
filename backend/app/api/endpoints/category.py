@@ -312,7 +312,33 @@ async def get_category_product(
         product_id=product_id,
         session=session
     )
-    return product
+
+    # Получаем главное изображение
+    main_image_result = await session.execute(
+        select(Media)
+        .where(
+            Media.product_id == product_id,
+            Media.is_main.is_(True)
+        )
+    )
+    main_image = main_image_result.scalars().first()
+    main_image_url = main_image.url if main_image else None
+
+    # Создаем ответ с main_image
+    return ProductDetailResponse(
+        id=product.id,
+        name=product.name,
+        part_number=product.part_number,
+        description=product.description,
+        price=product.price,
+        is_active=product.is_active,
+        category_id=product.category_id,
+        brand_id=product.brand_id,
+        images=product.images,
+        main_image=main_image_url,
+        category=product.category,
+        brand=product.brand
+    )
 
 
 @router.post(
