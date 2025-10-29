@@ -87,8 +87,18 @@ export const categoriesAPI = {
   },
 
   // Получить продукты категории
-  getCategoryProducts: async (categoryId, skip = 0, limit = 10) => {
-    const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/products/?skip=${skip}&limit=${limit}`);
+  getCategoryProducts: async (categoryId, skip = 0, limit = 10, isActive = true) => {
+    const params = new URLSearchParams({
+      skip: skip.toString(),
+      limit: limit.toString(),
+    });
+    
+    // Добавляем is_active только если он не undefined
+    if (isActive !== undefined) {
+      params.append('is_active', isActive.toString());
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/products/?${params}`);
     if (!response.ok) throw new Error('Failed to fetch category products');
     return response.json();
   },

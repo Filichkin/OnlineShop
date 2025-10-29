@@ -55,7 +55,7 @@ class Constants:
     FIRST_IMAGE_INDEX = 0
 
     # File Upload Security
-    MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB in bytes
+    MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 5MB in bytes
     MIN_IMAGE_SIZE = 10  # 10 bytes minimum to prevent empty files
     ALLOWED_MIME_TYPES = {
         'image/jpeg',

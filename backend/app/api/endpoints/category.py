@@ -211,7 +211,7 @@ async def restore_category(
     '/{category_id}/products/',
     response_model=List[ProductListResponse],
     summary='Получить продукты категории',
-    description='Получить список всех активных продуктов категории'
+    description='Получить список продуктов категории'
 )
 async def get_category_products(
     category_id: int,
@@ -225,6 +225,10 @@ async def get_category_products(
         ge=1,
         le=Constants.MAX_LIMIT,
         description='Количество элементов для возврата'
+    ),
+    is_active: Optional[bool] = Query(
+        True,
+        description='Фильтр по активности продуктов'
     ),
     session: AsyncSession = Depends(get_async_session)
 ):
@@ -243,7 +247,8 @@ async def get_category_products(
         category_id=category_id,
         session=session,
         skip=skip,
-        limit=limit
+        limit=limit,
+        is_active=is_active
     )
 
     # Получаем главные изображения для всех продуктов одним запросом
