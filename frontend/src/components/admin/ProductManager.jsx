@@ -373,8 +373,8 @@ const ProductManager = () => {
                       <span className="text-gray-400 text-xs">Нет фото</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap max-w-xs">
+                    <div className="text-sm font-medium text-gray-900 truncate">
                       {product.name}
                     </div>
                   </td>
