@@ -200,10 +200,6 @@ function ProductDetails() {
                   <span className="font-semibold text-gray-900">{product.category.name}</span>
                 </div>
               )}
-              <div className="flex justify-between py-2 border-b border-gray-200">
-                <span className="text-gray-600">Количество фото</span>
-                <span className="font-semibold text-gray-900">{allImages.length}</span>
-              </div>
             </div>
           </div>
         </div>

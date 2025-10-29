@@ -1,15 +1,24 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import Constants
 from app.core.db import get_async_session
+from app.core.storage import save_images, delete_image_files
+from app.crud.media import media_crud
 from app.crud.product import product_crud
 from app.models.brand import Brand
-from app.models.media import Media
+from app.models.media import Media, MediaType
 from app.models.product import Category
+from app.schemas.media import (
+    DeleteImagesRequest,
+    DeleteImagesResponse,
+    MediaResponse,
+    ReorderImagesRequest,
+    SetMainImageRequest,
+)
 from app.schemas.product import (
     ProductDetailResponse,
     ProductListResponse
@@ -185,3 +194,271 @@ async def get_product(
             detail='Продукт не найден'
         )
     return db_product
+
+
+# ==================== Image Management Endpoints ====================
+
+
+@router.get(
+    '/{product_id}/images',
+    response_model=List[MediaResponse],
+    summary='Получить все изображения продукта',
+    description='Получить список всех изображений продукта'
+)
+async def get_product_images(
+    product_id: int,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Получить все изображения продукта"""
+    # Проверяем существование продукта
+    db_product = await product_crud.get_with_status(
+        product_id=product_id,
+        session=session,
+        is_active=None
+    )
+    if not db_product:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail='Продукт не найден'
+        )
+
+    images = await media_crud.get_product_images(
+        product_id=product_id,
+        session=session
+    )
+    return images
+
+
+@router.post(
+    '/{product_id}/images',
+    response_model=List[MediaResponse],
+    summary='Добавить изображения к продукту',
+    description='Добавить одно или несколько изображений к продукту'
+)
+async def add_product_images(
+    product_id: int,
+    images: List[UploadFile] = File(
+        ...,
+        description='Изображения для добавления'
+    ),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Добавить изображения к продукту"""
+    # Проверяем существование продукта
+    db_product = await product_crud.get_with_status(
+        product_id=product_id,
+        session=session,
+        is_active=None
+    )
+    if not db_product:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail='Продукт не найден'
+        )
+
+    # Проверяем количество изображений
+    if not images:
+        raise HTTPException(
+            status_code=Constants.HTTP_400_BAD_REQUEST,
+            detail='Необходимо загрузить хотя бы одно изображение'
+        )
+
+    # Получаем текущие изображения для определения порядка
+    current_images = await media_crud.get_product_images(
+        product_id=product_id,
+        session=session
+    )
+    next_order = len(current_images)
+
+    # Сохраняем изображения на диск
+    try:
+        image_urls = await save_images(
+            images,
+            Constants.PRODUCTS_DIR,
+            f'product_{product_id}'
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=Constants.HTTP_400_BAD_REQUEST,
+            detail=f'Ошибка сохранения изображений: {str(e)}'
+        )
+
+    # Создаем записи в БД
+    media_objects = []
+    for idx, url in enumerate(image_urls):
+        media_obj = Media(
+            url=url,
+            media_type=MediaType.PRODUCT,
+            order=next_order + idx,
+            is_main=False,  # Новые изображения не главные по умолчанию
+            product_id=product_id
+        )
+        media_objects.append(media_obj)
+
+    # Сохраняем в БД
+    try:
+        saved_images = await media_crud.add_images(
+            media_objects,
+            session
+        )
+        return saved_images
+    except Exception as e:
+        # Если не удалось сохранить в БД, удаляем файлы
+        await delete_image_files(image_urls)
+        raise HTTPException(
+            status_code=Constants.HTTP_400_BAD_REQUEST,
+            detail=f'Ошибка сохранения в базу данных: {str(e)}'
+        )
+
+
+@router.put(
+    '/{product_id}/images/main',
+    response_model=MediaResponse,
+    summary='Установить главное изображение',
+    description='Установить указанное изображение как главное для продукта'
+)
+async def set_main_product_image(
+    product_id: int,
+    request: SetMainImageRequest,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Установить главное изображение продукта"""
+    # Проверяем существование продукта
+    db_product = await product_crud.get_with_status(
+        product_id=product_id,
+        session=session,
+        is_active=None
+    )
+    if not db_product:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail='Продукт не найден'
+        )
+
+    try:
+        updated_image = await media_crud.set_main_image(
+            media_id=request.media_id,
+            product_id=product_id,
+            session=session
+        )
+        return updated_image
+    except ValueError as e:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+
+@router.delete(
+    '/{product_id}/images',
+    response_model=DeleteImagesResponse,
+    summary='Удалить изображения продукта',
+    description='Удалить одно или несколько изображений продукта'
+)
+async def delete_product_images(
+    product_id: int,
+    request: DeleteImagesRequest,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Удалить изображения продукта"""
+    # Проверяем существование продукта
+    db_product = await product_crud.get_with_status(
+        product_id=product_id,
+        session=session,
+        is_active=None
+    )
+    if not db_product:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail='Продукт не найден'
+        )
+
+    # Проверяем, что не удаляем все изображения
+    all_images = await media_crud.get_product_images(
+        product_id=product_id,
+        session=session
+    )
+
+    if len(all_images) == len(request.media_ids):
+        raise HTTPException(
+            status_code=Constants.HTTP_400_BAD_REQUEST,
+            detail='Нельзя удалить все изображения продукта'
+        )
+
+    # Получаем изображения для удаления
+    images_to_delete = [
+        img for img in all_images
+        if img.id in request.media_ids
+    ]
+
+    if not images_to_delete:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail='Изображения не найдены'
+        )
+
+    # Удаляем из БД
+    try:
+        deleted_count = await media_crud.delete_images(
+            media_ids=request.media_ids,
+            product_id=product_id,
+            session=session
+        )
+
+        # Удаляем файлы с диска
+        image_urls = [img.url for img in images_to_delete]
+        await delete_image_files(image_urls)
+
+        return DeleteImagesResponse(
+            deleted_count=deleted_count,
+            message=f'Удалено изображений: {deleted_count}'
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+
+@router.put(
+    '/{product_id}/images/reorder',
+    response_model=List[MediaResponse],
+    summary='Изменить порядок изображений',
+    description='Изменить порядок отображения изображений продукта'
+)
+async def reorder_product_images(
+    product_id: int,
+    request: ReorderImagesRequest,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Изменить порядок изображений продукта"""
+    # Проверяем существование продукта
+    db_product = await product_crud.get_with_status(
+        product_id=product_id,
+        session=session,
+        is_active=None
+    )
+    if not db_product:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail='Продукт не найден'
+        )
+
+    # Преобразуем запрос в список кортежей
+    order_updates = [
+        (update.media_id, update.order)
+        for update in request.order_updates
+    ]
+
+    try:
+        updated_images = await media_crud.reorder_images(
+            order_updates=order_updates,
+            product_id=product_id,
+            session=session
+        )
+        return updated_images
+    except ValueError as e:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
