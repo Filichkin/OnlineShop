@@ -200,28 +200,30 @@ const BrandManager = () => {
                         {brand.is_active ? 'Активен' : 'Неактивен'}
                       </span>
                     </td>
-                    <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
-                      <button
-                        onClick={() => handleEdit(brand)}
-                        className='text-indigo-600 hover:text-indigo-900 mr-4'
-                      >
-                        Редактировать
-                      </button>
-                      {brand.is_active ? (
+                    <td className='px-6 py-4 text-right text-sm font-medium'>
+                      <div className='flex justify-end gap-4'>
                         <button
-                          onClick={() => handleDelete(brand.id)}
-                          className='text-red-600 hover:text-red-900'
+                          onClick={() => handleEdit(brand)}
+                          className='text-indigo-600 hover:text-indigo-900'
                         >
-                          Удалить
+                          Редактировать
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => handleRestore(brand.id)}
-                          className='text-green-600 hover:text-green-900'
-                        >
-                          Восстановить
-                        </button>
-                      )}
+                        {brand.is_active ? (
+                          <button
+                            onClick={() => handleDelete(brand.id)}
+                            className='text-red-600 hover:text-red-900'
+                          >
+                            Удалить
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleRestore(brand.id)}
+                            className='text-green-600 hover:text-green-900'
+                          >
+                            Восстановить
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
