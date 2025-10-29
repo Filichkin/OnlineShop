@@ -9,6 +9,7 @@ import {
 } from '../../store/slices/productsSlice';
 import { fetchCategories } from '../../store/slices/categoriesSlice';
 import { getImageUrl, formatPrice } from '../../utils';
+import { brandsAPI } from '../../api';
 
 const ProductManager = () => {
   const [showModal, setShowModal] = useState(false);
@@ -16,11 +17,14 @@ const ProductManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
+  const [brands, setBrands] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
+    part_number: '',
     description: '',
     price: '',
     category_id: '',
+    brand_id: '',
     is_active: true,
     images: null,
   });
@@ -43,6 +47,17 @@ const ProductManager = () => {
     
     dispatch(fetchProducts({ isActive }));
     dispatch(fetchCategories());
+    
+    // Загружаем бренды
+    const loadBrands = async () => {
+      try {
+        const brandsData = await brandsAPI.getBrands(0, 100, true);
+        setBrands(brandsData);
+      } catch (err) {
+        console.error('Failed to load brands:', err);
+      }
+    };
+    loadBrands();
   }, [dispatch, statusFilter]);
 
   // Focus management for modal
@@ -108,8 +123,10 @@ const ProductManager = () => {
     
     const formDataToSend = new FormData();
     formDataToSend.append('name', formData.name);
+    formDataToSend.append('part_number', formData.part_number);
     formDataToSend.append('description', formData.description);
     formDataToSend.append('price', formData.price);
+    formDataToSend.append('brand_id', formData.brand_id);
     formDataToSend.append('is_active', formData.is_active.toString());
     
     if (formData.images && formData.images.length > 0) {
@@ -138,9 +155,11 @@ const ProductManager = () => {
       setEditingProduct(null);
       setFormData({ 
         name: '', 
+        part_number: '',
         description: '', 
         price: '', 
-        category_id: '', 
+        category_id: '',
+        brand_id: '',
         images: null 
       });
     } catch (err) {
@@ -153,9 +172,11 @@ const ProductManager = () => {
     setEditingProduct(product);
     setFormData({
       name: product.name,
+      part_number: product.part_number || '',
       description: product.description || '',
       price: product.price ? product.price.toString() : '0',
       category_id: product.category_id ? product.category_id.toString() : '',
+      brand_id: product.brand_id ? product.brand_id.toString() : '',
       is_active: product.is_active,
       images: null,
     });
@@ -183,9 +204,11 @@ const ProductManager = () => {
     setEditingProduct(null);
     setFormData({ 
       name: '', 
+      part_number: '',
       description: '', 
       price: '', 
-      category_id: '', 
+      category_id: '',
+      brand_id: '',
       is_active: true,
       images: null 
     });
@@ -308,6 +331,12 @@ const ProductManager = () => {
                   Название
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Артикул
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Бренд
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Цена
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -350,6 +379,16 @@ const ProductManager = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {product.part_number || 'N/A'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {product.brand?.name || 'Не указан'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
                       {formatPrice(product.price)}
                     </div>
@@ -380,7 +419,7 @@ const ProductManager = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
                     Продукты не найдены
                   </td>
                 </tr>
@@ -438,6 +477,20 @@ const ProductManager = () => {
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Каталожный номер
+                  </label>
+                  <input
+                    type="text"
+                    name="part_number"
+                    value={formData.part_number}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Описание
                   </label>
                   <textarea
@@ -486,6 +539,26 @@ const ProductManager = () => {
                     </select>
                   </div>
                 )}
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Бренд
+                  </label>
+                  <select
+                    name="brand_id"
+                    value={formData.brand_id}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">Выберите бренд</option>
+                    {brands.map((brand) => (
+                      <option key={brand.id} value={brand.id}>
+                        {brand.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">

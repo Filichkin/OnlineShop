@@ -130,6 +130,18 @@ function ProductDetails() {
                   {product.name}
                 </h2>
                 
+                {product.part_number && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    Артикул: <span className="font-medium">{product.part_number}</span>
+                  </p>
+                )}
+                
+                {product.brand && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    Бренд: <span className="font-medium">{product.brand.name}</span>
+                  </p>
+                )}
+                
                 {product.category && (
                   <p className="text-sm text-gray-600 mb-2">
                     Категория: <span className="font-medium">{product.category.name}</span>
@@ -166,6 +178,18 @@ function ProductDetails() {
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Основные характеристики</h3>
             <div className="space-y-2">
+              {product.part_number && (
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-gray-600">Артикул</span>
+                  <span className="font-semibold text-gray-900">{product.part_number}</span>
+                </div>
+              )}
+              {product.brand && (
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-gray-600">Бренд</span>
+                  <span className="font-semibold text-gray-900">{product.brand.name}</span>
+                </div>
+              )}
               <div className="flex justify-between py-2 border-b border-gray-200">
                 <span className="text-gray-600">Цена</span>
                 <span className="font-semibold text-gray-900">{formatPrice(product.price)}</span>
