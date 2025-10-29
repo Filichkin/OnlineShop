@@ -151,6 +151,15 @@ const ProductManager = () => {
         })).unwrap();
       }
       
+      // Перезагружаем список продуктов для обновления изображений
+      let isActive = true;
+      if (statusFilter === 'inactive') {
+        isActive = false;
+      } else if (statusFilter === 'all') {
+        isActive = undefined;
+      }
+      await dispatch(fetchProducts({ isActive }));
+      
       setShowModal(false);
       setEditingProduct(null);
       setFormData({ 
