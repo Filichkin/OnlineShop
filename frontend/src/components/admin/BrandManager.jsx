@@ -74,17 +74,6 @@ const BrandManager = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (brandId) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот бренд?')) {
-      try {
-        await brandsAPI.deleteBrand(brandId);
-        loadBrands();
-      } catch (err) {
-        setError(err.message);
-      }
-    }
-  };
-
   const handleRestore = async (brandId) => {
     try {
       await brandsAPI.restoreBrand(brandId);
@@ -207,14 +196,7 @@ const BrandManager = () => {
                       >
                         Редактировать
                       </button>
-                      {brand.is_active ? (
-                        <button
-                          onClick={() => handleDelete(brand.id)}
-                          className='text-red-600 hover:text-red-900'
-                        >
-                          Удалить
-                        </button>
-                      ) : (
+                      {!brand.is_active && (
                         <button
                           onClick={() => handleRestore(brand.id)}
                           className='text-green-600 hover:text-green-900'
