@@ -431,15 +431,7 @@ const ProductManager = () => {
 
       {/* Modal */}
       {showModal && (
-        <div
-          className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[60]"
-          onClick={handleCloseModal}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              handleCloseModal();
-            }
-          }}
-        >
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[60]">
           <div
             ref={modalRef}
             className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white"
@@ -447,7 +439,6 @@ const ProductManager = () => {
             aria-modal="true"
             aria-labelledby="product-modal-title"
             tabIndex={-1}
-            onClick={(e) => e.stopPropagation()}
           >
             <div className="mt-3">
               <h3 id="product-modal-title" className="text-lg font-medium text-gray-900 mb-4">
