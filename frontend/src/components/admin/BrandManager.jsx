@@ -165,16 +165,16 @@ const BrandManager = () => {
           <table className='min-w-full divide-y divide-gray-200'>
             <thead className='bg-gray-50'>
               <tr>
-                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20'>
                   ID
                 </th>
-                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48'>
                   Название
                 </th>
-                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32'>
                   Статус
                 </th>
-                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64'>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                   Действия
                 </th>
               </tr>
@@ -183,15 +183,15 @@ const BrandManager = () => {
               {brands.length > 0 ? (
                 brands.map((brand) => (
                   <tr key={brand.id} className='hover:bg-gray-50'>
-                    <td className='px-6 py-4 whitespace-nowrap'>
+                    <td className='px-6 py-4 whitespace-nowrap w-20'>
                       <div className='text-sm text-gray-900'>{brand.id}</div>
                     </td>
-                    <td className='px-6 py-4 whitespace-nowrap'>
-                      <div className='text-sm font-medium text-gray-900'>
+                    <td className='px-6 py-4 w-48'>
+                      <div className='text-sm font-medium text-gray-900 truncate'>
                         {brand.name}
                       </div>
                     </td>
-                    <td className='px-6 py-4 whitespace-nowrap'>
+                    <td className='px-6 py-4 whitespace-nowrap w-32'>
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         brand.is_active 
                           ? 'bg-green-100 text-green-800' 
@@ -200,25 +200,25 @@ const BrandManager = () => {
                         {brand.is_active ? 'Активен' : 'Неактивен'}
                       </span>
                     </td>
-                    <td className='px-6 py-4 text-sm font-medium w-64'>
-                      <div className='flex gap-4'>
+                    <td className='px-6 py-4 text-sm font-medium'>
+                      <div className='flex gap-4 whitespace-nowrap'>
                         <button
                           onClick={() => handleEdit(brand)}
-                          className='text-indigo-600 hover:text-indigo-900 whitespace-nowrap'
+                          className='text-indigo-600 hover:text-indigo-900'
                         >
                           Редактировать
                         </button>
                         {brand.is_active ? (
                           <button
                             onClick={() => handleDelete(brand.id)}
-                            className='text-red-600 hover:text-red-900 whitespace-nowrap'
+                            className='text-red-600 hover:text-red-900'
                           >
                             Удалить
                           </button>
                         ) : (
                           <button
                             onClick={() => handleRestore(brand.id)}
-                            className='text-green-600 hover:text-green-900 whitespace-nowrap'
+                            className='text-green-600 hover:text-green-900'
                           >
                             Восстановить
                           </button>
