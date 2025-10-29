@@ -17,12 +17,17 @@ class Category(Base):
     name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     description: Mapped[Optional[str]] = mapped_column(String)
     image_url: Mapped[str] = mapped_column(String, nullable=False)
+    icon_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     image = relationship(
         'Media',
         back_populates='category',
         uselist=False,
-        lazy='select'
+        lazy='select',
+        primaryjoin=(
+            "and_(Category.id == Media.category_id, "
+            "Media.media_type == 'category')"
+        )
     )
 
     products = relationship(

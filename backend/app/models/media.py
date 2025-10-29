@@ -18,6 +18,7 @@ from app.core.db import Base
 class MediaType(str, enum.Enum):
     PRODUCT = 'product'
     CATEGORY = 'category'
+    ICON = 'icon'
 
 
 class Media(Base):

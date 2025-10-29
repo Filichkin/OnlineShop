@@ -20,6 +20,7 @@ const CategoryManager = () => {
     name: '',
     description: '',
     image: null,
+    icon: null,
     is_active: true,
   });
 
@@ -86,6 +87,13 @@ const CategoryManager = () => {
     }));
   };
 
+  const handleIconChange = (e) => {
+    setFormData(prev => ({
+      ...prev,
+      icon: e.target.files[0]
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -95,6 +103,9 @@ const CategoryManager = () => {
     formDataToSend.append('is_active', formData.is_active.toString());
     if (formData.image) {
       formDataToSend.append('image', formData.image);
+    }
+    if (formData.icon) {
+      formDataToSend.append('icon', formData.icon);
     }
 
     try {
@@ -109,7 +120,7 @@ const CategoryManager = () => {
       
       setShowModal(false);
       setEditingCategory(null);
-      setFormData({ name: '', description: '', image: null, is_active: true });
+      setFormData({ name: '', description: '', image: null, icon: null, is_active: true });
     } catch (err) {
       // Ошибка уже обработана в slice
     }
@@ -121,6 +132,7 @@ const CategoryManager = () => {
       name: category.name,
       description: category.description || '',
       image: null,
+      icon: null,
       is_active: category.is_active,
     });
     setShowModal(true);
@@ -348,6 +360,21 @@ const CategoryManager = () => {
                 </div>
 
                 <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Иконка
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleIconChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Небольшая иконка для отображения в карточке категории
+                  </p>
+                </div>
+
+                <div className="mb-4">
                   <label className="flex items-center">
                     <input
                       type="checkbox"
@@ -407,13 +434,15 @@ const CategoryManager = () => {
             <div className="mt-3">
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center space-x-4">
-                  {selectedCategory.image_url && (
-                    <img
-                      src={getImageUrl(selectedCategory.image_url)}
-                      alt={`${selectedCategory.name} category`}
-                      className="h-16 w-16 rounded-lg object-cover"
-                    />
-                  )}
+                  <div className="flex-shrink-0">
+                    {selectedCategory.image_url && (
+                      <img
+                        src={getImageUrl(selectedCategory.image_url)}
+                        alt={`${selectedCategory.name} category`}
+                        className="h-16 w-16 rounded-lg object-cover"
+                      />
+                    )}
+                  </div>
                   <div>
                     <h3 id="category-detail-modal-title" className="text-2xl font-bold text-gray-900">
                       {selectedCategory.name}
