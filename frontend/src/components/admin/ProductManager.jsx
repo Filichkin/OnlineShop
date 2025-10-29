@@ -320,29 +320,29 @@ const ProductManager = () => {
           <div className="text-gray-500">Загрузка...</div>
         </div>
       ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        <div className="bg-white shadow overflow-x-auto sm:rounded-md">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Изображение
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Название
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Артикул
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Бренд
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Цена
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Категория
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Статус
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -354,7 +354,7 @@ const ProductManager = () => {
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap w-24">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     {product.main_image ? (
                       <img
                         src={getImageUrl(product.main_image)}
@@ -373,32 +373,32 @@ const ProductManager = () => {
                       <span className="text-gray-400 text-xs">Нет фото</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 w-48">
-                    <div className="text-sm font-medium text-gray-900 truncate">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
                       {product.name}
                     </div>
                   </td>
-                  <td className="px-6 py-4 w-32">
-                    <div className="text-sm text-gray-900 truncate">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
                       {product.part_number || 'N/A'}
                     </div>
                   </td>
-                  <td className="px-6 py-4 w-32">
-                    <div className="text-sm text-gray-900 truncate">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
                       {product.brand?.name || 'Не указан'}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap w-28">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
                       {formatPrice(product.price)}
                     </div>
                   </td>
-                  <td className="px-6 py-4 w-40">
-                    <div className="text-sm text-gray-900 truncate">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
                       {product.category?.name || 'Не указана'}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap w-28">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                       product.is_active 
                         ? 'bg-green-100 text-green-800' 
@@ -407,10 +407,10 @@ const ProductManager = () => {
                       {product.is_active ? 'Активен' : 'Неактивен'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
                       onClick={() => handleEdit(product)}
-                      className="text-indigo-600 hover:text-indigo-900 whitespace-nowrap"
+                      className="text-indigo-600 hover:text-indigo-900"
                     >
                       Редактировать
                     </button>
