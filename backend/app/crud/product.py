@@ -26,7 +26,8 @@ class CRUDProduct(CRUDBase):
         """Получить продукт по ID с опциональной фильтрацией по статусу"""
         query = select(Product).options(
             selectinload(Product.images),
-            selectinload(Product.category)
+            selectinload(Product.category),
+            selectinload(Product.brand)
         ).where(Product.id == product_id)
 
         if is_active is not None:

@@ -4,6 +4,7 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import Constants
+from app.crud.brand import brand_crud
 from app.crud.category import category_crud
 from app.crud.product import product_crud
 
@@ -272,6 +273,7 @@ async def validate_category_update(
 async def validate_product_creation(
     name: str,
     category_id: int,
+    brand_id: int,
     images: List[UploadFile],
     session: AsyncSession
 ) -> None:
@@ -281,6 +283,7 @@ async def validate_product_creation(
     Args:
         name: Название продукта
         category_id: ID категории
+        brand_id: ID бренда
         images: Список изображений
         session: Сессия базы данных
 
@@ -289,6 +292,9 @@ async def validate_product_creation(
     """
     # Проверяем существование и активность категории
     await validate_category_exists(category_id, session, must_be_active=True)
+
+    # Проверяем существование бренда
+    await validate_brand_exists(brand_id, session)
 
     # Проверяем уникальность названия продукта
     await validate_product_name_unique(name, session)
@@ -301,6 +307,7 @@ async def validate_product_update(
     product_id: int,
     category_id: int,
     name: Optional[str],
+    brand_id: Optional[int],
     images: Optional[List[UploadFile]],
     session: AsyncSession
 ) -> None:
@@ -311,6 +318,7 @@ async def validate_product_update(
         product_id: ID продукта
         category_id: ID категории
         name: Новое название продукта (если изменяется)
+        brand_id: Новый ID бренда (если изменяется)
         images: Новые изображения (если загружаются)
         session: Сессия базы данных
 
@@ -328,6 +336,10 @@ async def validate_product_update(
         product_id, category_id, session
     )
 
+    # Если бренд изменяется, проверяем его существование
+    if brand_id is not None:
+        await validate_brand_exists(brand_id, session)
+
     # Если название изменяется, проверяем уникальность
     if name:
         await validate_product_name_unique(
@@ -337,3 +349,111 @@ async def validate_product_update(
     # Если загружаются новые изображения, проверяем их количество
     if images:
         validate_images_count(images)
+
+
+async def validate_brand_exists(
+    brand_id: int,
+    session: AsyncSession,
+    must_be_active: bool = True
+) -> None:
+    """
+    Проверяет существование бренда
+
+    Args:
+        brand_id: ID бренда
+        session: Сессия базы данных
+        must_be_active: Должен ли бренд быть активным
+
+    Raises:
+        HTTPException: Если бренд не найден или неактивен
+    """
+    brand = await brand_crud.get(
+        obj_id=brand_id,
+        session=session
+    )
+
+    if not brand:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail='Бренд не найден'
+        )
+
+    if must_be_active and not brand.is_active:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail='Бренд не найден'
+        )
+
+
+async def validate_brand_name_unique(
+    name: str,
+    session: AsyncSession,
+    exclude_brand_id: Optional[int] = None
+) -> None:
+    """
+    Проверяет уникальность названия бренда
+
+    Args:
+        name: Название бренда
+        session: Сессия базы данных
+        exclude_brand_id: ID бренда для исключения из проверки
+        (при обновлении)
+
+    Raises:
+        HTTPException: Если бренд с таким названием уже существует
+    """
+    existing_brand = await brand_crud.get_by_name(
+        name=name,
+        session=session
+    )
+
+    if (existing_brand and
+            (exclude_brand_id is None or
+             existing_brand.id != exclude_brand_id)):
+        raise HTTPException(
+            status_code=Constants.HTTP_400_BAD_REQUEST,
+            detail='Бренд с таким названием уже существует'
+        )
+
+
+async def validate_brand_creation(
+    name: str,
+    session: AsyncSession
+) -> None:
+    """
+    Валидация для создания бренда
+
+    Args:
+        name: Название бренда
+        session: Сессия базы данных
+
+    Raises:
+        HTTPException: Если валидация не пройдена
+    """
+    await validate_brand_name_unique(name, session)
+
+
+async def validate_brand_update(
+    brand_id: int,
+    name: Optional[str],
+    session: AsyncSession
+) -> None:
+    """
+    Валидация для обновления бренда
+
+    Args:
+        brand_id: ID бренда
+        name: Новое название бренда (если изменяется)
+        session: Сессия базы данных
+
+    Raises:
+        HTTPException: Если валидация не пройдена
+    """
+    # Проверяем существование бренда (не требуем активности для обновления)
+    await validate_brand_exists(brand_id, session, must_be_active=False)
+
+    # Если название изменяется, проверяем уникальность
+    if name:
+        await validate_brand_name_unique(
+            name, session, exclude_brand_id=brand_id
+        )

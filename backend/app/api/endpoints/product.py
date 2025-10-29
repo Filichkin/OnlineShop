@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.constants import Constants
 from app.core.db import get_async_session
 from app.crud.product import product_crud
+from app.models.brand import Brand
 from app.models.media import Media
 from app.models.product import Category
 from app.schemas.product import (
@@ -133,17 +134,28 @@ async def get_products(
     )
     categories_dict = {cat.id: cat for cat in categories.scalars().all()}
 
+    # Загружаем бренды для всех продуктов одним запросом
+    brand_ids = list(set(p.brand_id for p in products))
+    brands = await session.execute(
+        select(Brand)
+        .where(Brand.id.in_(brand_ids))
+    )
+    brands_dict = {brand.id: brand for brand in brands.scalars().all()}
+
     # Преобразуем в ProductListResponse с главным изображением
     return [
         ProductListResponse(
             id=p.id,
             name=p.name,
+            part_number=p.part_number,
             description=p.description,
             price=p.price,
             is_active=p.is_active,
             category_id=p.category_id,
+            brand_id=p.brand_id,
             main_image=main_images_dict.get(p.id),
-            category=categories_dict.get(p.category_id)
+            category=categories_dict.get(p.category_id),
+            brand=brands_dict.get(p.brand_id)
         ) for p in products
     ]
 
