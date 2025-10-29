@@ -12,6 +12,8 @@ class Constants:
     CATEGORIES_TAGS = ('categories',)
     PRODUCTS_PREFIX = '/products'
     PRODUCTS_TAGS = ('products',)
+    BRANDS_PREFIX = '/brands'
+    BRANDS_TAGS = ('brands',)
     JWT_TOKEN_URL = 'auth/jwt/login'
     JWT_AUTH_BACKEND_NAME = 'jwt'
 
@@ -27,9 +29,12 @@ class Constants:
     PRODUCT_NAME_MIN_LEN = 1
     PRODUCT_NAME_MAX_LEN = 200
     PRODUCT_DESCRIPTION_MAX_LEN = 2000
+    PART_NUMBER_MIN_LEN = 1
+    PART_NUMBER_MAX_LEN = 100
     PRICE_MIN_VALUE = 0
     PRICE_MAX_VALUE = 1000000.0  # Maximum price to prevent abuse
     CATEGORY_ID_MIN_VALUE = 0
+    BRAND_ID_MIN_VALUE = 0
     SEARCH_STRING_MAX_LENGTH = 200
 
     # HTTP Status Codes
@@ -50,7 +55,7 @@ class Constants:
     FIRST_IMAGE_INDEX = 0
 
     # File Upload Security
-    MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB in bytes
+    MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 5MB in bytes
     MIN_IMAGE_SIZE = 10  # 10 bytes minimum to prevent empty files
     ALLOWED_MIME_TYPES = {
         'image/jpeg',
@@ -79,7 +84,9 @@ class Constants:
     ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
 
     # Rate Limiting
-    RATE_LIMIT_CATEGORY_CREATE = "10/minute"
-    RATE_LIMIT_CATEGORY_UPDATE = "20/minute"
-    RATE_LIMIT_PRODUCT_CREATE = "5/minute"
-    RATE_LIMIT_PRODUCT_UPDATE = "10/minute"
+    RATE_LIMIT_CATEGORY_CREATE = '10/minute'
+    RATE_LIMIT_CATEGORY_UPDATE = '20/minute'
+    RATE_LIMIT_PRODUCT_CREATE = '5/minute'
+    RATE_LIMIT_PRODUCT_UPDATE = '10/minute'
+    RATE_LIMIT_BRAND_CREATE = '10/minute'
+    RATE_LIMIT_BRAND_UPDATE = '20/minute'

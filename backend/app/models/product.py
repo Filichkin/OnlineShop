@@ -42,6 +42,7 @@ class Product(Base):
     __tablename__ = 'products'
 
     name: Mapped[str] = mapped_column(String, nullable=False)
+    part_number: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String)
     price: Mapped[float] = mapped_column(Float, nullable=False)
     category_id: Mapped[int] = mapped_column(
@@ -49,9 +50,18 @@ class Product(Base):
         ForeignKey('categories.id'),
         nullable=False
     )
+    brand_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey('brands.id'),
+        nullable=False
+    )
 
     category = relationship(
         'Category',
+        back_populates='products'
+    )
+    brand = relationship(
+        'Brand',
         back_populates='products'
     )
     images = relationship(
@@ -65,5 +75,6 @@ class Product(Base):
             f'Product(id={self.id}, name={self.name}, '
             f'description={self.description}, '
             f'price={self.price}, '
-            f'category_id={self.category_id})'
+            f'category_id={self.category_id}, '
+            f'brand_id={self.brand_id})'
         )

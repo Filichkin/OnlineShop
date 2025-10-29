@@ -320,8 +320,10 @@ class CRUDCategory(CRUDBase):
     async def create_product_with_images(
         self,
         name: str,
+        part_number: str,
         price: float,
         category_id: int,
+        brand_id: int,
         description: Optional[str],
         images: List[UploadFile],
         session: AsyncSession,
@@ -345,8 +347,10 @@ class CRUDCategory(CRUDBase):
             # Создаем продукт
             product_data = ProductCreate(
                 name=name,
+                part_number=part_number,
                 price=price,
                 category_id=category_id,
+                brand_id=brand_id,
                 description=description,
                 is_active=True
             )
@@ -380,7 +384,8 @@ class CRUDCategory(CRUDBase):
                 select(Product)
                 .options(
                     selectinload(Product.images),
-                    selectinload(Product.category)
+                    selectinload(Product.category),
+                    selectinload(Product.brand)
                 )
                 .where(Product.id == db_product.id)
             )
@@ -406,7 +411,9 @@ class CRUDCategory(CRUDBase):
         self,
         db_product: Product,
         name: Optional[str],
+        part_number: Optional[str],
         price: Optional[float],
+        brand_id: Optional[int],
         description: Optional[str],
         is_active: Optional[bool],
         images: Optional[List[UploadFile]],
@@ -425,8 +432,12 @@ class CRUDCategory(CRUDBase):
             update_data = ProductUpdate()
             if name is not None:
                 update_data.name = name
+            if part_number is not None:
+                update_data.part_number = part_number
             if price is not None:
                 update_data.price = price
+            if brand_id is not None:
+                update_data.brand_id = brand_id
             if description is not None:
                 update_data.description = description
             if is_active is not None:
@@ -486,7 +497,8 @@ class CRUDCategory(CRUDBase):
                 select(Product)
                 .options(
                     selectinload(Product.images),
-                    selectinload(Product.category)
+                    selectinload(Product.category),
+                    selectinload(Product.brand)
                 )
                 .where(Product.id == db_product.id)
             )

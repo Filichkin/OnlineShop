@@ -87,8 +87,18 @@ export const categoriesAPI = {
   },
 
   // Получить продукты категории
-  getCategoryProducts: async (categoryId, skip = 0, limit = 10) => {
-    const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/products/?skip=${skip}&limit=${limit}`);
+  getCategoryProducts: async (categoryId, skip = 0, limit = 10, isActive = true) => {
+    const params = new URLSearchParams({
+      skip: skip.toString(),
+      limit: limit.toString(),
+    });
+    
+    // Добавляем is_active только если он не undefined
+    if (isActive !== undefined) {
+      params.append('is_active', isActive.toString());
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/products/?${params}`);
     if (!response.ok) throw new Error('Failed to fetch category products');
     return response.json();
   },
@@ -183,6 +193,81 @@ export const productsAPI = {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to restore product');
+    return response.json();
+  },
+};
+
+// API для брендов
+export const brandsAPI = {
+  // Получить все бренды
+  getBrands: async (skip = 0, limit = 100, isActive = true) => {
+    const params = new URLSearchParams({
+      skip: skip.toString(),
+      limit: limit.toString(),
+    });
+    
+    // Добавляем is_active только если он не undefined
+    if (isActive !== undefined) {
+      params.append('is_active', isActive.toString());
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/brands/?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch brands');
+    return response.json();
+  },
+
+  // Получить бренд по ID
+  getBrand: async (brandId) => {
+    const response = await fetch(`${API_BASE_URL}/brands/${brandId}`);
+    if (!response.ok) throw new Error('Failed to fetch brand');
+    return response.json();
+  },
+
+  // Создать бренд
+  createBrand: async (brandData) => {
+    const response = await fetch(`${API_BASE_URL}/brands/`, {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(brandData),
+    });
+    if (!response.ok) throw new Error('Failed to create brand');
+    return response.json();
+  },
+
+  // Обновить бренд
+  updateBrand: async (brandId, brandData) => {
+    const response = await fetch(`${API_BASE_URL}/brands/${brandId}`, {
+      method: 'PATCH',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(brandData),
+    });
+    if (!response.ok) throw new Error('Failed to update brand');
+    return response.json();
+  },
+
+  // Удалить бренд
+  deleteBrand: async (brandId) => {
+    const response = await fetch(`${API_BASE_URL}/brands/${brandId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to delete brand');
+    return response.json();
+  },
+
+  // Восстановить бренд
+  restoreBrand: async (brandId) => {
+    const response = await fetch(`${API_BASE_URL}/brands/${brandId}/restore`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to restore brand');
     return response.json();
   },
 };

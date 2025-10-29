@@ -20,6 +20,7 @@ from app.core.limiter import limiter
 from app.core.user import current_superuser
 from app.crud.category import category_crud
 from app.crud.product import product_crud
+from app.models.brand import Brand
 from app.models.media import Media
 from app.models.user import User
 from app.schemas.category import (
@@ -28,8 +29,7 @@ from app.schemas.category import (
 )
 from app.schemas.product import (
     ProductDetailResponse,
-    ProductListResponse,
-    ProductResponse
+    ProductListResponse
 )
 
 
@@ -210,7 +210,7 @@ async def restore_category(
     '/{category_id}/products/',
     response_model=List[ProductListResponse],
     summary='Получить продукты категории',
-    description='Получить список всех активных продуктов категории'
+    description='Получить список продуктов категории'
 )
 async def get_category_products(
     category_id: int,
@@ -224,6 +224,10 @@ async def get_category_products(
         ge=1,
         le=Constants.MAX_LIMIT,
         description='Количество элементов для возврата'
+    ),
+    is_active: Optional[bool] = Query(
+        True,
+        description='Фильтр по активности продуктов'
     ),
     session: AsyncSession = Depends(get_async_session)
 ):
@@ -242,7 +246,8 @@ async def get_category_products(
         category_id=category_id,
         session=session,
         skip=skip,
-        limit=limit
+        limit=limit,
+        is_active=is_active
     )
 
     # Получаем главные изображения для всех продуктов одним запросом
@@ -259,17 +264,28 @@ async def get_category_products(
         for img in main_images.scalars().all()
     }
 
+    # Загружаем бренды для всех продуктов одним запросом
+    brand_ids = list(set(p.brand_id for p in products))
+    brands = await session.execute(
+        select(Brand)
+        .where(Brand.id.in_(brand_ids))
+    )
+    brands_dict = {brand.id: brand for brand in brands.scalars().all()}
+
     # Преобразуем в ProductListResponse с главным изображением
     return [
         ProductListResponse(
             id=p.id,
             name=p.name,
+            part_number=p.part_number,
             description=p.description,
             price=p.price,
             is_active=p.is_active,
             category_id=p.category_id,
+            brand_id=p.brand_id,
             main_image=main_images_dict.get(p.id),
-            category=category
+            category=category,
+            brand=brands_dict.get(p.brand_id)
         ) for p in products
     ]
 
@@ -301,7 +317,7 @@ async def get_category_product(
 
 @router.post(
     '/{category_id}/products/',
-    response_model=ProductResponse,
+    response_model=ProductListResponse,
     summary='Создать продукт в категории',
     description='Создать новый продукт в указанной категории'
 )
@@ -310,12 +326,14 @@ async def create_category_product(
     request: Request,
     category_id: int,
     name: str = Form(..., description='Название продукта'),
+    part_number: str = Form(..., description='Артикул продукта'),
     price: float = Form(
         ...,
         ge=Constants.PRICE_MIN_VALUE,
         le=Constants.PRICE_MAX_VALUE,
         description='Цена продукта'
     ),
+    brand_id: int = Form(..., description='ID бренда'),
     description: str = Form(None, description='Описание продукта'),
     images: List[UploadFile] = File(
         ...,
@@ -327,15 +345,38 @@ async def create_category_product(
     """Создать новый продукт в категории"""
     try:
         # Комплексная валидация создания продукта
-        await validate_product_creation(name, category_id, images, session)
+        await validate_product_creation(
+            name, category_id, brand_id, images, session
+        )
 
-        return await category_crud.create_product_with_images(
+        product = await category_crud.create_product_with_images(
             name=name,
+            part_number=part_number,
             price=price,
             category_id=category_id,
+            brand_id=brand_id,
             description=description,
             images=images,
             session=session
+        )
+
+        # Формируем ответ с главным изображением
+        main_image = None
+        if product.images:
+            main_image = product.images[0].url
+
+        return ProductListResponse(
+            id=product.id,
+            name=product.name,
+            part_number=product.part_number,
+            description=product.description,
+            price=product.price,
+            is_active=product.is_active,
+            category_id=product.category_id,
+            brand_id=product.brand_id,
+            main_image=main_image,
+            category=product.category,
+            brand=product.brand
         )
     except HTTPException:
         # Перебрасываем HTTPException как есть
@@ -351,7 +392,7 @@ async def create_category_product(
 
 @router.patch(
     '/{category_id}/products/{product_id}',
-    response_model=ProductDetailResponse,
+    response_model=ProductListResponse,
     summary='Обновить продукт в категории',
     description='Обновить информацию о продукте в категории'
 )
@@ -361,12 +402,14 @@ async def update_category_product(
     category_id: int,
     product_id: int,
     name: str = Form(None, description='Название продукта'),
+    part_number: str = Form(None, description='Артикул продукта'),
     price: float = Form(
         None,
         ge=Constants.PRICE_MIN_VALUE,
         le=Constants.PRICE_MAX_VALUE,
         description='Цена продукта'
     ),
+    brand_id: int = Form(None, description='ID бренда'),
     description: str = Form(None, description='Описание продукта'),
     images: List[UploadFile] = File(
         None,
@@ -379,7 +422,7 @@ async def update_category_product(
     """Обновить продукт в категории"""
     # Комплексная валидация обновления продукта
     await validate_product_update(
-        product_id, category_id, name, images, session
+        product_id, category_id, name, brand_id, images, session
     )
 
     # Получаем продукт для обновления с загруженными связанными данными
@@ -389,14 +432,35 @@ async def update_category_product(
         session=session
     )
 
-    return await category_crud.update_product_with_images(
+    product = await category_crud.update_product_with_images(
         db_product=db_product,
         name=name,
+        part_number=part_number,
         price=price,
+        brand_id=brand_id,
         description=description,
         is_active=is_active,
         images=images,
         session=session
+    )
+
+    # Формируем ответ с главным изображением
+    main_image = None
+    if product.images:
+        main_image = product.images[0].url
+
+    return ProductListResponse(
+        id=product.id,
+        name=product.name,
+        part_number=product.part_number,
+        description=product.description,
+        price=product.price,
+        is_active=product.is_active,
+        category_id=product.category_id,
+        brand_id=product.brand_id,
+        main_image=main_image,
+        category=product.category,
+        brand=product.brand
     )
 
 
