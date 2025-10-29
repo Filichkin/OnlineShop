@@ -106,6 +106,7 @@ async def create_category(
     name: str = Form(..., description='Название категории'),
     description: str = Form(None, description='Описание категории'),
     image: UploadFile = File(..., description='Изображение категории'),
+    icon: UploadFile = File(..., description='Иконка категории'),
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_superuser)
 ):
@@ -117,6 +118,7 @@ async def create_category(
         name=name,
         description=description,
         image_file=image,
+        icon_file=icon,
         session=session
     )
 
@@ -134,6 +136,7 @@ async def update_category(
     name: str = Form(None, description='Название категории'),
     description: str = Form(None, description='Описание категории'),
     image: UploadFile = File(None, description='Новое изображение'),
+    icon: UploadFile = File(None, description='Новая иконка'),
     is_active: bool = Form(None, description='Активность категории'),
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_superuser)
@@ -148,6 +151,7 @@ async def update_category(
         description=description,
         is_active=is_active,
         image_file=image,
+        icon_file=icon,
         session=session
     )
 

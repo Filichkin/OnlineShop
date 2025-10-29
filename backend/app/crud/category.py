@@ -131,6 +131,7 @@ class CRUDCategory(CRUDBase):
         description: Optional[str],
         image_file,
         session: AsyncSession,
+        icon_file=None,
     ) -> Category:
         """Создать новую категорию с изображением"""
         # Проверяем, что категория с таким именем не существует
@@ -150,6 +151,14 @@ class CRUDCategory(CRUDBase):
             directory=Constants.CATEGORIES_DIR,
             prefix='category'
         )
+        # Сохраняем иконку (если передана)
+        icon_url = None
+        if icon_file:
+            icon_url = await save_image(
+                file=icon_file,
+                directory=Constants.CATEGORIES_DIR,
+                prefix='icon'
+            )
 
         # Создаем категорию
         category_data = CategoryCreate(
@@ -158,9 +167,10 @@ class CRUDCategory(CRUDBase):
             is_active=True
         )
 
-        # Добавляем image_url вручную в данные категории
+        # Добавляем ссылки на изображения вручную в данные категории
         category_dict = category_data.model_dump()
         category_dict['image_url'] = image_url
+        category_dict['icon_url'] = icon_url or ''
 
         # Создаем объект категории с image_url
         db_category = Category(**category_dict)
@@ -209,6 +219,7 @@ class CRUDCategory(CRUDBase):
         is_active: Optional[bool],
         image_file: Optional,
         session: AsyncSession,
+        icon_file: Optional = None,
     ) -> Category:
         """Обновить категорию с возможностью изменения изображения"""
         # Получаем категорию
@@ -247,7 +258,10 @@ class CRUDCategory(CRUDBase):
         if image_file:
             # Get old image URLs before deleting from database
             old_media_result = await session.execute(
-                select(Media).where(Media.category_id == db_category.id)
+                select(Media).where(
+                    Media.category_id == db_category.id,
+                    Media.media_type == MediaType.CATEGORY
+                )
             )
             old_media = old_media_result.scalars().all()
             old_image_urls = [media.url for media in old_media]
@@ -259,10 +273,14 @@ class CRUDCategory(CRUDBase):
             )
             db_category.image_url = image_url
 
-            # Удаляем старые записи Media для категории
+            # Удаляем старые записи Media только для
+            # основного изображения категории
             await session.execute(
                 delete(Media)
-                .where(Media.category_id == db_category.id)
+                .where(
+                    Media.category_id == db_category.id,
+                    Media.media_type == MediaType.CATEGORY
+                )
             )
 
             # Создаем новую запись Media для изображения категории
@@ -282,6 +300,17 @@ class CRUDCategory(CRUDBase):
                 obj_in=update_data,
                 session=session
             )
+
+        # Обновляем иконку, если загружена новая
+        if icon_file:
+            icon_url = await save_image(
+                file=icon_file,
+                directory=Constants.CATEGORIES_DIR,
+                prefix='icon'
+            )
+            db_category.icon_url = icon_url
+        elif icon_file is not None:  # Если явно передано None, удаляем иконку
+            db_category.icon_url = None
 
         await session.commit()
         await session.refresh(db_category)

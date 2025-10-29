@@ -47,6 +47,7 @@ class CategoryResponse(CategoryBase):
 
     id: int
     image_url: str
+    icon_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -56,6 +57,7 @@ class CategoryDetailResponse(CategoryResponse):
     """Детальная схема с медиа-объектом"""
 
     image: Optional[MediaResponse] = None
+    # Иконку через Media отдельно не отдаем, достаточно поля icon_url
 
     class Config:
         from_attributes = True
