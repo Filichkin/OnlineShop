@@ -11,6 +11,7 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.constants import Constants
 from app.core.db import get_async_session
 from app.crud.cart import cart_crud
@@ -50,7 +51,10 @@ def get_or_create_session_id(
 
 def set_session_cookie(response: Response, session_id: str) -> None:
     """
-    Set session_id cookie in response.
+    Set session_id cookie in response WITHOUT SameSite restriction.
+
+    This allows cookies to work across different ports on localhost
+    (frontend on :5173, backend on :8000).
 
     Args:
         response: FastAPI response object
@@ -60,13 +64,16 @@ def set_session_cookie(response: Response, session_id: str) -> None:
     max_age = (
         Constants.CART_SESSION_LIFETIME_DAYS * 24 * 60 * 60
     )
+
+    # Cookie parameters for same-origin requests (via proxy)
     response.set_cookie(
         key=Constants.SESSION_COOKIE_NAME,
         value=session_id,
         max_age=max_age,
         httponly=True,
-        samesite='lax',
-        secure=False  # Set to True in production with HTTPS
+        path='/',
+        secure=False,  # HTTP is OK for same-origin
+        samesite='lax',  # Standard protection for same-origin
     )
 
 

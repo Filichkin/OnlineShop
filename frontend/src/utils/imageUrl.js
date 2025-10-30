@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// Use empty string to make relative URLs work with proxy
+const API_BASE_URL = '';
 
 /**
  * Формирует полный URL для изображения

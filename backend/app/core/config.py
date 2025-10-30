@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     first_superuser_password: Optional[str] = None
     jwt_token_lifetime: int = Constants.JWT_TOKEN_LIFETIME
 
+    # Environment configuration
+    environment: str = 'development'  # 'development' or 'production'
+
     postgres_port: int
     postgres_password: str
     postgres_user: str

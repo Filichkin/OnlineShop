@@ -35,6 +35,7 @@ class CRUDCart:
             .options(
                 selectinload(Cart.items)
                 .selectinload(CartItem.product)
+                .selectinload(Product.images)
             )
         )
         return result.scalars().first()
@@ -116,7 +117,10 @@ class CRUDCart:
                 CartItem.cart_id == cart.id,
                 CartItem.product_id == product_id
             )
-            .options(selectinload(CartItem.product))
+            .options(
+                selectinload(CartItem.product)
+                .selectinload(Product.images)
+            )
         )
         existing_item = item_result.scalars().first()
 
@@ -140,10 +144,17 @@ class CRUDCart:
         )
         session.add(cart_item)
         await session.commit()
-        await session.refresh(
-            cart_item,
-            attribute_names=['product']
+        # Refresh cart_item and eagerly load product with images
+        await session.refresh(cart_item)
+        result = await session.execute(
+            select(CartItem)
+            .where(CartItem.id == cart_item.id)
+            .options(
+                selectinload(CartItem.product)
+                .selectinload(Product.images)
+            )
         )
+        cart_item = result.scalars().first()
         return cart_item
 
     async def update_item_quantity(
@@ -171,7 +182,10 @@ class CRUDCart:
                 CartItem.cart_id == cart.id,
                 CartItem.product_id == product_id
             )
-            .options(selectinload(CartItem.product))
+            .options(
+                selectinload(CartItem.product)
+                .selectinload(Product.images)
+            )
         )
         cart_item = result.scalars().first()
 
@@ -278,6 +292,7 @@ class CRUDCart:
             .options(
                 selectinload(Cart.items)
                 .selectinload(CartItem.product)
+                .selectinload(Product.images)
             )
         )
         return result.scalars().first()

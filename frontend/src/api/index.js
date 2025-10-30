@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// Use proxy to avoid CORS issues with cookies
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // Функция для получения токена из localStorage
 const getToken = () => localStorage.getItem('token');
@@ -324,5 +325,163 @@ export const authAPI = {
     });
     if (!response.ok) throw new Error('Failed to get current user');
     return response.json();
+  },
+};
+
+// Helper function for handling cart API errors
+const handleCartError = async (response) => {
+  let errorMessage = 'Произошла ошибка при работе с корзиной';
+
+  try {
+    const errorData = await response.json();
+    errorMessage = errorData.detail || errorMessage;
+  } catch {
+    // If JSON parsing fails, use status-based messages
+    switch (response.status) {
+      case 404:
+        errorMessage = 'Корзина или товар не найдены';
+        break;
+      case 400:
+        errorMessage = 'Некорректные данные запроса';
+        break;
+      case 500:
+        errorMessage = 'Ошибка сервера. Попробуйте позже';
+        break;
+      default:
+        errorMessage = `Ошибка: ${response.statusText}`;
+    }
+  }
+
+  const error = new Error(errorMessage);
+  error.status = response.status;
+  throw error;
+};
+
+// API для корзины
+export const cartAPI = {
+  // Получить корзину с товарами
+  getCart: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/cart/`, {
+        credentials: 'include', // Важно для отправки cookies
+      });
+      if (!response.ok) {
+        await handleCartError(response);
+      }
+      return response.json();
+    } catch (error) {
+      // Handle network errors
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Получить краткую информацию о корзине
+  getCartSummary: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/cart/summary`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        await handleCartError(response);
+      }
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Добавить товар в корзину
+  addItem: async (product_id, quantity = 1) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/cart/items`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          product_id,
+          quantity,
+        }),
+      });
+      if (!response.ok) {
+        await handleCartError(response);
+      }
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Обновить количество товара в корзине
+  updateItem: async (product_id, quantity) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/cart/items/${product_id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          quantity,
+        }),
+      });
+      if (!response.ok) {
+        await handleCartError(response);
+      }
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Удалить товар из корзины
+  removeItem: async (product_id) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/cart/items/${product_id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        await handleCartError(response);
+      }
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Очистить корзину
+  clearCart: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/cart/`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        await handleCartError(response);
+      }
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
   },
 };
