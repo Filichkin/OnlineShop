@@ -90,3 +90,12 @@ class Constants:
     RATE_LIMIT_PRODUCT_UPDATE = '10/minute'
     RATE_LIMIT_BRAND_CREATE = '10/minute'
     RATE_LIMIT_BRAND_UPDATE = '20/minute'
+
+    # Cart Constants
+    CART_PREFIX = '/cart'
+    CART_TAGS = ('cart',)
+    SESSION_COOKIE_NAME = 'session_id'
+    CART_SESSION_LIFETIME_DAYS = 30  # Cart expires after 30 days
+    MAX_CART_ITEM_QUANTITY = 999
+    MIN_CART_ITEM_QUANTITY = 1
+    CART_ITEM_QUANTITY_DEFAULT = 1
