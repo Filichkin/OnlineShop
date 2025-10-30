@@ -37,6 +37,17 @@ class CRUDCategory(CRUDBase):
         )
         return result.scalars().first()
 
+    async def get_by_slug(
+        self,
+        slug: str,
+        session: AsyncSession,
+    ) -> Optional[Category]:
+        """Получить категорию по слагу"""
+        result = await session.execute(
+            select(Category).where(Category.slug == slug)
+        )
+        return result.scalars().first()
+
     async def get_active(
         self,
         category_id: int,
@@ -75,6 +86,23 @@ class CRUDCategory(CRUDBase):
         """Получить категорию по ID с опциональной фильтрацией по статусу"""
         query = select(Category).options(selectinload(Category.image)).where(
             Category.id == category_id
+        )
+
+        if is_active is not None:
+            query = query.where(Category.is_active.is_(is_active))
+
+        result = await session.execute(query)
+        return result.scalars().first()
+
+    async def get_with_status_by_slug(
+        self,
+        slug: str,
+        session: AsyncSession,
+        is_active: Optional[bool] = None,
+    ) -> Optional[Category]:
+        """Получить категорию по слагу с опциональной фильтрацией по статусу"""
+        query = select(Category).options(selectinload(Category.image)).where(
+            Category.slug == slug
         )
 
         if is_active is not None:
@@ -171,6 +199,12 @@ class CRUDCategory(CRUDBase):
         category_dict = category_data.model_dump()
         category_dict['image_url'] = image_url
         category_dict['icon_url'] = icon_url or ''
+
+        # Генерируем уникальный slug
+        category_dict['slug'] = await self._generate_unique_slug(
+            name=name,
+            session=session
+        )
 
         # Создаем объект категории с image_url
         db_category = Category(**category_dict)
@@ -301,6 +335,17 @@ class CRUDCategory(CRUDBase):
                 session=session
             )
 
+            # Если изменилось имя — обновляем slug
+            if name is not None and name != db_category.name:
+                db_category.slug = await self._generate_unique_slug(
+                    name=name,
+                    session=session,
+                    exclude_category_id=db_category.id
+                )
+                session.add(db_category)
+                await session.commit()
+                await session.refresh(db_category)
+
         # Обновляем иконку, если загружена новая
         if icon_file:
             icon_url = await save_image(
@@ -321,6 +366,56 @@ class CRUDCategory(CRUDBase):
                 await delete_image_file(old_url)
 
         return db_category
+
+    async def _generate_unique_slug(
+        self,
+        name: str,
+        session: AsyncSession,
+        exclude_category_id: Optional[int] = None
+    ) -> str:
+        """Сгенерировать уникальный слаг на основе названия"""
+        base = self._slugify(name)
+        slug = base
+        suffix = 1
+        while True:
+            existing = await self.get_by_slug(slug, session)
+            if existing is None:
+                return slug
+            if (exclude_category_id is not None and
+                    existing.id == exclude_category_id):
+                return slug
+            suffix += 1
+            slug = f'{base}-{suffix}'
+
+    @staticmethod
+    def _slugify(value: str) -> str:
+        """Простая русско-латинская транслитерация + нормализация в slug"""
+        mapping = {
+            'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e',
+            'ё': 'e', 'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k',
+            'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r',
+            'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'c',
+            'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '',
+            'э': 'e', 'ю': 'yu', 'я': 'ya'
+        }
+        value = value.strip().lower()
+        result = []
+        for ch in value:
+            if ch.isalnum() and ch.isascii():
+                result.append(ch)
+            elif ch in mapping:
+                result.append(mapping[ch])
+            elif ch.isalnum():
+                # пропускаем не ascii буквы, которые не в mapping
+                continue
+            elif ch in {' ', '_', '-'}:
+                result.append('-')
+            # остальное игнорируем
+        slug = ''.join(result)
+        # заменяем повторяющиеся дефисы
+        while '--' in slug:
+            slug = slug.replace('--', '-')
+        return slug.strip('-') or 'category'
 
     async def soft_delete(
         self,

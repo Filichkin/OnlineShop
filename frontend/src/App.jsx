@@ -33,7 +33,7 @@ const router = createBrowserRouter([
       { path: "cart", element: <Cart /> },
       { path: "thanks", element: <Thanks /> },
       {
-        path: "category/:categoryId",
+        path: "category/:slug",
         element: <Category />,
         loader: fetchProductLoader,
         errorElement: <ErrorBoundary />,

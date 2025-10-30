@@ -28,7 +28,7 @@ function Category() {
 
   return (
     <div className="px-6 py-10">
-      <h1 className="mb-6 text-3xl font-semibold text-center">{categoryName}</h1>
+      <h1 className="mb-3 text-2xl font-semibold text-left text-gray-700">{categoryName}</h1>
       <div className="mb-4">
         <label className="block mb-2 text-sm font-medium text-gray-700" htmlFor="maxPrice">
           Фильтр по цене
@@ -45,11 +45,11 @@ function Category() {
         />
       </div>
       {filteredProducts.length === 0 ? (
-        <p className="text-xl font-bold text-center text-gray-500">
+        <p className="text-xl font-semibold text-center text-gray-500">
           Продукты не найдены
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {filteredProducts.map((product) => (
             <div
               key={product.id}
@@ -75,14 +75,14 @@ function Category() {
                   state={{ categoryId }}
                   className="hover:text-blue-600 transition-colors"
                 >
-                  <h3 className="text-base font-semibold text-gray-800 mb-3 line-clamp-2 min-h-[3rem]">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-3 line-clamp-2 min-h-[3rem]">
                     {product.name}
                   </h3>
                 </Link>
                 
                 {/* Цена и кнопка */}
                 <div className="mt-auto flex items-center justify-between gap-3">
-                  <span className="text-xl font-bold text-gray-900 whitespace-nowrap">
+                  <span className="text-base font-semibold text-gray-800 whitespace-nowrap">
                     {formatPrice(product.price)}
                   </span>
                   <AddToCartButton 

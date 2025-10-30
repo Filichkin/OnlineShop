@@ -18,6 +18,7 @@ class Category(Base):
     description: Mapped[Optional[str]] = mapped_column(String)
     image_url: Mapped[str] = mapped_column(String, nullable=False)
     icon_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    slug: Mapped[str] = mapped_column(String, nullable=False, unique=True)
 
     image = relationship(
         'Media',

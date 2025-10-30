@@ -2,14 +2,16 @@ import { categoriesAPI } from "../api";
 
 export default async function fetchProductLoader({ params }) {
   try {
-    const { categoryId } = params;
+    const { slug } = params;
     
-    if (!categoryId) {
-      throw new Response('ID категории не указан', { status: 400 });
+    if (!slug) {
+      throw new Response('Слаг категории не указан', { status: 400 });
     }
     
-    const products = await categoriesAPI.getCategoryProducts(categoryId, 0, 100);
-    return { products, categoryId };
+    // Получаем категорию по слагу, чтобы вернуть categoryId для ProductDetails
+    const category = await categoriesAPI.getCategoryBySlug(slug, true);
+    const products = await categoriesAPI.getCategoryProductsBySlug(slug, 0, 100);
+    return { products, categoryId: category.id };
   } catch (error) {
     console.error('Ошибка загрузки продуктов:', error);
     

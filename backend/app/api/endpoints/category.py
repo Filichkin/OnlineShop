@@ -20,8 +20,8 @@ from app.core.limiter import limiter
 from app.core.user import current_superuser
 from app.crud.category import category_crud
 from app.crud.product import product_crud
-from app.models.brand import Brand
 from app.models.media import Media
+from app.models.brand import Brand
 from app.models.user import User
 from app.schemas.category import (
     CategoryDetailResponse,
@@ -91,6 +91,33 @@ async def get_category(
         session=session,
         is_active=is_active
     )
+    return db_category
+
+
+@router.get(
+    '/slug/{slug}',
+    response_model=CategoryDetailResponse,
+    summary='Получить категорию по слагу',
+    description='Получить детальную информацию о категории по слагу'
+)
+async def get_category_by_slug(
+    slug: str,
+    is_active: Optional[bool] = Query(
+        True, description='Фильтр по статусу активности'
+    ),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Получить категорию по слагу"""
+    db_category = await category_crud.get_with_status_by_slug(
+        slug=slug,
+        session=session,
+        is_active=is_active
+    )
+    if not db_category:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail='Категория не найдена'
+        )
     return db_category
 
 
@@ -239,12 +266,6 @@ async def get_category_products(
     # Проверяем существование и активность категории
     await validate_category_exists(category_id, session, must_be_active=True)
 
-    # Получаем категорию для передачи в ответ
-    category = await category_crud.get_active(
-        category_id=category_id,
-        session=session
-    )
-
     # Получаем продукты категории
     products = await product_crud.get_by_category(
         category_id=category_id,
@@ -276,7 +297,13 @@ async def get_category_products(
     )
     brands_dict = {brand.id: brand for brand in brands.scalars().all()}
 
-    # Преобразуем в ProductListResponse с главным изображением
+    # Получаем категорию (одна для всех продуктов)
+    db_category = await category_crud.get(
+        obj_id=category_id,
+        session=session
+    )
+
+    # Преобразуем в ProductListResponse
     return [
         ProductListResponse(
             id=p.id,
@@ -288,7 +315,92 @@ async def get_category_products(
             category_id=p.category_id,
             brand_id=p.brand_id,
             main_image=main_images_dict.get(p.id),
-            category=category,
+            category=db_category,
+            brand=brands_dict.get(p.brand_id)
+        ) for p in products
+    ]
+
+
+@router.get(
+    '/slug/{slug}/products/',
+    response_model=List[ProductListResponse],
+    summary='Получить продукты категории по слагу',
+    description='Получить список продуктов категории по слагу'
+)
+async def get_category_products_by_slug(
+    slug: str,
+    skip: int = Query(
+        Constants.DEFAULT_SKIP,
+        ge=0,
+        description='Количество элементов для пропуска'
+    ),
+    limit: int = Query(
+        Constants.DEFAULT_LIMIT,
+        ge=1,
+        le=Constants.MAX_LIMIT,
+        description='Количество элементов для возврата'
+    ),
+    is_active: Optional[bool] = Query(
+        True,
+        description='Фильтр по активности продуктов'
+    ),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Получить продукты категории по слагу"""
+    db_category = await category_crud.get_with_status_by_slug(
+        slug=slug,
+        session=session,
+        is_active=True
+    )
+    if not db_category:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail='Категория не найдена'
+        )
+
+    products = await product_crud.get_by_category(
+        category_id=db_category.id,
+        session=session,
+        skip=skip,
+        limit=limit,
+        is_active=is_active
+    )
+
+    # Получаем главные изображения для всех продуктов одним запросом
+    product_ids = [p.id for p in products]
+    main_images = await session.execute(
+        select(Media)
+        .where(
+            Media.product_id.in_(product_ids),
+            Media.is_main.is_(True)
+        )
+    )
+    main_images_dict = {
+        img.product_id: img.url
+        for img in main_images.scalars().all()
+    }
+
+    # Загружаем бренды для всех продуктов одним запросом
+    brand_ids = list(set(p.brand_id for p in products))
+    brands = await session.execute(
+        select(Brand)
+        .where(Brand.id.in_(brand_ids))
+    )
+    brands_dict = {brand.id: brand for brand in brands.scalars().all()}
+
+    # Преобразуем в ProductListResponse
+    return [
+        ProductListResponse(
+            id=p.id,
+            name=p.name,
+            part_number=p.part_number,
+            description=p.description,
+            price=p.price,
+            is_active=p.is_active,
+            category_id=p.category_id,
+            brand_id=p.brand_id,
+            main_image=main_images_dict.get(p.id),
+            category=db_category,
             brand=brands_dict.get(p.brand_id)
         ) for p in products
     ]

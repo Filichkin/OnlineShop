@@ -48,6 +48,7 @@ class CategoryResponse(CategoryBase):
     id: int
     image_url: str
     icon_url: Optional[str] = None
+    slug: str
 
     class Config:
         from_attributes = True

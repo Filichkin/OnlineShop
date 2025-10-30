@@ -44,6 +44,17 @@ export const categoriesAPI = {
     return response.json();
   },
 
+  // Получить категорию по слагу
+  getCategoryBySlug: async (slug, isActive = true) => {
+    const params = new URLSearchParams();
+    if (isActive !== undefined) {
+      params.append('is_active', isActive.toString());
+    }
+    const response = await fetch(`${API_BASE_URL}/categories/slug/${slug}?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch category by slug');
+    return response.json();
+  },
+
   // Создать категорию
   createCategory: async (formData) => {
     const response = await fetch(`${API_BASE_URL}/categories/`, {
@@ -100,6 +111,20 @@ export const categoriesAPI = {
     
     const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/products/?${params}`);
     if (!response.ok) throw new Error('Failed to fetch category products');
+    return response.json();
+  },
+
+  // Получить продукты категории по слагу
+  getCategoryProductsBySlug: async (slug, skip = 0, limit = 10, isActive = true) => {
+    const params = new URLSearchParams({
+      skip: skip.toString(),
+      limit: limit.toString(),
+    });
+    if (isActive !== undefined) {
+      params.append('is_active', isActive.toString());
+    }
+    const response = await fetch(`${API_BASE_URL}/categories/slug/${slug}/products/?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch category products by slug');
     return response.json();
   },
 

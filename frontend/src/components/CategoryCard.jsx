@@ -4,7 +4,7 @@ import { getImageUrl } from "../utils";
 function CategoryCard({ category }) {
   return (
     <Link 
-      to={`/category/${category.id}`}
+      to={`/category/${category.slug}`}
       className="group block h-full"
     >
       <div className="relative bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden h-full flex flex-col">
