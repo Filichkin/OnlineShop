@@ -1,7 +1,20 @@
 import { useState } from 'react';
-import { cartAPI } from '../api';
+import { useDispatch } from 'react-redux';
+import { addToCart } from '../store/slices/cartSlice';
 
+/**
+ * Кнопка добавления товара в корзину
+ *
+ * ОПТИМИЗАЦИЯ: Интегрирована с Redux для автоматического обновления
+ * состояния корзины во всем приложении (Header badge, Cart page)
+ *
+ * @param {Object} product - Объект товара с id
+ * @param {Function} onAddToCart - Опциональный callback после добавления
+ * @param {number} quantity - Количество для добавления (по умолчанию 1)
+ * @param {string} className - Дополнительные CSS классы
+ */
 function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" }) {
+  const dispatch = useDispatch();
   const [isAdded, setIsAdded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -13,8 +26,8 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
     setError(null);
 
     try {
-      // Вызываем реальный API для добавления товара в корзину
-      await cartAPI.addItem(product.id, quantity);
+      // Вызываем Redux action для добавления товара в корзину
+      await dispatch(addToCart({ productId: product.id, quantity })).unwrap();
 
       // Вызываем callback функцию если она передана (для обновления UI)
       if (onAddToCart) {
@@ -28,9 +41,9 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
         setIsAdded(false);
       }, 2000);
 
-    } catch (error) {
-      console.error('Ошибка при добавлении товара в корзину:', error);
-      setError(error.message || 'Не удалось добавить товар в корзину');
+    } catch (err) {
+      console.error('Ошибка при добавлении товара в корзину:', err);
+      setError(err || 'Не удалось добавить товар в корзину');
 
       // Сбрасываем ошибку через 3 секунды
       setTimeout(() => {
