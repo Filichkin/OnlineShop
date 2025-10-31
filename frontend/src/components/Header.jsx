@@ -1,6 +1,10 @@
 import { useSelector } from 'react-redux';
 import NavMenuLink from "../UI/NavLinkMenu";
 import logo from "../assets/images/logo.svg";
+import homeIcon from "../assets/images/home.webp";
+import aboutIcon from "../assets/images/about.webp";
+import cartIcon from "../assets/images/cart.webp";
+import favoriteIcon from "../assets/images/favorite.webp";
 import { selectCartTotalItems } from '../store/slices/cartSlice';
 
 /**
@@ -14,38 +18,31 @@ function Header() {
   const totalItems = useSelector(selectCartTotalItems);
 
   return (
-    <header className="flex justify-between px-5 py-8 bg-blue-100 shadow-md">
+    <header className="flex justify-between px-5 py-4 bg-blue-100 shadow-md">
       <img className="h-6" src={logo} alt="logo" />
       <nav>
         <ul className="flex gap-14">
           <li>
             <NavMenuLink to={"/"}>
-              Главная
+              <span className="flex flex-col items-center gap-1">
+                <img className="w-10 h-10 object-contain" src={homeIcon} alt="Главная" />
+                <span>Главная</span>
+              </span>
             </NavMenuLink>
           </li>
           <li>
             <NavMenuLink to={"/about"}>
-              О нас
+              <span className="flex flex-col items-center gap-1">
+                <img className="w-10 h-10 object-contain" src={aboutIcon} alt="О нас" />
+                <span>О нас</span>
+              </span>
             </NavMenuLink>
           </li>
           <li>
             <NavMenuLink to={"/cart"}>
-              <span className="inline-flex items-center gap-2">
-                <span className="relative inline-block">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01"
-                    />
-                  </svg>
+              <span className="flex flex-col items-center gap-1">
+                <span className="relative flex">
+                  <img className="w-10 h-10 object-contain" src={cartIcon} alt="Корзина" />
                   {/* Badge с количеством товаров - привязан к иконке */}
                   {totalItems > 0 && (
                     <span
@@ -57,6 +54,14 @@ function Header() {
                   )}
                 </span>
                 <span>Корзина</span>
+              </span>
+            </NavMenuLink>
+          </li>
+          <li>
+            <NavMenuLink to={"/favorites"}>
+              <span className="flex flex-col items-center gap-1">
+                <img className="w-10 h-10 object-contain" src={favoriteIcon} alt="Избранное" />
+                <span>Избранное</span>
               </span>
             </NavMenuLink>
           </li>
