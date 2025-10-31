@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cartAPI } from '../api';
 import { getImageUrl } from '../utils/imageUrl';
 import { formatPrice } from '../utils/formatPrice';
 
 function Cart() {
+  const navigate = useNavigate();
   const [cartData, setCartData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -149,9 +151,9 @@ function Cart() {
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    alert("Оформление заказа будет реализовано в будущем!");
+  const handleSubmit = () => {
+    // Переход на страницу оформления заказа (будет создана позже)
+    navigate('/checkout');
   };
 
   // Вычисление общей суммы
@@ -228,7 +230,7 @@ function Cart() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-5 py-16">
+    <div className="max-w-7xl mx-auto px-6 py-16">
       {/* Toast notification for operation errors */}
       {operationError && (
         <div
@@ -345,17 +347,13 @@ function Cart() {
 
                       {/* Информация о товаре */}
                       <div className="flex-grow min-w-0">
-                        <h3 className="text-lg font-medium text-gray-900 truncate mb-1">
-                          {item.product.name}
-                        </h3>
-                        <p className="text-sm text-gray-500 mb-2">
-                          Цена: {formatPrice(item.price_at_addition)}
-                        </p>
-
-                        {/* Управление количеством */}
-                        <div className="flex items-center gap-3 mt-3">
-                          <span className="text-sm text-gray-600">Количество:</span>
-                          <div className="flex items-center border border-gray-300 rounded-md">
+                        {/* Название и управление количеством на одной линии */}
+                        <div className="flex items-center justify-between gap-4 mb-2">
+                          <h3 className="text-lg font-medium text-gray-900 truncate">
+                            {item.product.name}
+                          </h3>
+                          {/* Управление количеством */}
+                          <div className="flex items-center border border-gray-300 rounded-md flex-shrink-0">
                             <button
                               onClick={() => handleQuantityChange(item.product.id, item.quantity - 1)}
                               disabled={item.quantity <= 1 || isUpdating}
@@ -380,6 +378,14 @@ function Cart() {
                               </svg>
                             </button>
                           </div>
+                        </div>
+
+                        {/* Артикул и цена */}
+                        <div className="text-sm text-gray-500">
+                          {item.product.part_number && (
+                            <p className="mb-1">Арт: {item.product.part_number}</p>
+                          )}
+                          <p>Цена: {formatPrice(item.price_at_addition)}</p>
                         </div>
                       </div>
 
@@ -418,121 +424,25 @@ function Cart() {
           {/* Форма оформления заказа */}
           <section className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-4">
-              {/* Итоговая сумма */}
-              <div className="mb-6 pb-6 border-b border-gray-200">
-                <div className="flex justify-between items-baseline mb-2">
+              {/* Итоговая информация */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-baseline pb-4 border-b border-gray-200">
                   <span className="text-gray-600">Товары:</span>
                   <span className="text-lg text-gray-800">{totalQuantity} шт.</span>
                 </div>
-                <div className="flex justify-between items-baseline font-bold text-xl mt-4">
+                <div className="flex justify-between items-baseline font-bold text-2xl pb-6 border-b border-gray-200">
                   <span className="text-gray-900">Итого:</span>
                   <span className="text-red-600">{formatPrice(totalPrice)}</span>
                 </div>
-              </div>
 
-              {/* Форма */}
-              <form onSubmit={handleSubmit} className="space-y-5" aria-labelledby="checkout-form-heading">
-                <h2 id="checkout-form-heading" className="text-lg font-semibold text-gray-800 mb-4">
-                  Оформление заказа
-                </h2>
-
-                {/* Personal Information Fieldset */}
-                <fieldset className="space-y-4 border-none p-0">
-                  <legend className="sr-only">Личная информация</legend>
-
-                  {/* Поле Name */}
-                  <div className="flex flex-col">
-                    <input
-                      className="p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent peer"
-                      id="name"
-                      type="text"
-                      placeholder="Введите ваше имя"
-                      required
-                    />
-                    <label
-                      className="text-xs text-gray-500 mt-1 peer-focus:text-red-500"
-                      htmlFor="name"
-                    >
-                      Имя
-                    </label>
-                  </div>
-
-                  {/* Поле Email */}
-                  <div className="flex flex-col">
-                    <input
-                      className="p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent peer"
-                      id="email"
-                      type="email"
-                      placeholder="Введите ваш email"
-                      required
-                    />
-                    <label
-                      className="text-xs text-gray-500 mt-1 peer-focus:text-red-500"
-                      htmlFor="email"
-                    >
-                      Email
-                    </label>
-                  </div>
-                </fieldset>
-
-                {/* Delivery Information Fieldset */}
-                <fieldset className="space-y-4 border-none p-0">
-                  <legend className="sr-only">Информация о доставке</legend>
-
-                  {/* Поле Address */}
-                  <div className="flex flex-col">
-                    <textarea
-                      className="p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent peer"
-                      id="address"
-                      placeholder="Введите адрес доставки"
-                      rows="3"
-                      required
-                    ></textarea>
-                    <label
-                      className="text-xs text-gray-500 mt-1 peer-focus:text-red-500"
-                      htmlFor="address"
-                    >
-                      Адрес
-                    </label>
-                  </div>
-                </fieldset>
-
-                {/* Payment Information Fieldset */}
-                <fieldset className="space-y-4 border-none p-0">
-                  <legend className="sr-only">Информация об оплате</legend>
-
-                  {/* Поле Payment */}
-                  <div className="flex flex-col">
-                    <select
-                      className="p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent peer"
-                      id="payment"
-                      defaultValue=""
-                      required
-                    >
-                      <option value="" disabled>
-                        Выберите способ оплаты
-                      </option>
-                      <option value="creditCard">Банковская карта</option>
-                      <option value="paypal">PayPal</option>
-                      <option value="cash">Наличными при получении</option>
-                    </select>
-                    <label
-                      className="text-xs text-gray-500 mt-1 peer-focus:text-red-500"
-                      htmlFor="payment"
-                    >
-                      Способ оплаты
-                    </label>
-                  </div>
-                </fieldset>
-
-                {/* Кнопка Submit */}
+                {/* Кнопка оформления заказа */}
                 <button
+                  onClick={handleSubmit}
                   className="w-full px-6 py-3 text-base font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 hover:shadow-lg"
-                  type="submit"
                 >
                   Оформить заказ
                 </button>
-              </form>
+              </div>
             </div>
           </section>
         </div>
