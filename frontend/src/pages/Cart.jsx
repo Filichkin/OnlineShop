@@ -185,7 +185,7 @@ function Cart() {
         </div>
       )}
 
-      <h1 className="mb-8 text-3xl font-bold text-center text-gray-800">Корзина покупок</h1>
+      <h1 className="mb-8 text-2xl font-semibold text-left text-gray-700">Корзина покупок</h1>
 
       {items.length === 0 ? (
         // Пустая корзина
