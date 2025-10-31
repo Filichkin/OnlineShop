@@ -1,16 +1,21 @@
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
 import { Suspense } from "react";
 
+/**
+ * Layout компонент
+ *
+ * ОПТИМИЗАЦИЯ: Удален key={location.pathname} из Suspense для предотвращения
+ * размонтирования компонентов при переходах. Теперь состояние компонентов
+ * (включая Redux state) сохраняется между навигацией.
+ */
 function Layout() {
-  const location = useLocation();
-
   return (
     <>
       <Header />
       <main>
-        <Suspense key={location.pathname} fallback={<div className="text-center">Загрузка...</div>}>
+        <Suspense fallback={<div className="text-center">Загрузка...</div>}>
           <Outlet />
         </Suspense>
       </main>

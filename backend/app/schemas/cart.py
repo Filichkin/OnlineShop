@@ -87,6 +87,7 @@ class ProductInCart(BaseModel):
     name: str
     price: float
     main_image: Optional[str] = None
+    part_number: str
 
     class Config:
         from_attributes = True

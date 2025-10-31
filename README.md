@@ -30,6 +30,7 @@ A modern full-stack e-commerce platform built with React and FastAPI, featuring 
 - **Category Navigation** - Filter products by categories
 - **Responsive Design** - Mobile-first approach
 - **Image Gallery** - Multiple product images with main image support
+- **Shopping Cart** - Server-synced cart with quantity updates, clear cart, and checkout CTA
 
 ### 👨‍💼 Admin Features
 - **Product Management** - Full CRUD operations for products
@@ -50,6 +51,14 @@ A modern full-stack e-commerce platform built with React and FastAPI, featuring 
 - **Bulk Operations** - Select and delete multiple images
 - **Image Validation** - File type and size validation
 - **Secure Storage** - Protected file upload system
+
+### 🛒 Shopping Cart Experience
+- **Session-Based Cart** - Anonymous carts persist via secure session cookies shared between frontend (`:5173`) and backend (`:8000`).
+- **Optimised Rendering** - Cart state lives in Redux; selectors, `useMemo`, and `useCallback` minimise re-renders.
+- **Skeleton & Toasts** - `CartSkeleton` handles initial load, while operation errors display contextual toast notifications.
+- **Granular Controls** - Users can adjust quantities, remove individual items, or clear the cart entirely with confirmation prompts.
+- **Sticky Summary Card** - Desktop layout keeps totals and checkout button visible (sticky sidebar).
+- **Checkout Hand-off** - Dedicated handler navigates toward the checkout flow (`/checkout`).
 
 ## 🏗️ Project Structure
 
@@ -76,7 +85,8 @@ OnlineShop/
 
 ### Prerequisites
 - Node.js 18+ and npm
-- Python 3.11+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) (Python dependency manager)
 - PostgreSQL 13+
 
 ### Backend Setup
@@ -86,31 +96,37 @@ OnlineShop/
    cd backend
    ```
 
-2. **Create virtual environment**
+2. **Install Python dependencies with uv**
    ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   uv sync
+   ```
+   This command creates and manages the `.venv` folder automatically. You can activate it if needed:
+   ```bash
+   source .venv/bin/activate  # Windows: .venv\Scripts\activate
    ```
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
+3. **Configure environment variables**
+
+   Create `infra/.env` at the project root (one level above `backend`) with values matching your local setup. Use the template below as a starting point:
+   ```env
+   SECRET=replace-with-strong-secret
+   POSTGRES_HOST=localhost
+   POSTGRES_PORT=5432
+   POSTGRES_DB=onlineshop
+   POSTGRES_USER=onlineshop
+   POSTGRES_PASSWORD=replace-with-strong-password
+   FIRST_SUPERUSER_EMAIL=admin@example.com
+   FIRST_SUPERUSER_PASSWORD=replace-with-strong-password
    ```
 
-4. **Set up environment variables**
+4. **Run database migrations**
    ```bash
-   cp .env.example .env
-   # Edit .env with your database credentials
+   uv run alembic upgrade head
    ```
 
-5. **Run database migrations**
+5. **Start the API**
    ```bash
-   alembic upgrade head
-   ```
-
-6. **Start the server**
-   ```bash
-   uvicorn app.main:app --reload
+   uv run uvicorn app.main:app --reload
    ```
 
 ### Frontend Setup
@@ -131,9 +147,7 @@ OnlineShop/
    ```
 
 4. **Open in browser**
-   ```
-   http://localhost:5173
-   ```
+   - Default URL: `http://localhost:5173`
 
 ## 📚 API Documentation
 
@@ -157,16 +171,28 @@ Once the backend is running, visit:
 - `POST /categories/` - Create category (admin)
 - `PATCH /categories/{id}` - Update category (admin)
 
+#### Cart
+- `GET /cart/` - Retrieve the current session cart with item breakdown
+- `GET /cart/summary` - Lightweight totals for cart icon badge
+- `POST /cart/items` - Add product or increment quantity in cart
+- `PATCH /cart/items/{product_id}` - Update quantity for a specific product
+- `DELETE /cart/items/{product_id}` - Remove product from cart
+- `DELETE /cart/` - Clear all items from cart
+
 ## 🔧 Configuration
 
 ### Environment Variables
 
-#### Backend (.env)
+#### Backend (`infra/.env`)
 ```env
-DATABASE_URL=postgresql://user:password@localhost/onlineshop
-SECRET_KEY=your-secret-key
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+SECRET=replace-with-strong-secret
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=onlineshop
+POSTGRES_USER=onlineshop
+POSTGRES_PASSWORD=replace-with-strong-password
+FIRST_SUPERUSER_EMAIL=admin@example.com
+FIRST_SUPERUSER_PASSWORD=replace-with-strong-password
 ```
 
 #### Frontend (.env)

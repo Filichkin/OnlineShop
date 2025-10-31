@@ -129,7 +129,8 @@ async def get_cart(
                     'id': item.product.id,
                     'name': item.product.name,
                     'price': item.product.price,
-                    'main_image': main_image
+                    'main_image': main_image,
+                    'part_number': item.product.part_number
                 },
                 created_at=item.created_at,
                 updated_at=item.updated_at
@@ -243,7 +244,8 @@ async def add_item_to_cart(
             'id': cart_item.product.id,
             'name': cart_item.product.name,
             'price': cart_item.product.price,
-            'main_image': main_image
+            'main_image': main_image,
+            'part_number': cart_item.product.part_number
         },
         created_at=cart_item.created_at,
         updated_at=cart_item.updated_at
@@ -307,7 +309,8 @@ async def update_cart_item(
             'id': cart_item.product.id,
             'name': cart_item.product.name,
             'price': cart_item.product.price,
-            'main_image': main_image
+            'main_image': main_image,
+            'part_number': cart_item.product.part_number
         },
         created_at=cart_item.created_at,
         updated_at=cart_item.updated_at
