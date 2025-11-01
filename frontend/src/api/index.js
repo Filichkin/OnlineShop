@@ -547,6 +547,14 @@ export const favoritesAPI = {
         credentials: 'include',
       });
       if (!response.ok) {
+        // 409 Conflict означает что товар уже в избранном - не критичная ошибка
+        if (response.status === 409) {
+          const errorData = await response.json().catch(() => ({}));
+          const error = new Error(errorData.detail || 'Товар уже в избранном');
+          error.status = 409;
+          error.isConflict = true; // Флаг для обработки в UI
+          throw error;
+        }
         await handleFavoritesError(response);
       }
       return response.json();

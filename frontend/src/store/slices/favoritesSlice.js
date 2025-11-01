@@ -90,6 +90,15 @@ export const toggleFavorite = createAsyncThunk(
   async (productId, { getState, dispatch, rejectWithValue }) => {
     try {
       const state = getState();
+
+      // Предотвращаем множественные запросы для одного товара
+      if (state.favorites.updatingItems.includes(productId)) {
+        return rejectWithValue({
+          message: 'Операция уже выполняется',
+          productId,
+        });
+      }
+
       const isFavorite = state.favorites.favoriteIds.includes(productId);
 
       if (isFavorite) {
@@ -131,9 +140,12 @@ const favoritesSlice = createSlice({
       })
       .addCase(fetchFavorites.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.items = action.payload || [];
-        state.favoriteIds = (action.payload || []).map(item => item.id);
-        state.totalItems = state.items.length;
+        // API возвращает объект {items: [], total_items: N, ...}
+        const items = action.payload?.items || [];
+        // Извлекаем product из каждого item
+        state.items = items.map(item => item.product);
+        state.favoriteIds = state.items.map(product => product.id);
+        state.totalItems = action.payload?.total_items || state.items.length;
         state.isLoaded = true;
       })
       .addCase(fetchFavorites.rejected, (state, action) => {
@@ -155,18 +167,23 @@ const favoritesSlice = createSlice({
         const productId = action.meta.arg;
         state.updatingItems = state.updatingItems.filter(id => id !== productId);
 
-        // Добавляем товар в список избранного
-        const product = action.payload;
-        if (!state.favoriteIds.includes(product.id)) {
+        // API возвращает {message, product_id, item: {product: {...}}}
+        const product = action.payload?.item?.product;
+        if (product && !state.favoriteIds.includes(product.id)) {
           state.items.push(product);
           state.favoriteIds.push(product.id);
           state.totalItems = state.items.length;
         }
       })
       .addCase(addToFavorites.rejected, (state, action) => {
-        const { productId } = action.payload;
-        state.updatingItems = state.updatingItems.filter(id => id !== productId);
-        state.error = action.payload.message;
+        const { productId } = action.payload || {};
+        if (productId) {
+          state.updatingItems = state.updatingItems.filter(id => id !== productId);
+        }
+        // Не показываем ошибку для 409 Conflict (товар уже в избранном)
+        if (action.error?.message !== 'Товар уже в избранном') {
+          state.error = action.payload?.message || action.error?.message;
+        }
       });
 
     // Remove from favorites
