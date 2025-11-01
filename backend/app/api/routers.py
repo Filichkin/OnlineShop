@@ -4,6 +4,7 @@ from app.api.endpoints import (
     brand_router,
     cart_router,
     category_router,
+    favorite_router,
     product_router,
     user_router
 )
@@ -32,4 +33,9 @@ main_router.include_router(
     cart_router,
     prefix=Constants.CART_PREFIX,
     tags=Constants.CART_TAGS
+)
+main_router.include_router(
+    favorite_router,
+    prefix=Constants.FAVORITES_PREFIX,
+    tags=Constants.FAVORITES_TAGS
 )

@@ -99,3 +99,8 @@ class Constants:
     MAX_CART_ITEM_QUANTITY = 999
     MIN_CART_ITEM_QUANTITY = 1
     CART_ITEM_QUANTITY_DEFAULT = 1
+
+    # Favorite Constants
+    FAVORITES_PREFIX = '/favorites'
+    FAVORITES_TAGS = ('favorites',)
+    FAVORITE_SESSION_LIFETIME_DAYS = 30  # Favorite list expires after 30 days
