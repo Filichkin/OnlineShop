@@ -71,7 +71,7 @@ function FavoriteButton({ product, className = "" }) {
         {isUpdating ? (
           // Loading spinner
           <svg
-            className="w-6 h-6 text-gray-400 animate-spin"
+            className="w-5 h-5 text-gray-400 animate-spin"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -93,7 +93,7 @@ function FavoriteButton({ product, className = "" }) {
         ) : error ? (
           // Error icon
           <svg
-            className="w-6 h-6 text-red-600"
+            className="w-5 h-5 text-red-600"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -108,7 +108,7 @@ function FavoriteButton({ product, className = "" }) {
         ) : isFavorite ? (
           // Filled heart (в избранном) - светло-черный цвет
           <svg
-            className="w-6 h-6 text-gray-700 transition-transform duration-200 group-hover:scale-110"
+            className="w-5 h-5 text-gray-700 transition-transform duration-200 group-hover:scale-110"
             fill="currentColor"
             viewBox="0 0 24 24"
           >
@@ -117,7 +117,7 @@ function FavoriteButton({ product, className = "" }) {
         ) : (
           // Outline heart (не в избранном) - серый контур
           <svg
-            className="w-6 h-6 text-gray-400 transition-all duration-200 group-hover:text-gray-600 group-hover:scale-110"
+            className="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-gray-600 group-hover:scale-110"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
