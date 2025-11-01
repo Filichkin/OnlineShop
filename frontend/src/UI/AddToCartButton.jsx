@@ -98,7 +98,7 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
   if (isInCart) {
     return (
       <div className="relative">
-        <div className={`flex items-center border border-gray-300 rounded-md bg-white py-1.5 ${className}`}>
+        <div className={`h-8 px-2 flex items-center border border-gray-300 rounded-md bg-white${className}`}>
           {/* Кнопка уменьшения количества */}
           <button
             onClick={() => handleQuantityChange(currentQuantity - 1)}
@@ -121,7 +121,7 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
           <button
             onClick={() => handleQuantityChange(currentQuantity + 1)}
             disabled={isUpdating}
-            className="px-2 flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-r-md"
+            className="h-8 px-2 flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-r-md"
             aria-label="Увеличить количество"
             title="Увеличить количество"
           >
@@ -148,7 +148,7 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
         onClick={handleAddToCart}
         disabled={isLoading}
         className={`
-          px-4 py-2 rounded-md flex items-center justify-center gap-2
+          px-4 h-8 rounded-md flex items-center justify-center gap-2
           transition-all duration-200 font-medium text-sm
           focus:outline-none focus:ring-2 focus:ring-offset-2
           ${error

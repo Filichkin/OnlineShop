@@ -12,6 +12,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 const Home = lazy(() => import("./pages/Home"));
 const About = lazy(() => import("./pages/About"));
 const Cart = lazy(() => import("./pages/Cart"));
+const Favorites = lazy(() => import("./pages/Favorites"));
 const Category = lazy(() => import("./pages/Category"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
@@ -31,6 +32,7 @@ const router = createBrowserRouter([
       { path: "old-home", element: <Navigate to="/" /> },
       { path: "about", element: <About /> },
       { path: "cart", element: <Cart /> },
+      { path: "favorites", element: <Favorites /> },
       { path: "thanks", element: <Thanks /> },
       {
         path: "category/:slug",
