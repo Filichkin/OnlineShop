@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { categoriesAPI } from "../api";
 import AddToCartButton from "../UI/AddToCartButton";
+import FavoriteButton from "../UI/FavoriteButton";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { getImageUrl, formatPrice } from "../utils";
 
@@ -149,7 +150,7 @@ function ProductDetails() {
                 )}
               </div>
               
-              {/* Блок цены и кнопки справа */}
+              {/* Блок цены и кнопок справа */}
               <div className="flex flex-col items-end gap-4 min-w-[250px]">
                 <div className="text-right">
                   <p className="text-sm text-gray-500 mb-1">Цена:</p>
@@ -157,11 +158,16 @@ function ProductDetails() {
                     {formatPrice(product.price)}
                   </p>
                 </div>
-                <AddToCartButton 
-                  product={product} 
-                  onAddToCart={handleAddToCart}
-                  className="w-full"
-                />
+
+                {/* Кнопки добавления в корзину и избранное */}
+                <div className="w-full flex gap-2">
+                  <AddToCartButton
+                    product={product}
+                    onAddToCart={handleAddToCart}
+                    className="flex-grow"
+                  />
+                  <FavoriteButton product={product} />
+                </div>
               </div>
             </div>
           </div>

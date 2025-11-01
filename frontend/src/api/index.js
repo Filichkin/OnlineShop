@@ -485,3 +485,103 @@ export const cartAPI = {
     }
   },
 };
+
+// Helper function for handling favorites API errors
+const handleFavoritesError = async (response) => {
+  let errorMessage = 'Произошла ошибка при работе с избранным';
+
+  try {
+    const errorData = await response.json();
+    errorMessage = errorData.detail || errorMessage;
+  } catch {
+    // If JSON parsing fails, use status-based messages
+    switch (response.status) {
+      case 404:
+        errorMessage = 'Товар не найден';
+        break;
+      case 409:
+        errorMessage = 'Товар уже в избранном';
+        break;
+      case 400:
+        errorMessage = 'Некорректные данные запроса';
+        break;
+      case 500:
+        errorMessage = 'Ошибка сервера. Попробуйте позже';
+        break;
+      default:
+        errorMessage = `Ошибка: ${response.statusText}`;
+    }
+  }
+
+  const error = new Error(errorMessage);
+  error.status = response.status;
+  throw error;
+};
+
+// API для избранного
+export const favoritesAPI = {
+  // Получить список избранных товаров
+  getFavorites: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorites/`, {
+        credentials: 'include', // Важно для отправки cookies
+      });
+      if (!response.ok) {
+        await handleFavoritesError(response);
+      }
+      return response.json();
+    } catch (error) {
+      // Handle network errors
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Добавить товар в избранное
+  addToFavorites: async (productId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorites/${productId}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        // 409 Conflict означает что товар уже в избранном - не критичная ошибка
+        if (response.status === 409) {
+          const errorData = await response.json().catch(() => ({}));
+          const error = new Error(errorData.detail || 'Товар уже в избранном');
+          error.status = 409;
+          error.isConflict = true; // Флаг для обработки в UI
+          throw error;
+        }
+        await handleFavoritesError(response);
+      }
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Удалить товар из избранного
+  removeFromFavorites: async (productId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorites/${productId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        await handleFavoritesError(response);
+      }
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+};

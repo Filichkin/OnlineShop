@@ -9,6 +9,12 @@ from .cart import ( # noqa
     CartSummary,
 )
 from .category import CategoryCreate, CategoryResponse, CategoryUpdate # noqa
+from .favorite import ( # noqa
+    FavoriteItemAddResponse,
+    FavoriteItemDeleteResponse,
+    FavoriteItemResponse,
+    FavoriteResponse,
+)
 from .media import ( # noqa
     DeleteImagesRequest,
     DeleteImagesResponse,

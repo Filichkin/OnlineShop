@@ -1,6 +1,7 @@
 import { Link, useLoaderData, useSearchParams } from "react-router-dom";
 import { useMemo } from "react";
 import AddToCartButton from "../UI/AddToCartButton";
+import FavoriteButton from "../UI/FavoriteButton";
 import { getImageUrl, formatPrice } from "../utils";
 
 function Category() {
@@ -54,10 +55,15 @@ function Category() {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="flex flex-col bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
+                className="relative flex flex-col bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
               >
+                {/* Кнопка избранного в правом верхнем углу */}
+                <div className="absolute top-2 right-2 z-10">
+                  <FavoriteButton product={product} />
+                </div>
+
                 {/* Изображение товара */}
-                <Link 
+                <Link
                   to={`/product/${product.id}`}
                   state={{ categoryId }}
                   className="block w-full aspect-square overflow-hidden bg-gray-100"
@@ -68,10 +74,10 @@ function Category() {
                     className="object-contain w-full h-full transition-transform duration-300 hover:scale-105"
                   />
                 </Link>
-                
+
                 {/* Информация о товаре */}
                 <div className="flex flex-col flex-grow p-3 border-t border-gray-200">
-                  <Link 
+                  <Link
                     to={`/product/${product.id}`}
                     state={{ categoryId }}
                     className="hover:text-blue-600 transition-colors"
@@ -80,14 +86,14 @@ function Category() {
                       {product.name}
                     </h3>
                   </Link>
-                  
+
                   {/* Цена и кнопка */}
                   <div className="mt-auto flex items-center justify-between gap-3">
                     <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
                       {formatPrice(product.price)}
                     </span>
-                    <AddToCartButton 
-                      product={product} 
+                    <AddToCartButton
+                      product={product}
                       onAddToCart={handleAddToCart}
                       className="px-3 py-2 text-xs"
                     />
