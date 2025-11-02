@@ -1,5 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authAPI } from '../../api';
+import { resetCart } from './cartSlice';
+import { resetFavorites } from './favoritesSlice';
 
 // Асинхронные действия
 
@@ -78,6 +80,23 @@ export const updateProfile = createAsyncThunk(
   }
 );
 
+/**
+ * Выход пользователя
+ */
+export const logout = createAsyncThunk(
+  'auth/logout',
+  async (_, { dispatch }) => {
+    // Clear token from localStorage
+    localStorage.removeItem('token');
+
+    // Reset cart and favorites
+    dispatch(resetCart());
+    dispatch(resetFavorites());
+
+    return null;
+  }
+);
+
 const initialState = {
   user: null, // User object with: first_name, last_name, email, phone, date_of_birth, city, telegram_id, address
   token: localStorage.getItem('token'),
@@ -91,14 +110,6 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    logout: (state) => {
-      state.user = null;
-      state.token = null;
-      state.isAuthenticated = false;
-      state.error = null;
-      state.successMessage = null;
-      localStorage.removeItem('token');
-    },
     clearError: (state) => {
       state.error = null;
     },
@@ -202,9 +213,18 @@ const authSlice = createSlice({
       .addCase(updateProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || 'Ошибка при обновлении профиля';
+      })
+
+      // Выход
+      .addCase(logout.fulfilled, (state) => {
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
+        state.error = null;
+        state.successMessage = null;
       });
   },
 });
 
-export const { logout, clearError, clearSuccessMessage, setUser } = authSlice.actions;
+export const { clearError, clearSuccessMessage, setUser } = authSlice.actions;
 export default authSlice.reducer;

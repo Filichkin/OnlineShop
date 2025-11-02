@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { register, login, forgotPassword, getCurrentUser, clearError, clearSuccessMessage } from '../store/slices/authSlice';
+import { fetchCart } from '../store/slices/cartSlice';
+import { fetchFavorites } from '../store/slices/favoritesSlice';
 import {
   isValidPhone,
   isValidEmail,
@@ -62,12 +64,17 @@ function LoginModal({ isOpen, onClose }) {
   // Закрытие после успешного действия
   useEffect(() => {
     if (successMessage && (mode === 'login' || mode === 'register')) {
-      // User data already returned from backend, just close modal
+      // User data already returned from backend
+      // Reload cart and favorites with new user data
+      dispatch(fetchCart());
+      dispatch(fetchFavorites());
+
+      // Close modal after short delay
       setTimeout(() => {
         onClose();
       }, 800); // Reduced delay from 1500ms to 800ms
     }
-  }, [successMessage, mode, onClose]);
+  }, [successMessage, mode, onClose, dispatch]);
 
   // Закрытие модального окна при нажатии Escape
   useEffect(() => {

@@ -130,6 +130,16 @@ const favoritesSlice = createSlice({
     resetLoaded: (state) => {
       state.isLoaded = false;
     },
+    // Сброс избранного (при logout)
+    resetFavorites: (state) => {
+      state.items = [];
+      state.favoriteIds = [];
+      state.totalItems = 0;
+      state.isLoading = false;
+      state.error = null;
+      state.updatingItems = [];
+      state.isLoaded = false;
+    },
   },
   extraReducers: (builder) => {
     // Fetch favorites
@@ -226,7 +236,7 @@ const favoritesSlice = createSlice({
 });
 
 // Actions
-export const { clearError, resetLoaded } = favoritesSlice.actions;
+export const { clearError, resetLoaded, resetFavorites } = favoritesSlice.actions;
 
 // Selectors
 export const selectFavorites = (state) => state.favorites;
