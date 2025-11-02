@@ -86,11 +86,14 @@ async def custom_register(
     Raises:
         HTTPException: If registration fails (e.g., email/phone exists)
     """
-    from app.core.user import get_user_manager, get_jwt_strategy
+    from app.core.user import get_user_db, get_user_manager, get_jwt_strategy
     from fastapi_users.exceptions import UserAlreadyExists
 
-    # Get user manager
-    user_manager = await anext(get_user_manager(session=session))
+    # Get user database and user manager
+    user_db_gen = get_user_db(session=session)
+    user_db = await anext(user_db_gen)
+    user_manager_gen = get_user_manager(user_db=user_db)
+    user_manager = await anext(user_manager_gen)
 
     try:
         # Create user using fastapi-users manager
