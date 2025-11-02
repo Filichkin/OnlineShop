@@ -135,6 +135,12 @@ async def custom_register(
             'phone': user.phone,
             'first_name': user.first_name,
             'last_name': user.last_name,
+            'date_of_birth': (
+                user.date_of_birth.isoformat() if user.date_of_birth else None
+            ),
+            'city': user.city,
+            'telegram_id': user.telegram_id,
+            'address': user.address,
             'is_active': user.is_active,
             'is_superuser': user.is_superuser,
             'is_verified': user.is_verified
@@ -237,13 +243,16 @@ async def forgot_password(
     description='Get authenticated user profile information'
 )
 async def get_current_user_profile(
-    user: User = Depends(current_user)
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_async_session)
 ):
     """
     Get current authenticated user profile.
 
     Returns all user information except password.
     """
+    # Ensure user data is refreshed from database
+    await session.refresh(user)
     return user
 
 

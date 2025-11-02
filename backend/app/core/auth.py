@@ -214,6 +214,12 @@ async def login_user(
             'phone': user.phone,
             'first_name': user.first_name,
             'last_name': user.last_name,
+            'date_of_birth': (
+                user.date_of_birth.isoformat() if user.date_of_birth else None
+            ),
+            'city': user.city,
+            'telegram_id': user.telegram_id,
+            'address': user.address,
             'is_active': user.is_active,
             'is_superuser': user.is_superuser,
             'is_verified': user.is_verified
