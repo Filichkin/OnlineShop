@@ -25,21 +25,21 @@ function Footer() {
           </ul>
         </div>
 
-        {/* Social Media */}
+        {/* About and Information */}
         <div>
-          <h3 className="mb-3 text-sm font-bold">Блог</h3>
+          <h3 className="mb-3 text-sm font-bold">О нас</h3>
           <ul className="space-y-1">
             <li>
-              <Link className="hover:underline" to="#">Facebook</Link>
+              <Link className="hover:underline" to="/about">О компании</Link>
             </li>
             <li>
-              <Link className="hover:underline" to="#">Instagram</Link>
+              <Link className="hover:underline" to="/information">Информация</Link>
             </li>
             <li>
-              <Link className="hover:underline" to="#">Twitter</Link>
+              <Link className="hover:underline" to="#">Наша команда</Link>
             </li>
             <li>
-              <Link className="hover:underline" to="#">LinkedIn</Link>
+              <Link className="hover:underline" to="#">Карьера</Link>
             </li>
           </ul>
         </div>

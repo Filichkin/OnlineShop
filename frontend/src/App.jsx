@@ -13,6 +13,7 @@ const Home = lazy(() => import("./pages/Home"));
 const About = lazy(() => import("./pages/About"));
 const Cart = lazy(() => import("./pages/Cart"));
 const Favorites = lazy(() => import("./pages/Favorites"));
+const Profile = lazy(() => import("./pages/Profile"));
 const Category = lazy(() => import("./pages/Category"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
@@ -31,8 +32,10 @@ const router = createBrowserRouter([
       },
       { path: "old-home", element: <Navigate to="/" /> },
       { path: "about", element: <About /> },
+      { path: "information", element: <About /> }, // TODO: Создать отдельную страницу Information
       { path: "cart", element: <Cart /> },
       { path: "favorites", element: <Favorites /> },
+      { path: "profile", element: <Profile /> },
       { path: "thanks", element: <Thanks /> },
       {
         path: "category/:slug",
