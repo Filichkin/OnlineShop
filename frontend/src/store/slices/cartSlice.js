@@ -128,6 +128,16 @@ const cartSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    // Сброс корзины (при logout)
+    resetCart: (state) => {
+      state.items = [];
+      state.totalItems = 0;
+      state.totalPrice = 0;
+      state.isLoading = false;
+      state.error = null;
+      state.updatingItems = [];
+      state.isLoaded = false;
+    },
   },
   extraReducers: (builder) => {
     // Fetch cart
@@ -287,7 +297,7 @@ const cartSlice = createSlice({
 });
 
 // Actions
-export const { addUpdatingItem, removeUpdatingItem, clearError } = cartSlice.actions;
+export const { addUpdatingItem, removeUpdatingItem, clearError, resetCart } = cartSlice.actions;
 
 // Selectors
 export const selectCart = (state) => state.cart;

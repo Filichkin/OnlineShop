@@ -1,8 +1,7 @@
 from datetime import timedelta
 from typing import Optional
-from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -271,13 +270,11 @@ class CRUDCart:
 
     async def get_by_user(
         self,
-        user_id: UUID,
+        user_id: int,
         session: AsyncSession
     ) -> Optional[Cart]:
         """
         Get cart by user_id.
-
-        TODO: Implement when user authentication is added.
 
         Args:
             user_id: User identifier
@@ -297,6 +294,40 @@ class CRUDCart:
         )
         return result.scalars().first()
 
+    async def get_or_create_for_user(
+        self,
+        user_id: int,
+        session: AsyncSession
+    ) -> Cart:
+        """
+        Get existing cart or create new one for authenticated user.
+
+        Args:
+            user_id: User identifier
+            session: Database session
+
+        Returns:
+            Cart object
+        """
+        cart = await self.get_by_user(user_id, session)
+
+        if cart is None:
+            expires_at = utcnow() + timedelta(
+                days=Constants.CART_SESSION_LIFETIME_DAYS
+            )
+            cart = Cart(
+                user_id=user_id,
+                expires_at=expires_at
+            )
+            session.add(cart)
+            await session.commit()
+            await session.refresh(
+                cart,
+                attribute_names=['items']
+            )
+
+        return cart
+
     async def merge_carts(
         self,
         session_cart: Cart,
@@ -306,8 +337,6 @@ class CRUDCart:
         """
         Merge guest cart into user cart on login.
 
-        TODO: Implement when user authentication is added.
-
         Args:
             session_cart: Guest cart (from session)
             user_cart: User cart (authenticated)
@@ -316,14 +345,72 @@ class CRUDCart:
         Returns:
             Merged cart (user cart with items from both carts)
         """
-        # Implementation will be added with user authentication
-        # Logic:
-        # 1. Iterate through session_cart items
-        # 2. For each item, check if it exists in user_cart
-        # 3. If exists, update quantity (sum of both)
-        # 4. If not, move item to user_cart
-        # 5. Delete session_cart
-        pass
+        # Check if session cart exists and has items
+        if not session_cart:
+            return user_cart
+
+        # Eagerly load all items to avoid lazy loading issues
+        await session.refresh(session_cart, attribute_names=['items'])
+        await session.refresh(user_cart, attribute_names=['items'])
+
+        # Get all items from session cart (copy list to avoid modification during iteration)
+        session_items = list(session_cart.items)
+
+        if not session_items:
+            # No items to merge, delete empty session cart
+            await session.delete(session_cart)
+            await session.commit()
+            return user_cart
+
+        for session_item in session_items:
+            # Check if product exists in user cart
+            user_item_result = await session.execute(
+                select(CartItem)
+                .where(
+                    CartItem.cart_id == user_cart.id,
+                    CartItem.product_id == session_item.product_id
+                )
+            )
+            user_item = user_item_result.scalars().first()
+
+            if user_item:
+                # Product exists in user cart, update quantity and delete session item
+                new_quantity = user_item.quantity + session_item.quantity
+                if new_quantity > Constants.MAX_CART_ITEM_QUANTITY:
+                    new_quantity = Constants.MAX_CART_ITEM_QUANTITY
+                user_item.quantity = new_quantity
+                # Delete the session item as we've merged it into user item
+                await session.delete(session_item)
+            else:
+                # Product doesn't exist in user cart, move it by updating cart_id via SQL
+                await session.execute(
+                    update(CartItem)
+                    .where(CartItem.id == session_item.id)
+                    .values(cart_id=user_cart.id)
+                )
+
+        # Commit all changes to cart items
+        await session.commit()
+
+        # Delete empty session cart (only if it has no items left)
+        # First, check if session cart still has items
+        await session.refresh(session_cart, attribute_names=['items'])
+        if not session_cart.items or len(session_cart.items) == 0:
+            await session.delete(session_cart)
+            await session.commit()
+
+        # Reload user cart with all items
+        result = await session.execute(
+            select(Cart)
+            .where(Cart.id == user_cart.id)
+            .options(
+                selectinload(Cart.items)
+                .selectinload(CartItem.product)
+                .selectinload(Product.images)
+            )
+        )
+        merged_cart = result.scalars().first()
+        return merged_cart or user_cart
 
 
 cart_crud = CRUDCart()

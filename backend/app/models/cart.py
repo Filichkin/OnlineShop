@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from typing import Optional
-from uuid import UUID
 
 from sqlalchemy import (
     DateTime,
@@ -23,7 +22,7 @@ class Cart(Base):
 
     Supports both guest and authenticated users:
     - Guest users: identified by session_id
-    - Authenticated users: identified by user_id (future feature)
+    - Authenticated users: identified by user_id
     """
 
     __tablename__ = 'carts'
@@ -35,8 +34,8 @@ class Cart(Base):
         index=True
     )
 
-    # User identifier for authenticated users (future feature)
-    user_id: Mapped[Optional[UUID]] = mapped_column(
+    # User identifier for authenticated users
+    user_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey('user.id', ondelete='CASCADE'),
         nullable=True,
         index=True
