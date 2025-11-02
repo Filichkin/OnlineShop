@@ -120,6 +120,7 @@ const authSlice = createSlice({
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
         state.token = action.payload.access_token;
+        state.user = action.payload.user; // Save user data from response
         state.isAuthenticated = true;
         state.successMessage = 'Регистрация прошла успешно!';
         localStorage.setItem('token', action.payload.access_token);
@@ -139,6 +140,7 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
         state.token = action.payload.access_token;
+        state.user = action.payload.user; // Save user data from response
         state.isAuthenticated = true;
         state.successMessage = 'Вход выполнен успешно!';
         localStorage.setItem('token', action.payload.access_token);

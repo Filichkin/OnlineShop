@@ -62,13 +62,12 @@ function LoginModal({ isOpen, onClose }) {
   // Закрытие после успешного действия
   useEffect(() => {
     if (successMessage && (mode === 'login' || mode === 'register')) {
-      // Fetch user data after successful login/register
-      dispatch(getCurrentUser());
+      // User data already returned from backend, just close modal
       setTimeout(() => {
         onClose();
-      }, 1500);
+      }, 800); // Reduced delay from 1500ms to 800ms
     }
-  }, [successMessage, mode, dispatch, onClose]);
+  }, [successMessage, mode, onClose]);
 
   // Закрытие модального окна при нажатии Escape
   useEffect(() => {
