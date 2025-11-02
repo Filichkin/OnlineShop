@@ -308,6 +308,7 @@ export const authAPI = {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Send session cookie for cart/favorites merge
         body: JSON.stringify(userData),
       });
 
@@ -336,6 +337,7 @@ export const authAPI = {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Send session cookie for cart/favorites merge
         body: JSON.stringify({
           email_or_phone: identifier,
           password,

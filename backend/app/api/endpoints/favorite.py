@@ -11,7 +11,6 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.constants import Constants
 from app.core.db import get_async_session
 from app.core.user import current_user_optional
@@ -96,7 +95,8 @@ async def get_favorites(
 
     Returns favorite list with all items, including product details.
     '''
-    # Use user favorites for authenticated users, session favorites for anonymous
+    # Use user favorites for authenticated users,
+    # session favorites for anonymous
     if user:
         favorite = await favorite_crud.get_or_create_for_user(user.id, session)
     else:
@@ -170,7 +170,8 @@ async def add_to_favorites(
 
     Raises 404 if product not found or 409 if already in favorites.
     '''
-    # Use user favorites for authenticated users, session favorites for anonymous
+    # Use user favorites for authenticated users,
+    # session favorites for anonymous
     if user:
         favorite = await favorite_crud.get_or_create_for_user(user.id, session)
     else:
@@ -250,7 +251,8 @@ async def remove_from_favorites(
 
     Raises 404 if favorite list or item not found.
     '''
-    # Use user favorites for authenticated users, session favorites for anonymous
+    # Use user favorites for authenticated users,
+    # session favorites for anonymous
     if user:
         favorite = await favorite_crud.get_by_user(user.id, session)
     else:
