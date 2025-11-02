@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { logout, updateProfile, getCurrentUser, clearError, clearSuccessMessage } from '../store/slices/authSlice';
 import { selectFavoriteItems, selectFavoritesIsLoading, fetchFavorites } from '../store/slices/favoritesSlice';
 import { isValidPhone, isValidTelegramId, isValidBirthDate, formatPhoneNumber } from '../utils/validation';
+import { getImageUrl, formatPrice } from '../utils';
 import ordersIcon from '../assets/images/orders.webp';
 import favoriteIcon from '../assets/images/favorite.webp';
 import profileIcon from '../assets/images/profile.webp';
-import ProductCard from '../components/ProductCard';
+import AddToCartButton from '../UI/AddToCartButton';
+import FavoriteButton from '../UI/FavoriteButton';
 
 /**
  * Profile компонент - страница профиля пользователя
@@ -571,10 +573,12 @@ function Profile() {
             {activeTab === 'favorites' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Избранное</h2>
+                  <h2 className="text-xl font-semibold text-gray-800">
+                    Избранное {favoriteItems.length > 0 && `(${favoriteItems.length})`}
+                  </h2>
                   <button
                     onClick={() => navigate('/favorites')}
-                    className="text-blue-600 hover:text-blue-800 font-medium underline focus:outline-none text-sm"
+                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors"
                   >
                     Перейти на страницу избранного
                   </button>
@@ -605,11 +609,61 @@ function Profile() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  <ul className="space-y-4">
                     {favoriteItems.map((product) => (
-                      <ProductCard key={product.id} product={product} />
+                      <li
+                        key={product.id}
+                        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-200 hover:shadow-md"
+                      >
+                        <div className="flex flex-col sm:flex-row gap-4 p-4">
+                          {/* Изображение товара */}
+                          <div className="flex-shrink-0">
+                            <Link to={`/product/${product.id}`}>
+                              <img
+                                src={getImageUrl(product.main_image)}
+                                alt={product.name}
+                                className="w-full sm:w-24 h-24 object-cover rounded-md bg-gray-100"
+                                onError={(e) => {
+                                  e.target.src = 'https://via.placeholder.com/100?text=No+Image';
+                                }}
+                              />
+                            </Link>
+                          </div>
+
+                          {/* Информация о товаре */}
+                          <div className="flex-grow min-w-0">
+                            <Link
+                              to={`/product/${product.id}`}
+                              className="block mb-2"
+                            >
+                              <h3 className="text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors">
+                                {product.name}
+                              </h3>
+                            </Link>
+
+                            {/* Артикул и цена */}
+                            <div className="text-sm text-gray-500">
+                              {product.part_number && (
+                                <p className="mb-1">Арт: {product.part_number}</p>
+                              )}
+                              <p className="text-lg font-bold text-gray-900">
+                                {formatPrice(product.price)}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Кнопки действий */}
+                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2">
+                            <AddToCartButton
+                              product={product}
+                              className="px-4 py-2"
+                            />
+                            <FavoriteButton product={product} />
+                          </div>
+                        </div>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 )}
               </div>
             )}
