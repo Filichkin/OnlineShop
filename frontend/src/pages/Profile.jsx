@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout, updateProfile, getCurrentUser, clearError, clearSuccessMessage } from '../store/slices/authSlice';
+import { selectFavoriteItems, selectFavoritesIsLoading, fetchFavorites } from '../store/slices/favoritesSlice';
 import { isValidPhone, isValidTelegramId, isValidBirthDate, formatPhoneNumber } from '../utils/validation';
 import ordersIcon from '../assets/images/orders.webp';
 import favoriteIcon from '../assets/images/favorite.webp';
 import profileIcon from '../assets/images/profile.webp';
+import ProductCard from '../components/ProductCard';
 
 /**
  * Profile компонент - страница профиля пользователя
@@ -19,6 +21,8 @@ function Profile() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user, loading, error, successMessage } = useSelector((state) => state.auth);
+  const favoriteItems = useSelector(selectFavoriteItems);
+  const favoritesLoading = useSelector(selectFavoritesIsLoading);
 
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
@@ -38,6 +42,13 @@ function Profile() {
   useEffect(() => {
     if (!user) {
       dispatch(getCurrentUser());
+    }
+  }, [user, dispatch]);
+
+  // Load favorites when user is authenticated
+  useEffect(() => {
+    if (user) {
+      dispatch(fetchFavorites());
     }
   }, [user, dispatch]);
 
@@ -559,34 +570,47 @@ function Profile() {
             {/* Favorites Tab */}
             {activeTab === 'favorites' && (
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Избранное</h2>
-
-                <p className="text-gray-600 mb-4">
-                  Ваши избранные товары также доступны на{' '}
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Избранное</h2>
                   <button
                     onClick={() => navigate('/favorites')}
-                    className="text-blue-600 hover:text-blue-800 font-medium underline focus:outline-none"
+                    className="text-blue-600 hover:text-blue-800 font-medium underline focus:outline-none text-sm"
                   >
-                    странице избранного
-                  </button>
-                </p>
-
-                <div className="text-center py-12">
-                  <img
-                    src={favoriteIcon}
-                    alt="Избранное"
-                    className="w-24 h-24 mx-auto mb-4 opacity-50"
-                  />
-                  <p className="text-gray-500">
-                    Здесь будут отображаться ваши избранные товары
-                  </p>
-                  <button
-                    onClick={() => navigate('/')}
-                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-                  >
-                    Перейти к покупкам
+                    Перейти на страницу избранного
                   </button>
                 </div>
+
+                {favoritesLoading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  </div>
+                ) : favoriteItems.length === 0 ? (
+                  <div className="text-center py-12">
+                    <img
+                      src={favoriteIcon}
+                      alt="Избранное"
+                      className="w-24 h-24 mx-auto mb-4 opacity-50"
+                    />
+                    <p className="text-gray-500 mb-4">
+                      У вас пока нет избранных товаров
+                    </p>
+                    <button
+                      onClick={() => navigate('/')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                    >
+                      Перейти к покупкам
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {favoriteItems.map((product) => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

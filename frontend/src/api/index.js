@@ -472,6 +472,20 @@ export const authAPI = {
   },
 };
 
+// Helper function to get headers for cart/favorites (with auth if logged in)
+const getCartFavoritesHeaders = () => {
+  const token = getToken();
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
+
 // Helper function for handling cart API errors
 const handleCartError = async (response) => {
   let errorMessage = 'Произошла ошибка при работе с корзиной';
@@ -507,7 +521,8 @@ export const cartAPI = {
   getCart: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/cart/`, {
-        credentials: 'include', // Важно для отправки cookies
+        headers: getCartFavoritesHeaders(),
+        credentials: 'include', // Keep for backward compatibility with session cookies
       });
       if (!response.ok) {
         await handleCartError(response);
@@ -526,6 +541,7 @@ export const cartAPI = {
   getCartSummary: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/cart/summary`, {
+        headers: getCartFavoritesHeaders(),
         credentials: 'include',
       });
       if (!response.ok) {
@@ -545,9 +561,7 @@ export const cartAPI = {
     try {
       const response = await fetch(`${API_BASE_URL}/cart/items`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getCartFavoritesHeaders(),
         credentials: 'include',
         body: JSON.stringify({
           product_id,
@@ -571,9 +585,7 @@ export const cartAPI = {
     try {
       const response = await fetch(`${API_BASE_URL}/cart/items/${product_id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getCartFavoritesHeaders(),
         credentials: 'include',
         body: JSON.stringify({
           quantity,
@@ -596,6 +608,7 @@ export const cartAPI = {
     try {
       const response = await fetch(`${API_BASE_URL}/cart/items/${product_id}`, {
         method: 'DELETE',
+        headers: getCartFavoritesHeaders(),
         credentials: 'include',
       });
       if (!response.ok) {
@@ -615,6 +628,7 @@ export const cartAPI = {
     try {
       const response = await fetch(`${API_BASE_URL}/cart/`, {
         method: 'DELETE',
+        headers: getCartFavoritesHeaders(),
         credentials: 'include',
       });
       if (!response.ok) {
@@ -668,7 +682,8 @@ export const favoritesAPI = {
   getFavorites: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/favorites/`, {
-        credentials: 'include', // Важно для отправки cookies
+        headers: getCartFavoritesHeaders(),
+        credentials: 'include', // Keep for backward compatibility with session cookies
       });
       if (!response.ok) {
         await handleFavoritesError(response);
@@ -688,6 +703,7 @@ export const favoritesAPI = {
     try {
       const response = await fetch(`${API_BASE_URL}/favorites/${productId}`, {
         method: 'POST',
+        headers: getCartFavoritesHeaders(),
         credentials: 'include',
       });
       if (!response.ok) {
@@ -715,6 +731,7 @@ export const favoritesAPI = {
     try {
       const response = await fetch(`${API_BASE_URL}/favorites/${productId}`, {
         method: 'DELETE',
+        headers: getCartFavoritesHeaders(),
         credentials: 'include',
       });
       if (!response.ok) {
