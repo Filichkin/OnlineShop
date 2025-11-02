@@ -12,14 +12,14 @@ from app.models import Favorite, FavoriteItem, Product
 
 
 class CRUDFavorite:
-    '''CRUD operations for favorite list.'''
+    """CRUD operations for favorite list."""
 
     async def get_by_session(
         self,
         session_id: str,
         session: AsyncSession
     ) -> Optional[Favorite]:
-        '''
+        """
         Get favorite list by session_id.
 
         Args:
@@ -28,7 +28,7 @@ class CRUDFavorite:
 
         Returns:
             Favorite object or None if not found
-        '''
+        """
         result = await session.execute(
             select(Favorite)
             .where(Favorite.session_id == session_id)
@@ -45,7 +45,7 @@ class CRUDFavorite:
         session_id: str,
         session: AsyncSession
     ) -> Favorite:
-        '''
+        """
         Get existing favorite list or create new one for guest session.
 
         Args:
@@ -54,7 +54,7 @@ class CRUDFavorite:
 
         Returns:
             Favorite object
-        '''
+        """
         favorite = await self.get_by_session(session_id, session)
 
         if favorite is None:
@@ -80,7 +80,7 @@ class CRUDFavorite:
         product_id: int,
         session: AsyncSession
     ) -> FavoriteItem:
-        '''
+        """
         Add product to favorite list.
 
         Args:
@@ -93,7 +93,7 @@ class CRUDFavorite:
 
         Raises:
             ValueError: If product not found, inactive, or already in favorites
-        '''
+        """
         # Check if product exists and is active
         product_result = await session.execute(
             select(Product).where(
@@ -150,7 +150,7 @@ class CRUDFavorite:
         product_id: int,
         session: AsyncSession
     ) -> bool:
-        '''
+        """
         Remove item from favorites.
 
         Args:
@@ -160,7 +160,7 @@ class CRUDFavorite:
 
         Returns:
             True if item was removed, False if not found
-        '''
+        """
         result = await session.execute(
             delete(FavoriteItem)
             .where(
@@ -177,7 +177,7 @@ class CRUDFavorite:
         product_id: int,
         session: AsyncSession
     ) -> bool:
-        '''
+        """
         Check if product is in favorites.
 
         Args:
@@ -187,7 +187,7 @@ class CRUDFavorite:
 
         Returns:
             True if product is in favorites, False otherwise
-        '''
+        """
         result = await session.execute(
             select(FavoriteItem)
             .where(
@@ -201,7 +201,7 @@ class CRUDFavorite:
         self,
         session: AsyncSession
     ) -> int:
-        '''
+        """
         Delete expired guest favorite lists.
 
         This method should be called periodically by a background task.
@@ -211,7 +211,7 @@ class CRUDFavorite:
 
         Returns:
             Number of favorite lists deleted
-        '''
+        """
         current_time = utcnow()
         result = await session.execute(
             delete(Favorite).where(Favorite.expires_at < current_time)
@@ -223,13 +223,11 @@ class CRUDFavorite:
 
     async def get_by_user(
         self,
-        user_id: UUID,
+        user_id: int,
         session: AsyncSession
     ) -> Optional[Favorite]:
-        '''
+        """
         Get favorite list by user_id.
-
-        TODO: Implement when user authentication is added.
 
         Args:
             user_id: User identifier
@@ -237,7 +235,7 @@ class CRUDFavorite:
 
         Returns:
             Favorite object or None if not found
-        '''
+        """
         result = await session.execute(
             select(Favorite)
             .where(Favorite.user_id == user_id)
@@ -249,16 +247,48 @@ class CRUDFavorite:
         )
         return result.scalars().first()
 
+    async def get_or_create_for_user(
+        self,
+        user_id: int,
+        session: AsyncSession
+    ) -> Favorite:
+        """
+        Get existing favorite list or create new one for authenticated user.
+
+        Args:
+            user_id: User identifier
+            session: Database session
+
+        Returns:
+            Favorite object
+        """
+        favorite = await self.get_by_user(user_id, session)
+
+        if favorite is None:
+            expires_at = utcnow() + timedelta(
+                days=Constants.FAVORITE_SESSION_LIFETIME_DAYS
+            )
+            favorite = Favorite(
+                user_id=user_id,
+                expires_at=expires_at
+            )
+            session.add(favorite)
+            await session.commit()
+            await session.refresh(
+                favorite,
+                attribute_names=['items']
+            )
+
+        return favorite
+
     async def merge_favorites(
         self,
         session_favorite: Favorite,
         user_favorite: Favorite,
         session: AsyncSession
     ) -> Favorite:
-        '''
+        """
         Merge guest favorites into user favorites on login.
-
-        TODO: Implement when user authentication is added.
 
         Args:
             session_favorite: Guest favorite (from session)
@@ -267,14 +297,40 @@ class CRUDFavorite:
 
         Returns:
             Merged favorite list
-        '''
-        # Implementation will be added with user authentication
-        # Logic:
-        # 1. Iterate through session_favorite items
-        # 2. For each item, check if it exists in user_favorite
-        # 3. If not exists, move item to user_favorite
-        # 4. Delete session_favorite
-        pass
+        """
+        # Get all items from session favorite
+        for session_item in session_favorite.items:
+            # Check if product exists in user favorites
+            user_item_result = await session.execute(
+                select(FavoriteItem)
+                .where(
+                    FavoriteItem.favorite_id == user_favorite.id,
+                    FavoriteItem.product_id == session_item.product_id
+                )
+            )
+            user_item = user_item_result.scalars().first()
+
+            # Only add if not already in user favorites
+            if not user_item:
+                # Product doesn't exist in user favorites, move it
+                session_item.favorite_id = user_favorite.id
+
+        # Delete session favorite
+        await session.delete(session_favorite)
+        await session.commit()
+
+        # Refresh user favorite with all items
+        await session.refresh(user_favorite)
+        result = await session.execute(
+            select(Favorite)
+            .where(Favorite.id == user_favorite.id)
+            .options(
+                selectinload(Favorite.items)
+                .selectinload(FavoriteItem.product)
+                .selectinload(Product.images)
+            )
+        )
+        return result.scalars().first()
 
 
 favorite_crud = CRUDFavorite()

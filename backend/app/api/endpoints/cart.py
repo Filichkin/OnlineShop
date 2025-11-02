@@ -11,7 +11,6 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.constants import Constants
 from app.core.db import get_async_session
 from app.crud.cart import cart_crud

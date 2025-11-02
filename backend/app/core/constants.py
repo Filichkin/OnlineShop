@@ -104,3 +104,28 @@ class Constants:
     FAVORITES_PREFIX = '/favorites'
     FAVORITES_TAGS = ('favorites',)
     FAVORITE_SESSION_LIFETIME_DAYS = 30  # Favorite list expires after 30 days
+
+    # Validation Patterns
+    PASSWORD_PATTERN: str = (
+        r'^(?=.*[A-Za-z])(?=.*\d)'
+        r'(?=.*[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?~`])'
+        r'[A-Za-z\d!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?~`]{8,}$'
+    )
+    # Russian phone format: +7XXXXXXXXXX (11 digits total)
+    PHONE_PATTERN: str = r'^\+7\d{10}$'
+    DATE_PATTERN: str = r'^\d{4}-\d{2}-\d{2}$'
+    # Email pattern for validation
+    EMAIL_PATTERN: str = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    # Telegram ID pattern: @username (alphanumeric and underscores)
+    TELEGRAM_PATTERN: str = r'^@[a-zA-Z0-9_]{5,32}$'
+
+    # User Field Lengths
+    FIRST_NAME_MIN_LEN = 1
+    FIRST_NAME_MAX_LEN = 50
+    LAST_NAME_MAX_LEN = 50
+    PHONE_MIN_LEN = 12
+    PHONE_MAX_LEN = 12
+    CITY_MAX_LEN = 100
+    TELEGRAM_ID_MIN_LEN = 6
+    TELEGRAM_ID_MAX_LEN = 33
+    ADDRESS_MAX_LEN = 255

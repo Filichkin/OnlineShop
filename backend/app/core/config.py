@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     postgres_db: str
     postgres_host: str
 
+    # Email settings
+    yandax_email: str
+    yandex_app_pass: str
+    smtp_host: str = 'smtp.yandex.ru'
+    smtp_port: int = 587
+
     @field_validator('secret')
     @classmethod
     def validate_secret(cls, v: str, info: ValidationInfo) -> str:

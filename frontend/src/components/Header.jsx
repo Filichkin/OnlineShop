@@ -22,6 +22,7 @@ function Header() {
   const totalItems = useSelector(selectCartTotalItems);
   const totalFavorites = useSelector(selectFavoritesTotalItems);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const user = useSelector((state) => state.auth.user);
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const navigate = useNavigate();
@@ -32,6 +33,14 @@ function Header() {
     } else {
       setIsLoginModalOpen(true);
     }
+  };
+
+  // Get display name for profile button
+  const getDisplayName = () => {
+    if (user && user.first_name) {
+      return user.first_name;
+    }
+    return isAuthenticated ? 'Профиль' : 'Вход';
   };
 
   return (
@@ -93,7 +102,9 @@ function Header() {
                 aria-label={isAuthenticated ? "Профиль" : "Вход"}
               >
                 <img className="w-8 h-8 sm:w-10 sm:h-10 object-contain" src={profileIcon} alt={isAuthenticated ? "Профиль" : "Вход"} />
-                <span className="hidden sm:inline">{isAuthenticated ? 'Профиль' : 'Вход'}</span>
+                <span className="hidden sm:inline max-w-[80px] truncate" title={getDisplayName()}>
+                  {getDisplayName()}
+                </span>
               </button>
             </li>
           </ul>

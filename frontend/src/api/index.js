@@ -300,31 +300,175 @@ export const brandsAPI = {
 
 // API для аутентификации
 export const authAPI = {
-  // Логин
-  login: async (username, password) => {
-    const response = await fetch(`${API_BASE_URL}/auth/jwt/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        username,
-        password,
-      }),
-    });
-    if (!response.ok) throw new Error('Failed to login');
-    return response.json();
+  // Регистрация нового пользователя
+  register: async (userData) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const error = new Error(errorData.detail || 'Ошибка регистрации');
+        error.status = response.status;
+        error.details = errorData;
+        throw error;
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Логин с phone или email
+  login: async (identifier, password) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email_or_phone: identifier,
+          password,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        let errorMessage = 'Неверный логин или пароль';
+
+        if (response.status === 400) {
+          errorMessage = errorData.detail || 'Неверные данные для входа';
+        } else if (response.status === 401) {
+          errorMessage = 'Неверный логин или пароль';
+        } else if (response.status === 500) {
+          errorMessage = 'Ошибка сервера. Попробуйте позже';
+        }
+
+        const error = new Error(errorMessage);
+        error.status = response.status;
+        error.details = errorData;
+        throw error;
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Восстановление пароля
+  forgotPassword: async (identifier) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: identifier,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const error = new Error(errorData.detail || 'Ошибка при восстановлении пароля');
+        error.status = response.status;
+        error.details = errorData;
+        throw error;
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
   },
 
   // Получить текущего пользователя
-  getCurrentUser: async (token) => {
-    const response = await fetch(`${API_BASE_URL}/users/me`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-    if (!response.ok) throw new Error('Failed to get current user');
-    return response.json();
+  getCurrentUser: async () => {
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('Токен не найден');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/users/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Token expired or invalid
+          localStorage.removeItem('token');
+          throw new Error('Сессия истекла. Войдите снова');
+        }
+        throw new Error('Не удалось получить данные пользователя');
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Обновить профиль пользователя
+  updateProfile: async (userData) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('Токен не найден');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/users/me`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          throw new Error('Сессия истекла. Войдите снова');
+        }
+
+        const error = new Error(errorData.detail || 'Ошибка при обновлении профиля');
+        error.status = response.status;
+        error.details = errorData;
+        throw error;
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
   },
 };
 

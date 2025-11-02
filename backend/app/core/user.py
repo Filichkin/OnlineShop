@@ -56,6 +56,11 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         password: str,
         user: Union[UserCreate, User],
     ) -> None:
+        """
+        Validate password strength and uniqueness.
+
+        Ensures password doesn't contain email or phone number.
+        """
         if len(password) < Constants.USER_PASSWORD_MIN_LEN:
             raise InvalidPasswordException(
                 reason=Messages.PASSWORD_TOO_SHORT,
@@ -64,11 +69,27 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
             raise InvalidPasswordException(
                 reason=Messages.EMAIL_IN_PASSWORD
             )
+        # Check if phone is in password (for UserCreate)
+        if hasattr(user, 'phone') and user.phone in password:
+            raise InvalidPasswordException(
+                reason=Messages.PHONE_IN_PASSWORD
+            )
 
     async def on_after_register(
-            self, user: User, request: Optional[Request] = None
+        self,
+        user: User,
+        request: Optional[Request] = None
     ):
-        logging.info(f'{Messages.USER_REGISTERED}{user.email}')
+        """
+        Hook called after successful user registration.
+
+        Logs registration and can be extended for additional logic
+        (e.g., sending welcome email, initializing user data).
+        """
+        logging.info(
+            f'{Messages.USER_REGISTERED}'
+            f'{user.email} (phone: {user.phone})'
+        )
 
 
 async def get_user_manager(user_db=Depends(get_user_db)):

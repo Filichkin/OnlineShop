@@ -271,13 +271,11 @@ class CRUDCart:
 
     async def get_by_user(
         self,
-        user_id: UUID,
+        user_id: int,
         session: AsyncSession
     ) -> Optional[Cart]:
         """
         Get cart by user_id.
-
-        TODO: Implement when user authentication is added.
 
         Args:
             user_id: User identifier
@@ -297,6 +295,40 @@ class CRUDCart:
         )
         return result.scalars().first()
 
+    async def get_or_create_for_user(
+        self,
+        user_id: int,
+        session: AsyncSession
+    ) -> Cart:
+        """
+        Get existing cart or create new one for authenticated user.
+
+        Args:
+            user_id: User identifier
+            session: Database session
+
+        Returns:
+            Cart object
+        """
+        cart = await self.get_by_user(user_id, session)
+
+        if cart is None:
+            expires_at = utcnow() + timedelta(
+                days=Constants.CART_SESSION_LIFETIME_DAYS
+            )
+            cart = Cart(
+                user_id=user_id,
+                expires_at=expires_at
+            )
+            session.add(cart)
+            await session.commit()
+            await session.refresh(
+                cart,
+                attribute_names=['items']
+            )
+
+        return cart
+
     async def merge_carts(
         self,
         session_cart: Cart,
@@ -306,8 +338,6 @@ class CRUDCart:
         """
         Merge guest cart into user cart on login.
 
-        TODO: Implement when user authentication is added.
-
         Args:
             session_cart: Guest cart (from session)
             user_cart: User cart (authenticated)
@@ -316,14 +346,44 @@ class CRUDCart:
         Returns:
             Merged cart (user cart with items from both carts)
         """
-        # Implementation will be added with user authentication
-        # Logic:
-        # 1. Iterate through session_cart items
-        # 2. For each item, check if it exists in user_cart
-        # 3. If exists, update quantity (sum of both)
-        # 4. If not, move item to user_cart
-        # 5. Delete session_cart
-        pass
+        # Get all items from session cart
+        for session_item in session_cart.items:
+            # Check if product exists in user cart
+            user_item_result = await session.execute(
+                select(CartItem)
+                .where(
+                    CartItem.cart_id == user_cart.id,
+                    CartItem.product_id == session_item.product_id
+                )
+            )
+            user_item = user_item_result.scalars().first()
+
+            if user_item:
+                # Product exists in user cart, update quantity
+                new_quantity = user_item.quantity + session_item.quantity
+                if new_quantity > Constants.MAX_CART_ITEM_QUANTITY:
+                    new_quantity = Constants.MAX_CART_ITEM_QUANTITY
+                user_item.quantity = new_quantity
+            else:
+                # Product doesn't exist in user cart, move it
+                session_item.cart_id = user_cart.id
+
+        # Delete session cart
+        await session.delete(session_cart)
+        await session.commit()
+
+        # Refresh user cart with all items
+        await session.refresh(user_cart)
+        result = await session.execute(
+            select(Cart)
+            .where(Cart.id == user_cart.id)
+            .options(
+                selectinload(Cart.items)
+                .selectinload(CartItem.product)
+                .selectinload(Product.images)
+            )
+        )
+        return result.scalars().first()
 
 
 cart_crud = CRUDCart()
