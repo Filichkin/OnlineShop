@@ -274,8 +274,8 @@ function LoginModal({ isOpen, onClose }) {
             </div>
           )}
 
-          {/* Error Message */}
-          {error && (
+          {/* Error Message - don't show "Токен не найден" error */}
+          {error && error !== 'Токен не найден' && !error.includes('Сессия истекла') && (
             <div className="mb-4 p-3 bg-red-100 text-red-800 rounded-md text-sm">
               {error}
             </div>

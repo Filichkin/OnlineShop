@@ -13,7 +13,7 @@ const AdminLogin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await dispatch(login({ username, password })).unwrap();
+      await dispatch(login({ identifier: username, password })).unwrap();
       navigate('/admin/panel');
     } catch (err) {
       // Ошибка уже обработана в slice
