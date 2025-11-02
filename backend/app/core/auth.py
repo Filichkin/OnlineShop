@@ -92,7 +92,6 @@ async def merge_session_data(
         return
 
     # Get or create user cart and favorites
-    # user_id is already an integer, use it directly
     user_cart = await cart_crud.get_or_create_for_user(
         user_id,
         session
@@ -109,16 +108,42 @@ async def merge_session_data(
         session
     )
 
-    # Merge if session data exists
-    if session_cart and session_cart.items:
-        await cart_crud.merge_carts(session_cart, user_cart, session)
+    # Merge if session data exists and has items
+    if session_cart:
+        # Check if cart has items by checking length
+        # Load items if needed
+        cart_items_count = len(session_cart.items) if session_cart.items else 0
+        if cart_items_count > 0:
+            await cart_crud.merge_carts(session_cart, user_cart, session)
+        else:
+            # Cart exists but is empty, delete it
+            from sqlalchemy import delete
+            from app.models.cart import Cart
+            await session.execute(
+                delete(Cart).where(Cart.id == session_cart.id)
+            )
+            await session.commit()
 
-    if session_favorite and session_favorite.items:
-        await favorite_crud.merge_favorites(
-            session_favorite,
-            user_favorite,
-            session
+    if session_favorite:
+        # Check if favorite has items by checking length
+        # Load items if needed
+        fav_items_count = (
+            len(session_favorite.items) if session_favorite.items else 0
         )
+        if fav_items_count > 0:
+            await favorite_crud.merge_favorites(
+                session_favorite,
+                user_favorite,
+                session
+            )
+        else:
+            # Favorite exists but is empty, delete it
+            from sqlalchemy import delete
+            from app.models.favorite import Favorite
+            await session.execute(
+                delete(Favorite).where(Favorite.id == session_favorite.id)
+            )
+            await session.commit()
 
 
 async def login_user(

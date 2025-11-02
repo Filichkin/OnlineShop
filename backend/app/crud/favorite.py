@@ -1,8 +1,7 @@
 from datetime import timedelta
 from typing import Optional
-from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -298,8 +297,24 @@ class CRUDFavorite:
         Returns:
             Merged favorite list
         """
-        # Get all items from session favorite
-        for session_item in session_favorite.items:
+        # Check if session favorite exists
+        if not session_favorite:
+            return user_favorite
+
+        # Eagerly load all items to avoid lazy loading issues
+        await session.refresh(session_favorite, attribute_names=['items'])
+        await session.refresh(user_favorite, attribute_names=['items'])
+
+        # Get all items from session favorite (copy list to avoid modification during iteration)
+        session_items = list(session_favorite.items)
+
+        if not session_items:
+            # No items to merge, delete empty session favorite
+            await session.delete(session_favorite)
+            await session.commit()
+            return user_favorite
+
+        for session_item in session_items:
             # Check if product exists in user favorites
             user_item_result = await session.execute(
                 select(FavoriteItem)
@@ -310,17 +325,28 @@ class CRUDFavorite:
             )
             user_item = user_item_result.scalars().first()
 
-            # Only add if not already in user favorites
-            if not user_item:
-                # Product doesn't exist in user favorites, move it
-                session_item.favorite_id = user_favorite.id
+            if user_item:
+                # Product already in user favorites, delete session item
+                await session.delete(session_item)
+            else:
+                # Product doesn't exist in user favorites, move it by updating favorite_id via SQL
+                await session.execute(
+                    update(FavoriteItem)
+                    .where(FavoriteItem.id == session_item.id)
+                    .values(favorite_id=user_favorite.id)
+                )
 
-        # Delete session favorite
-        await session.delete(session_favorite)
+        # Commit all changes to favorite items
         await session.commit()
 
-        # Refresh user favorite with all items
-        await session.refresh(user_favorite)
+        # Delete empty session favorite (only if it has no items left)
+        # First, check if session favorite still has items
+        await session.refresh(session_favorite, attribute_names=['items'])
+        if not session_favorite.items or len(session_favorite.items) == 0:
+            await session.delete(session_favorite)
+            await session.commit()
+
+        # Reload user favorite with all items
         result = await session.execute(
             select(Favorite)
             .where(Favorite.id == user_favorite.id)
@@ -330,7 +356,8 @@ class CRUDFavorite:
                 .selectinload(Product.images)
             )
         )
-        return result.scalars().first()
+        merged_favorite = result.scalars().first()
+        return merged_favorite or user_favorite
 
 
 favorite_crud = CRUDFavorite()
