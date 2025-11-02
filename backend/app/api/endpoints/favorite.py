@@ -14,7 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.constants import Constants
 from app.core.db import get_async_session
+from app.core.user import current_user_optional
 from app.crud.favorite import favorite_crud
+from app.models.user import User
 from app.schemas.favorite import (
     FavoriteItemAddResponse,
     FavoriteItemDeleteResponse,
@@ -82,18 +84,26 @@ def set_session_cookie(response: Response, session_id: str) -> None:
 )
 async def get_favorites(
     response: Response,
+    user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
-    Get or create favorite list for current session.
+    Get or create favorite list for current user or session.
+
+    For authenticated users: returns user's favorites (by user_id).
+    For anonymous users: returns session favorites (by session_id).
 
     Returns favorite list with all items, including product details.
     '''
-    favorite = await favorite_crud.get_or_create_for_session(
-        session_id,
-        session
-    )
+    # Use user favorites for authenticated users, session favorites for anonymous
+    if user:
+        favorite = await favorite_crud.get_or_create_for_user(user.id, session)
+    else:
+        favorite = await favorite_crud.get_or_create_for_session(
+            session_id,
+            session
+        )
 
     # Set session cookie if it's a new session
     set_session_cookie(response, session_id)
@@ -148,18 +158,26 @@ async def get_favorites(
 async def add_to_favorites(
     product_id: int,
     response: Response,
+    user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
     Add product to favorites.
 
+    For authenticated users: adds to user's favorites (by user_id).
+    For anonymous users: adds to session favorites (by session_id).
+
     Raises 404 if product not found or 409 if already in favorites.
     '''
-    favorite = await favorite_crud.get_or_create_for_session(
-        session_id,
-        session
-    )
+    # Use user favorites for authenticated users, session favorites for anonymous
+    if user:
+        favorite = await favorite_crud.get_or_create_for_user(user.id, session)
+    else:
+        favorite = await favorite_crud.get_or_create_for_session(
+            session_id,
+            session
+        )
 
     # Set session cookie
     set_session_cookie(response, session_id)
@@ -220,15 +238,23 @@ async def add_to_favorites(
 )
 async def remove_from_favorites(
     product_id: int,
+    user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
     Remove product from favorites.
 
+    For authenticated users: removes from user's favorites (by user_id).
+    For anonymous users: removes from session favorites (by session_id).
+
     Raises 404 if favorite list or item not found.
     '''
-    favorite = await favorite_crud.get_by_session(session_id, session)
+    # Use user favorites for authenticated users, session favorites for anonymous
+    if user:
+        favorite = await favorite_crud.get_by_user(user.id, session)
+    else:
+        favorite = await favorite_crud.get_by_session(session_id, session)
 
     if not favorite:
         raise HTTPException(

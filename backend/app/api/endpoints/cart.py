@@ -13,7 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import Constants
 from app.core.db import get_async_session
+from app.core.user import current_user_optional
 from app.crud.cart import cart_crud
+from app.models.user import User
 from app.schemas.cart import (
     CartClearResponse,
     CartItemCreate,
@@ -84,18 +86,26 @@ def set_session_cookie(response: Response, session_id: str) -> None:
 )
 async def get_cart(
     response: Response,
+    user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
     session: AsyncSession = Depends(get_async_session)
 ):
     """
-    Get or create shopping cart for current session.
+    Get or create shopping cart for current user or session.
+
+    For authenticated users: returns user's cart (by user_id).
+    For anonymous users: returns session cart (by session_id).
 
     Returns cart with all items, including product details.
     """
-    cart = await cart_crud.get_or_create_for_session(
-        session_id,
-        session
-    )
+    # Use user cart for authenticated users, session cart for anonymous
+    if user:
+        cart = await cart_crud.get_or_create_for_user(user.id, session)
+    else:
+        cart = await cart_crud.get_or_create_for_session(
+            session_id,
+            session
+        )
 
     # Set session cookie if it's a new session
     set_session_cookie(response, session_id)
@@ -155,15 +165,23 @@ async def get_cart(
     description='Get brief cart information for cart icon'
 )
 async def get_cart_summary(
+    user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
     session: AsyncSession = Depends(get_async_session)
 ):
     """
     Get cart summary (total items, price, count).
 
+    For authenticated users: returns user's cart summary (by user_id).
+    For anonymous users: returns session cart summary (by session_id).
+
     Lightweight endpoint for cart icon badge.
     """
-    cart = await cart_crud.get_by_session(session_id, session)
+    # Use user cart for authenticated users, session cart for anonymous
+    if user:
+        cart = await cart_crud.get_by_user(user.id, session)
+    else:
+        cart = await cart_crud.get_by_session(session_id, session)
 
     if not cart:
         return CartSummary(
@@ -195,18 +213,26 @@ async def get_cart_summary(
 async def add_item_to_cart(
     item_data: CartItemCreate,
     response: Response,
+    user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
     session: AsyncSession = Depends(get_async_session)
 ):
     """
     Add product to cart or update quantity if already exists.
 
+    For authenticated users: adds to user's cart (by user_id).
+    For anonymous users: adds to session cart (by session_id).
+
     If product is already in cart, quantity will be increased.
     """
-    cart = await cart_crud.get_or_create_for_session(
-        session_id,
-        session
-    )
+    # Use user cart for authenticated users, session cart for anonymous
+    if user:
+        cart = await cart_crud.get_or_create_for_user(user.id, session)
+    else:
+        cart = await cart_crud.get_or_create_for_session(
+            session_id,
+            session
+        )
 
     # Set session cookie
     set_session_cookie(response, session_id)
@@ -260,15 +286,23 @@ async def add_item_to_cart(
 async def update_cart_item(
     product_id: int,
     item_data: CartItemUpdate,
+    user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
     session: AsyncSession = Depends(get_async_session)
 ):
     """
     Update cart item quantity.
 
+    For authenticated users: updates item in user's cart (by user_id).
+    For anonymous users: updates item in session cart (by session_id).
+
     Raises 404 if cart or item not found.
     """
-    cart = await cart_crud.get_by_session(session_id, session)
+    # Use user cart for authenticated users, session cart for anonymous
+    if user:
+        cart = await cart_crud.get_by_user(user.id, session)
+    else:
+        cart = await cart_crud.get_by_session(session_id, session)
 
     if not cart:
         raise HTTPException(
@@ -324,15 +358,23 @@ async def update_cart_item(
 )
 async def remove_cart_item(
     product_id: int,
+    user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
     session: AsyncSession = Depends(get_async_session)
 ):
     """
     Remove product from cart.
 
+    For authenticated users: removes from user's cart (by user_id).
+    For anonymous users: removes from session cart (by session_id).
+
     Raises 404 if cart or item not found.
     """
-    cart = await cart_crud.get_by_session(session_id, session)
+    # Use user cart for authenticated users, session cart for anonymous
+    if user:
+        cart = await cart_crud.get_by_user(user.id, session)
+    else:
+        cart = await cart_crud.get_by_session(session_id, session)
 
     if not cart:
         raise HTTPException(
@@ -365,15 +407,23 @@ async def remove_cart_item(
     description='Remove all items from cart'
 )
 async def clear_cart(
+    user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
     session: AsyncSession = Depends(get_async_session)
 ):
     """
     Clear all items from cart.
 
+    For authenticated users: clears user's cart (by user_id).
+    For anonymous users: clears session cart (by session_id).
+
     Returns 404 if cart not found.
     """
-    cart = await cart_crud.get_by_session(session_id, session)
+    # Use user cart for authenticated users, session cart for anonymous
+    if user:
+        cart = await cart_crud.get_by_user(user.id, session)
+    else:
+        cart = await cart_crud.get_by_session(session_id, session)
 
     if not cart:
         raise HTTPException(
