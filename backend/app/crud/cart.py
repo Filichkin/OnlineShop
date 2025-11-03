@@ -353,7 +353,8 @@ class CRUDCart:
         await session.refresh(session_cart, attribute_names=['items'])
         await session.refresh(user_cart, attribute_names=['items'])
 
-        # Get all items from session cart (copy list to avoid modification during iteration)
+        # Get all items from session cart
+        # (copy list to avoid modification during iteration)
         session_items = list(session_cart.items)
 
         if not session_items:
@@ -374,7 +375,8 @@ class CRUDCart:
             user_item = user_item_result.scalars().first()
 
             if user_item:
-                # Product exists in user cart, update quantity and delete session item
+                # Product exists in user cart,
+                # update quantity and delete session item
                 new_quantity = user_item.quantity + session_item.quantity
                 if new_quantity > Constants.MAX_CART_ITEM_QUANTITY:
                     new_quantity = Constants.MAX_CART_ITEM_QUANTITY
@@ -382,7 +384,8 @@ class CRUDCart:
                 # Delete the session item as we've merged it into user item
                 await session.delete(session_item)
             else:
-                # Product doesn't exist in user cart, move it by updating cart_id via SQL
+                # Product doesn't exist in user cart,
+                # move it by updating cart_id via SQL
                 await session.execute(
                     update(CartItem)
                     .where(CartItem.id == session_item.id)

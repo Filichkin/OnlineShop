@@ -1,6 +1,5 @@
 from datetime import date
 from typing import Optional
-import re
 
 from fastapi_users import schemas
 from pydantic import (
@@ -11,7 +10,15 @@ from pydantic import (
 )
 
 from app.core.constants import Constants
-from app.core.messages import Messages
+from app.schemas.validators import (
+    validate_date_of_birth_optional,
+    validate_first_name,
+    validate_first_name_optional,
+    validate_last_name_optional,
+    validate_phone,
+    validate_phone_optional,
+    validate_telegram_id_optional
+)
 
 
 class UserRead(schemas.BaseUser[int]):
@@ -58,27 +65,15 @@ class UserCreate(schemas.BaseUserCreate):
 
     @field_validator('first_name')
     @classmethod
-    def validate_first_name(cls, v: str) -> str:
+    def validate_first_name(cls, value: str) -> str:
         """Validate first name is not empty and has valid characters."""
-        if not v or not v.strip():
-            raise ValueError(Messages.FIRST_NAME_REQUIRED)
-        # Remove leading/trailing whitespace
-        v = v.strip()
-        if len(v) < Constants.FIRST_NAME_MIN_LEN:
-            raise ValueError(Messages.FIRST_NAME_TOO_SHORT)
-        return v
+        return validate_first_name(value)
 
     @field_validator('phone')
     @classmethod
-    def validate_phone(cls, v: str) -> str:
+    def validate_phone(cls, value: str) -> str:
         """Validate phone number format."""
-        if not v:
-            raise ValueError(Messages.PHONE_REQUIRED)
-        # Remove whitespace
-        v = v.strip()
-        if not re.match(Constants.PHONE_PATTERN, v):
-            raise ValueError(Messages.INVALID_PHONE_FORMAT)
-        return v
+        return validate_phone(value)
 
 
 class UserUpdate(schemas.BaseUserUpdate):
@@ -128,57 +123,39 @@ class UserUpdate(schemas.BaseUserUpdate):
 
     @field_validator('first_name')
     @classmethod
-    def validate_first_name(cls, v: Optional[str]) -> Optional[str]:
+    def validate_first_name(cls, value: Optional[str]) -> Optional[str]:
         """Validate first name if provided."""
-        if v is not None:
-            v = v.strip()
-            if len(v) < Constants.FIRST_NAME_MIN_LEN:
-                raise ValueError(Messages.FIRST_NAME_TOO_SHORT)
-        return v
+        return validate_first_name_optional(value)
 
     @field_validator('last_name')
     @classmethod
-    def validate_last_name(cls, v: Optional[str]) -> Optional[str]:
+    def validate_last_name(cls, value: Optional[str]) -> Optional[str]:
         """Validate last name if provided."""
-        if v is not None:
-            v = v.strip()
-        return v
+        return validate_last_name_optional(value)
 
     @field_validator('phone')
     @classmethod
-    def validate_phone(cls, v: Optional[str]) -> Optional[str]:
+    def validate_phone(cls, value: Optional[str]) -> Optional[str]:
         """Validate phone number format if provided."""
-        if v is not None:
-            v = v.strip()
-            if not re.match(Constants.PHONE_PATTERN, v):
-                raise ValueError(Messages.INVALID_PHONE_FORMAT)
-        return v
+        return validate_phone_optional(value)
 
     @field_validator('telegram_id')
     @classmethod
     def validate_telegram_id(
         cls,
-        v: Optional[str]
+        value: Optional[str]
     ) -> Optional[str]:
         """Validate Telegram ID format if provided."""
-        if v is not None:
-            v = v.strip()
-            if not re.match(Constants.TELEGRAM_PATTERN, v):
-                raise ValueError(Messages.INVALID_TELEGRAM_FORMAT)
-        return v
+        return validate_telegram_id_optional(value)
 
     @field_validator('date_of_birth')
     @classmethod
     def validate_date_of_birth(
         cls,
-        v: Optional[date]
+        value: Optional[date]
     ) -> Optional[date]:
         """Validate date of birth is not in future."""
-        if v is not None:
-            from datetime import date as dt_date
-            if v > dt_date.today():
-                raise ValueError(Messages.INVALID_DATE_OF_BIRTH)
-        return v
+        return validate_date_of_birth_optional(value)
 
 
 class UserLogin(schemas.BaseModel):
