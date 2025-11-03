@@ -1,4 +1,3 @@
-import logging
 from typing import Optional, Union
 
 from fastapi import Depends, Request
@@ -8,6 +7,7 @@ from fastapi_users import (
     IntegerIDMixin,
     InvalidPasswordException
 )
+from loguru import logger
 from fastapi_users.authentication import (
     AuthenticationBackend,
     BearerTransport,
@@ -86,9 +86,9 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         Logs registration and can be extended for additional logic
         (e.g., sending welcome email, initializing user data).
         """
-        logging.info(
-            f'{Messages.USER_REGISTERED}'
-            f'{user.email} (phone: {user.phone})'
+        logger.info(
+            f'Пользователь зарегистрирован: '
+            f'{user.email} (телефон: {user.phone})'
         )
 
 

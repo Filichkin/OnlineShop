@@ -3,6 +3,7 @@ from typing import List, Optional
 from fastapi import (
     APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 )
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -60,12 +61,20 @@ async def get_categories(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить список категорий с фильтрацией"""
-    return await category_crud.get_multi_with_status(
+    logger.debug(
+        f'Запрос списка категорий: skip={skip}, limit={limit}, '
+        f'is_active={is_active}'
+    )
+
+    categories = await category_crud.get_multi_with_status(
         session=session,
         skip=skip,
         limit=limit,
         is_active=is_active
     )
+
+    logger.info(f'Возвращено категорий: {len(categories)}')
+    return categories
 
 
 @router.get(
@@ -82,6 +91,11 @@ async def get_category(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить категорию по ID"""
+    logger.debug(
+        f'Запрос категории: category_id={category_id}, '
+        f'is_active={is_active}'
+    )
+
     # Проверяем существование и активность категории
     await validate_category_exists(category_id, session, must_be_active=True)
 
@@ -90,6 +104,11 @@ async def get_category(
         category_id=category_id,
         session=session,
         is_active=is_active
+    )
+
+    logger.info(
+        f'Категория получена: id={db_category.id}, '
+        f'name={db_category.name}'
     )
     return db_category
 
@@ -108,16 +127,24 @@ async def get_category_by_slug(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить категорию по слагу"""
+    logger.debug(f'Запрос категории по слагу: slug={slug}')
+
     db_category = await category_crud.get_with_status_by_slug(
         slug=slug,
         session=session,
         is_active=is_active
     )
     if not db_category:
+        logger.warning(f'Категория не найдена по слагу: slug={slug}')
         raise HTTPException(
             status_code=Constants.HTTP_404_NOT_FOUND,
             detail='Категория не найдена'
         )
+
+    logger.info(
+        f'Категория получена по слагу: id={db_category.id}, '
+        f'name={db_category.name}, slug={slug}'
+    )
     return db_category
 
 
@@ -138,16 +165,42 @@ async def create_category(
     current_user: User = Depends(current_superuser)
 ):
     """Создать новую категорию"""
-    # Валидируем создание категории
-    await validate_category_creation(name, session)
-
-    return await category_crud.create_with_image(
-        name=name,
-        description=description,
-        image_file=image,
-        icon_file=icon,
-        session=session
+    logger.bind(user_id=current_user.id).info(
+        f'Попытка создания категории: name={name}'
     )
+
+    try:
+        # Валидируем создание категории
+        await validate_category_creation(name, session)
+        logger.debug(f'Валидация пройдена для категории: name={name}')
+
+        category = await category_crud.create_with_image(
+            name=name,
+            description=description,
+            image_file=image,
+            icon_file=icon,
+            session=session
+        )
+
+        logger.bind(user_id=current_user.id).info(
+            f'Категория создана: id={category.id}, name={category.name}'
+        )
+        return category
+
+    except HTTPException:
+        logger.bind(user_id=current_user.id).warning(
+            f'Создание категории отклонено: name={name}'
+        )
+        raise
+    except Exception as e:
+        logger.bind(user_id=current_user.id).exception(
+            f'Ошибка при создании категории: {e}'
+        )
+        await session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail='Ошибка при создании категории'
+        )
 
 
 @router.patch(
@@ -169,18 +222,44 @@ async def update_category(
     current_user: User = Depends(current_superuser)
 ):
     """Обновить категорию"""
-    # Валидируем обновление категории
-    await validate_category_update(category_id, name, session)
-
-    return await category_crud.update_with_image(
-        category_id=category_id,
-        name=name,
-        description=description,
-        is_active=is_active,
-        image_file=image,
-        icon_file=icon,
-        session=session
+    logger.bind(user_id=current_user.id).info(
+        f'Попытка обновления категории: category_id={category_id}'
     )
+
+    try:
+        # Валидируем обновление категории
+        await validate_category_update(category_id, name, session)
+
+        category = await category_crud.update_with_image(
+            category_id=category_id,
+            name=name,
+            description=description,
+            is_active=is_active,
+            image_file=image,
+            icon_file=icon,
+            session=session
+        )
+
+        logger.bind(user_id=current_user.id).info(
+            f'Категория обновлена: id={category_id}, name={category.name}'
+        )
+        return category
+
+    except HTTPException:
+        logger.bind(user_id=current_user.id).warning(
+            f'Обновление категории отклонено: category_id={category_id}'
+        )
+        raise
+    except Exception as e:
+        logger.bind(user_id=current_user.id).exception(
+            f'Ошибка при обновлении категории: '
+            f'category_id={category_id}, error={e}'
+        )
+        await session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail='Ошибка при обновлении категории'
+        )
 
 
 @router.delete(
@@ -195,6 +274,10 @@ async def delete_category(
     current_user: User = Depends(current_superuser)
 ):
     """Мягкое удаление категории"""
+    logger.bind(user_id=current_user.id).info(
+        f'Попытка удаления категории: category_id={category_id}'
+    )
+
     # Проверяем существование категории
     await validate_category_exists(category_id, session, must_be_active=False)
 
@@ -204,10 +287,16 @@ async def delete_category(
         session=session
     )
 
-    return await category_crud.soft_delete(
+    result = await category_crud.soft_delete(
         db_obj=db_category,
         session=session
     )
+
+    logger.bind(user_id=current_user.id).info(
+        f'Категория удалена (мягкое): id={category_id}, '
+        f'name={db_category.name}'
+    )
+    return result
 
 
 @router.patch(
@@ -222,6 +311,10 @@ async def restore_category(
     current_user: User = Depends(current_superuser)
 ):
     """Восстановить категорию"""
+    logger.bind(user_id=current_user.id).info(
+        f'Попытка восстановления категории: category_id={category_id}'
+    )
+
     # Проверяем существование категории
     await validate_category_exists(category_id, session, must_be_active=False)
 
@@ -231,10 +324,16 @@ async def restore_category(
         session=session
     )
 
-    return await category_crud.restore(
+    result = await category_crud.restore(
         db_obj=db_category,
         session=session
     )
+
+    logger.bind(user_id=current_user.id).info(
+        f'Категория восстановлена: id={category_id}, '
+        f'name={db_category.name}'
+    )
+    return result
 
 
 @router.get(
@@ -263,6 +362,11 @@ async def get_category_products(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить продукты категории"""
+    logger.debug(
+        f'Запрос продуктов категории: category_id={category_id}, '
+        f'skip={skip}, limit={limit}, is_active={is_active}'
+    )
+
     # Проверяем существование и активность категории
     await validate_category_exists(category_id, session, must_be_active=True)
 
@@ -304,7 +408,7 @@ async def get_category_products(
     )
 
     # Преобразуем в ProductListResponse
-    return [
+    result = [
         ProductListResponse(
             id=p.id,
             name=p.name,
@@ -319,6 +423,12 @@ async def get_category_products(
             brand=brands_dict.get(p.brand_id)
         ) for p in products
     ]
+
+    logger.info(
+        f'Возвращено продуктов категории: category_id={category_id}, '
+        f'count={len(result)}'
+    )
+    return result
 
 
 @router.get(
@@ -347,12 +457,21 @@ async def get_category_products_by_slug(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить продукты категории по слагу"""
+    logger.debug(
+        f'Запрос продуктов категории по слагу: slug={slug}, '
+        f'skip={skip}, limit={limit}'
+    )
+
     db_category = await category_crud.get_with_status_by_slug(
         slug=slug,
         session=session,
         is_active=True
     )
     if not db_category:
+        logger.warning(
+            f'Категория не найдена по слагу при запросе продуктов: '
+            f'slug={slug}'
+        )
         raise HTTPException(
             status_code=Constants.HTTP_404_NOT_FOUND,
             detail='Категория не найдена'
@@ -389,7 +508,7 @@ async def get_category_products_by_slug(
     brands_dict = {brand.id: brand for brand in brands.scalars().all()}
 
     # Преобразуем в ProductListResponse
-    return [
+    result = [
         ProductListResponse(
             id=p.id,
             name=p.name,
@@ -405,6 +524,12 @@ async def get_category_products_by_slug(
         ) for p in products
     ]
 
+    logger.info(
+        f'Возвращено продуктов по слагу: slug={slug}, '
+        f'category_id={db_category.id}, count={len(result)}'
+    )
+    return result
+
 
 @router.get(
     '/{category_id}/products/{product_id}',
@@ -418,6 +543,11 @@ async def get_category_product(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить продукт из категории"""
+    logger.debug(
+        f'Запрос продукта категории: category_id={category_id}, '
+        f'product_id={product_id}'
+    )
+
     # Комплексная проверка существования категории, продукта и их связи
     await validate_category_and_product_relationship(
         category_id, product_id, session
@@ -439,6 +569,11 @@ async def get_category_product(
     )
     main_image = main_image_result.scalars().first()
     main_image_url = main_image.url if main_image else None
+
+    logger.info(
+        f'Продукт категории получен: category_id={category_id}, '
+        f'product_id={product_id}, name={product.name}'
+    )
 
     # Создаем ответ с main_image
     return ProductDetailResponse(
@@ -485,10 +620,19 @@ async def create_category_product(
     current_user: User = Depends(current_superuser)
 ):
     """Создать новый продукт в категории"""
+    logger.bind(user_id=current_user.id).info(
+        f'Попытка создания продукта: category_id={category_id}, '
+        f'name={name}, part_number={part_number}'
+    )
+
     try:
         # Комплексная валидация создания продукта
         await validate_product_creation(
             name, category_id, brand_id, images, session
+        )
+        logger.debug(
+            f'Валидация пройдена для продукта: name={name}, '
+            f'category_id={category_id}'
         )
 
         product = await category_crud.create_product_with_images(
@@ -507,6 +651,11 @@ async def create_category_product(
         if product.images:
             main_image = product.images[0].url
 
+        logger.bind(user_id=current_user.id).info(
+            f'Продукт создан в категории: id={product.id}, '
+            f'name={product.name}, category_id={category_id}'
+        )
+
         return ProductListResponse(
             id=product.id,
             name=product.name,
@@ -521,11 +670,17 @@ async def create_category_product(
             brand=product.brand
         )
     except HTTPException:
-        # Перебрасываем HTTPException как есть
+        logger.bind(user_id=current_user.id).warning(
+            f'Создание продукта отклонено: category_id={category_id}, '
+            f'name={name}'
+        )
         raise
     except Exception as e:
-        # Логируем детали ошибки для отладки
-        print(f'Unexpected error creating product: {e}')
+        logger.bind(user_id=current_user.id).exception(
+            f'Ошибка при создании продукта: category_id={category_id}, '
+            f'error={e}'
+        )
+        await session.rollback()
         raise HTTPException(
             status_code=500,
             detail='Внутренняя ошибка сервера при создании продукта'
@@ -562,6 +717,11 @@ async def update_category_product(
     current_user: User = Depends(current_superuser)
 ):
     """Обновить продукт в категории"""
+    logger.bind(user_id=current_user.id).info(
+        f'Попытка обновления продукта: category_id={category_id}, '
+        f'product_id={product_id}'
+    )
+
     # Комплексная валидация обновления продукта
     await validate_product_update(
         product_id, category_id, name, brand_id, images, session
@@ -591,6 +751,11 @@ async def update_category_product(
     if product.images:
         main_image = product.images[0].url
 
+    logger.bind(user_id=current_user.id).info(
+        f'Продукт обновлен: product_id={product_id}, '
+        f'category_id={category_id}, name={product.name}'
+    )
+
     return ProductListResponse(
         id=product.id,
         name=product.name,
@@ -619,6 +784,11 @@ async def delete_category_product(
     current_user: User = Depends(current_superuser)
 ):
     """Мягкое удаление продукта из категории"""
+    logger.bind(user_id=current_user.id).info(
+        f'Попытка удаления продукта: category_id={category_id}, '
+        f'product_id={product_id}'
+    )
+
     # Комплексная проверка существования категории, продукта и их связи
     await validate_category_and_product_relationship(
         category_id, product_id, session
@@ -630,10 +800,16 @@ async def delete_category_product(
         session=session
     )
 
-    return await product_crud.soft_delete(
+    result = await product_crud.soft_delete(
         db_obj=db_product,
         session=session
     )
+
+    logger.bind(user_id=current_user.id).info(
+        f'Продукт удален (мягкое): product_id={product_id}, '
+        f'category_id={category_id}, name={db_product.name}'
+    )
+    return result
 
 
 @router.patch(
@@ -649,6 +825,11 @@ async def restore_category_product(
     current_user: User = Depends(current_superuser)
 ):
     """Восстановить продукт в категории"""
+    logger.bind(user_id=current_user.id).info(
+        f'Попытка восстановления продукта: category_id={category_id}, '
+        f'product_id={product_id}'
+    )
+
     # Комплексная проверка существования категории, продукта и их связи
     await validate_category_and_product_relationship(
         category_id, product_id, session
@@ -660,7 +841,13 @@ async def restore_category_product(
         session=session
     )
 
-    return await product_crud.restore(
+    result = await product_crud.restore(
         db_obj=db_product,
         session=session
     )
+
+    logger.bind(user_id=current_user.id).info(
+        f'Продукт восстановлен: product_id={product_id}, '
+        f'category_id={category_id}, name={db_product.name}'
+    )
+    return result

@@ -4,18 +4,15 @@ Database initialization module.
 Handles creation of initial superuser with all required fields.
 """
 import contextlib
-import logging
 
 from fastapi_users.exceptions import UserAlreadyExists
+from loguru import logger
 from pydantic import EmailStr
 
 from app.core.config import settings
 from app.core.db import get_async_session
 from app.core.user import get_user_db, get_user_manager
 from app.schemas.user import UserCreate
-
-# Configure logging
-logger = logging.getLogger(__name__)
 
 get_async_session_context = contextlib.asynccontextmanager(get_async_session)
 get_user_db_context = contextlib.asynccontextmanager(get_user_db)
@@ -56,11 +53,11 @@ async def create_user(
                         )
                     )
                     logger.info(
-                        f"User created: {user.email} "
-                        f"(superuser: {is_superuser})"
+                        f'Пользователь создан: {user.email} '
+                        f'(superuser: {is_superuser})'
                     )
     except UserAlreadyExists:
-        logger.info(f"User already exists: {email}")
+        logger.info(f'Пользователь уже существует: {email}')
 
 
 async def create_first_superuser() -> None:
@@ -90,12 +87,12 @@ async def create_first_superuser() -> None:
                 phone='+79999999999',
                 is_superuser=True,
             )
-            logger.info("First superuser creation completed")
+            logger.info('Создание первого суперпользователя завершено')
         except Exception as e:
-            logger.error(f"Error creating superuser: {e}")
+            logger.exception(f'Ошибка при создании суперпользователя: {e}')
             raise
     else:
         logger.warning(
-            "Superuser credentials not provided in environment variables. "
-            "Skipping superuser creation."
+            'Учетные данные суперпользователя не предоставлены '
+            'в переменных окружения. Пропуск создания суперпользователя.'
         )

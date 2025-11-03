@@ -65,11 +65,15 @@ class CRUDCart:
                 expires_at=expires_at
             )
             session.add(cart)
-            await session.commit()
-            await session.refresh(
-                cart,
-                attribute_names=['items']
-            )
+            try:
+                await session.commit()
+                await session.refresh(
+                    cart,
+                    attribute_names=['items']
+                )
+            except Exception as e:
+                await session.rollback()
+                raise
 
         return cart
 
@@ -130,8 +134,12 @@ class CRUDCart:
                 new_quantity = Constants.MAX_CART_ITEM_QUANTITY
 
             existing_item.quantity = new_quantity
-            await session.commit()
-            await session.refresh(existing_item)
+            try:
+                await session.commit()
+                await session.refresh(existing_item)
+            except Exception:
+                await session.rollback()
+                raise
             return existing_item
 
         # Create new cart item
@@ -142,18 +150,22 @@ class CRUDCart:
             price_at_addition=product.price
         )
         session.add(cart_item)
-        await session.commit()
-        # Refresh cart_item and eagerly load product with images
-        await session.refresh(cart_item)
-        result = await session.execute(
-            select(CartItem)
-            .where(CartItem.id == cart_item.id)
-            .options(
-                selectinload(CartItem.product)
-                .selectinload(Product.images)
+        try:
+            await session.commit()
+            # Refresh cart_item and eagerly load product with images
+            await session.refresh(cart_item)
+            result = await session.execute(
+                select(CartItem)
+                .where(CartItem.id == cart_item.id)
+                .options(
+                    selectinload(CartItem.product)
+                    .selectinload(Product.images)
+                )
             )
-        )
-        cart_item = result.scalars().first()
+            cart_item = result.scalars().first()
+        except Exception:
+            await session.rollback()
+            raise
         return cart_item
 
     async def update_item_quantity(
@@ -192,8 +204,12 @@ class CRUDCart:
             return None
 
         cart_item.quantity = quantity
-        await session.commit()
-        await session.refresh(cart_item)
+        try:
+            await session.commit()
+            await session.refresh(cart_item)
+        except Exception:
+            await session.rollback()
+            raise
         return cart_item
 
     async def remove_item(
@@ -220,7 +236,11 @@ class CRUDCart:
                 CartItem.product_id == product_id
             )
         )
-        await session.commit()
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
         return result.rowcount > 0
 
     async def clear_cart(
@@ -241,7 +261,11 @@ class CRUDCart:
         result = await session.execute(
             delete(CartItem).where(CartItem.cart_id == cart.id)
         )
-        await session.commit()
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
         return result.rowcount
 
     async def cleanup_expired_carts(
@@ -320,11 +344,15 @@ class CRUDCart:
                 expires_at=expires_at
             )
             session.add(cart)
-            await session.commit()
-            await session.refresh(
-                cart,
-                attribute_names=['items']
-            )
+            try:
+                await session.commit()
+                await session.refresh(
+                    cart,
+                    attribute_names=['items']
+                )
+            except Exception:
+                await session.rollback()
+                raise
 
         return cart
 
@@ -393,14 +421,22 @@ class CRUDCart:
                 )
 
         # Commit all changes to cart items
-        await session.commit()
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
         # Delete empty session cart (only if it has no items left)
         # First, check if session cart still has items
         await session.refresh(session_cart, attribute_names=['items'])
         if not session_cart.items or len(session_cart.items) == 0:
             await session.delete(session_cart)
-            await session.commit()
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
 
         # Reload user cart with all items
         result = await session.execute(

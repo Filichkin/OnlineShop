@@ -39,12 +39,14 @@ class Media(Base):
     product_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey('products.id', ondelete='CASCADE'),
-        nullable=True
+        nullable=True,
+        index=True  # Add index for foreign key queries
     )
     category_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey('categories.id', ondelete='CASCADE'),
-        nullable=True
+        nullable=True,
+        index=True  # Add index for foreign key queries
     )
     product = relationship(
         'Product',

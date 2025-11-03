@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     # Environment configuration
     environment: str = 'development'  # 'development' or 'production'
 
+    # Cookie Security Settings
+    cookie_secure: bool = False  # Set to True in production for HTTPS only
+    cookie_httponly: bool = True  # Prevent JavaScript access
+    cookie_samesite: str = 'lax'  # CSRF protection
+
     postgres_port: int
     postgres_password: str
     postgres_user: str

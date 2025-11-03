@@ -9,8 +9,10 @@ from fastapi import (
     Response,
     status
 )
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.constants import Constants
 from app.core.db import get_async_session
 from app.core.user import current_user_optional
@@ -52,10 +54,13 @@ def get_or_create_session_id(
 
 def set_session_cookie(response: Response, session_id: str) -> None:
     """
-    Set session_id cookie in response WITHOUT SameSite restriction.
+    Set session_id cookie in response with security flags.
 
-    This allows cookies to work across different ports on localhost
-    (frontend on :5173, backend on :8000).
+    Security features:
+    - httponly: Prevents JavaScript access (XSS protection)
+    - secure: HTTPS only in production (set via environment)
+    - samesite: CSRF protection
+    - max_age: Cookie expires after configured lifetime
 
     Args:
         response: FastAPI response object
@@ -66,15 +71,20 @@ def set_session_cookie(response: Response, session_id: str) -> None:
         Constants.CART_SESSION_LIFETIME_DAYS * 24 * 60 * 60
     )
 
-    # Cookie parameters for same-origin requests (via proxy)
+    # Determine if secure flag should be enabled
+    # In production with HTTPS, secure=True; in development, secure=False
+    is_production = settings.environment == 'production'
+    secure_flag = settings.cookie_secure and is_production
+
+    # Cookie parameters with security flags
     response.set_cookie(
         key=Constants.SESSION_COOKIE_NAME,
         value=session_id,
         max_age=max_age,
-        httponly=True,
+        httponly=settings.cookie_httponly,
         path='/',
-        secure=False,  # HTTP is OK for same-origin
-        samesite='lax',  # Standard protection for same-origin
+        secure=secure_flag,
+        samesite=settings.cookie_samesite,
     )
 
 
@@ -98,6 +108,11 @@ async def get_cart(
 
     Returns cart with all items, including product details.
     """
+    if user:
+        logger.bind(user_id=user.id).debug('Запрос корзины пользователя')
+    else:
+        logger.debug(f'Запрос корзины сессии: session_id={session_id}')
+
     # Use user cart for authenticated users, session cart for anonymous
     if user:
         cart = await cart_crud.get_or_create_for_user(user.id, session)
@@ -146,6 +161,17 @@ async def get_cart(
             )
         )
 
+    if user:
+        logger.bind(user_id=user.id).info(
+            f'Возвращена корзина: total_items={total_items}, '
+            f'total_price={total_price}'
+        )
+    else:
+        logger.info(
+            f'Возвращена корзина сессии: session_id={session_id}, '
+            f'total_items={total_items}, total_price={total_price}'
+        )
+
     return CartResponse(
         id=cart.id,
         session_id=cart.session_id,
@@ -177,6 +203,11 @@ async def get_cart_summary(
 
     Lightweight endpoint for cart icon badge.
     """
+    if user:
+        logger.bind(user_id=user.id).debug('Запрос сводки корзины')
+    else:
+        logger.debug('Запрос сводки корзины сессии')
+
     # Use user cart for authenticated users, session cart for anonymous
     if user:
         cart = await cart_crud.get_by_user(user.id, session)
@@ -184,6 +215,10 @@ async def get_cart_summary(
         cart = await cart_crud.get_by_session(session_id, session)
 
     if not cart:
+        if user:
+            logger.bind(user_id=user.id).debug('Корзина пуста')
+        else:
+            logger.debug('Корзина сессии пуста')
         return CartSummary(
             total_items=0,
             total_price=0.0,
@@ -195,6 +230,16 @@ async def get_cart_summary(
         item.quantity * item.price_at_addition for item in cart.items
     )
     items_count = len(cart.items)
+
+    if user:
+        logger.bind(user_id=user.id).debug(
+            f'Сводка корзины: items={total_items}, price={total_price}'
+        )
+    else:
+        logger.debug(
+            f'Сводка корзины сессии: items={total_items}, '
+            f'price={total_price}'
+        )
 
     return CartSummary(
         total_items=total_items,
@@ -228,10 +273,18 @@ async def add_item_to_cart(
     # Use user cart for authenticated users, session cart for anonymous
     if user:
         cart = await cart_crud.get_or_create_for_user(user.id, session)
+        logger.bind(user_id=user.id).debug(
+            f'Добавление товара в корзину пользователя: '
+            f'product_id={item_data.product_id}, qty={item_data.quantity}'
+        )
     else:
         cart = await cart_crud.get_or_create_for_session(
             session_id,
             session
+        )
+        logger.debug(
+            f'Добавление товара в корзину сессии: '
+            f'product_id={item_data.product_id}, qty={item_data.quantity}'
         )
 
     # Set session cookie
@@ -244,10 +297,30 @@ async def add_item_to_cart(
             quantity=item_data.quantity,
             session=session
         )
+        if user:
+            logger.bind(user_id=user.id).info(
+                f'Товар добавлен в корзину: product_id={item_data.product_id}'
+            )
+        else:
+            logger.info(
+                f'Товар добавлен в корзину сессии: '
+                f'product_id={item_data.product_id}'
+            )
     except ValueError as e:
+        await session.rollback()
+        logger.warning(f'Ошибка добавления товара в корзину: {str(e)}')
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e)
+        )
+    except Exception as e:
+        await session.rollback()
+        logger.exception(
+            f'Неожиданная ошибка при добавлении товара в корзину: {e}'
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail='Failed to add item to cart'
         )
 
     # Get main image for product
@@ -298,6 +371,17 @@ async def update_cart_item(
 
     Raises 404 if cart or item not found.
     """
+    if user:
+        logger.bind(user_id=user.id).info(
+            f'Попытка обновления товара в корзине: '
+            f'product_id={product_id}, quantity={item_data.quantity}'
+        )
+    else:
+        logger.info(
+            f'Попытка обновления товара в корзине сессии: '
+            f'product_id={product_id}, quantity={item_data.quantity}'
+        )
+
     # Use user cart for authenticated users, session cart for anonymous
     if user:
         cart = await cart_crud.get_by_user(user.id, session)
@@ -305,6 +389,10 @@ async def update_cart_item(
         cart = await cart_crud.get_by_session(session_id, session)
 
     if not cart:
+        if user:
+            logger.bind(user_id=user.id).warning('Корзина не найдена')
+        else:
+            logger.warning('Корзина сессии не найдена')
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail='Cart not found'
@@ -318,6 +406,15 @@ async def update_cart_item(
     )
 
     if not cart_item:
+        if user:
+            logger.bind(user_id=user.id).warning(
+                f'Товар не найден в корзине: product_id={product_id}'
+            )
+        else:
+            logger.warning(
+                f'Товар не найден в корзине сессии: '
+                f'product_id={product_id}'
+            )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f'Product {product_id} not found in cart'
@@ -330,6 +427,17 @@ async def update_cart_item(
             (img.url for img in cart_item.product.images if img.is_main),
             (cart_item.product.images[0].url
              if cart_item.product.images else None)
+        )
+
+    if user:
+        logger.bind(user_id=user.id).info(
+            f'Товар в корзине обновлен: product_id={product_id}, '
+            f'quantity={cart_item.quantity}'
+        )
+    else:
+        logger.info(
+            f'Товар в корзине сессии обновлен: product_id={product_id}, '
+            f'quantity={cart_item.quantity}'
         )
 
     return CartItemResponse(
@@ -370,6 +478,16 @@ async def remove_cart_item(
 
     Raises 404 if cart or item not found.
     """
+    if user:
+        logger.bind(user_id=user.id).info(
+            f'Попытка удаления товара из корзины: product_id={product_id}'
+        )
+    else:
+        logger.info(
+            f'Попытка удаления товара из корзины сессии: '
+            f'product_id={product_id}'
+        )
+
     # Use user cart for authenticated users, session cart for anonymous
     if user:
         cart = await cart_crud.get_by_user(user.id, session)
@@ -377,6 +495,10 @@ async def remove_cart_item(
         cart = await cart_crud.get_by_session(session_id, session)
 
     if not cart:
+        if user:
+            logger.bind(user_id=user.id).warning('Корзина не найдена')
+        else:
+            logger.warning('Корзина сессии не найдена')
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail='Cart not found'
@@ -389,9 +511,27 @@ async def remove_cart_item(
     )
 
     if not removed:
+        if user:
+            logger.bind(user_id=user.id).warning(
+                f'Товар не найден в корзине: product_id={product_id}'
+            )
+        else:
+            logger.warning(
+                f'Товар не найден в корзине сессии: '
+                f'product_id={product_id}'
+            )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f'Product {product_id} not found in cart'
+        )
+
+    if user:
+        logger.bind(user_id=user.id).info(
+            f'Товар удален из корзины: product_id={product_id}'
+        )
+    else:
+        logger.info(
+            f'Товар удален из корзины сессии: product_id={product_id}'
         )
 
     return CartItemDeleteResponse(
@@ -419,6 +559,11 @@ async def clear_cart(
 
     Returns 404 if cart not found.
     """
+    if user:
+        logger.bind(user_id=user.id).info('Попытка очистки корзины')
+    else:
+        logger.info('Попытка очистки корзины сессии')
+
     # Use user cart for authenticated users, session cart for anonymous
     if user:
         cart = await cart_crud.get_by_user(user.id, session)
@@ -426,6 +571,10 @@ async def clear_cart(
         cart = await cart_crud.get_by_session(session_id, session)
 
     if not cart:
+        if user:
+            logger.bind(user_id=user.id).warning('Корзина не найдена')
+        else:
+            logger.warning('Корзина сессии не найдена')
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail='Cart not found'
@@ -435,6 +584,15 @@ async def clear_cart(
         cart=cart,
         session=session
     )
+
+    if user:
+        logger.bind(user_id=user.id).info(
+            f'Корзина очищена: items_removed={items_removed}'
+        )
+    else:
+        logger.info(
+            f'Корзина сессии очищена: items_removed={items_removed}'
+        )
 
     return CartClearResponse(
         message='Cart cleared successfully',
