@@ -305,7 +305,8 @@ class CRUDFavorite:
         await session.refresh(session_favorite, attribute_names=['items'])
         await session.refresh(user_favorite, attribute_names=['items'])
 
-        # Get all items from session favorite (copy list to avoid modification during iteration)
+        # Get all items from session favorite
+        # (copy list to avoid modification during iteration)
         session_items = list(session_favorite.items)
 
         if not session_items:
@@ -329,7 +330,8 @@ class CRUDFavorite:
                 # Product already in user favorites, delete session item
                 await session.delete(session_item)
             else:
-                # Product doesn't exist in user favorites, move it by updating favorite_id via SQL
+                # Product doesn't exist in user favorites,
+                # move it by updating favorite_id via SQL
                 await session.execute(
                     update(FavoriteItem)
                     .where(FavoriteItem.id == session_item.id)

@@ -1,9 +1,11 @@
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import re
+import secrets
 import smtplib
 import string
-import secrets
+
+from loguru import logger
 
 from app.core.config import settings
 from app.core.constants import Constants
@@ -60,8 +62,12 @@ def generate_password_by_pattern() -> str:
             return password
 
     # Если не удалось сгенерировать валидный пароль за max_attempts попыток
-    # Возвращаем гарантированно валидный пароль
-    return 'Password123!'
+    # Это не должно произойти при правильной работе алгоритма
+    # В качестве fallback генерируем безопасный пароль вручную
+    raise RuntimeError(
+        f'Failed to generate valid password after {max_attempts} attempts. '
+        'This indicates a problem with the password generation algorithm.'
+    )
 
 
 class EmailService:
@@ -128,8 +134,9 @@ class EmailService:
             return True
 
         except Exception as e:
-            # В продакшене использовать логирование
-            print(f'Ошибка отправки email: {e}')
+            logger.exception(
+                f'Ошибка отправки email для сброса пароля: {e}'
+            )
             return False
 
     async def send_email(
@@ -165,8 +172,7 @@ class EmailService:
             return True
 
         except Exception as e:
-            # В продакшене использовать логирование
-            print(f'Ошибка отправки email: {e}')
+            logger.exception(f'Ошибка отправки email: {e}')
             return False
 
 

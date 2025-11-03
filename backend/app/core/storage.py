@@ -1,15 +1,13 @@
 import os
-import magic
-import logging
+import uuid
 from pathlib import Path
 from typing import List
-import uuid
 
+import magic
 from fastapi import UploadFile, HTTPException
+from loguru import logger
 
 from app.core.constants import Constants
-
-logger = logging.getLogger(__name__)
 
 
 Constants.PRODUCTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -300,7 +298,7 @@ async def delete_image_file(url: str) -> None:
         # Validate that the URL starts with our upload directory
         if not url.startswith(str(Constants.UPLOAD_DIR)):
             logger.warning(
-                f'Attempted to delete file outside upload directory: {url}'
+                f'Попытка удаления файла вне директории загрузки: {url}'
             )
             return
 
@@ -309,7 +307,7 @@ async def delete_image_file(url: str) -> None:
 
         # Check if file path exists
         if not file_path.exists():
-            logger.info(f'File already deleted or does not exist: {url}')
+            logger.info(f'Файл уже удален или не существует: {url}')
             return
 
         # Validate file is within allowed directories
@@ -335,17 +333,19 @@ async def delete_image_file(url: str) -> None:
 
         if not (is_in_products or is_in_categories):
             logger.warning(
-                f'Attempted to delete file outside allowed directories: {url}'
+                f'Попытка удаления файла вне разрешенных директорий: {url}'
             )
             return
 
         # Delete the file
         file_path.unlink(missing_ok=True)
-        logger.info(f'Successfully deleted image file: {url}')
+        logger.info(f'Файл изображения успешно удален: {url}')
 
     except Exception as e:
-        # Log error but don't raise - file deletion failure shouldn't fail the request
-        logger.error(f'Failed to delete image file {url}: {str(e)}')
+        # Log error but don't raise
+        logger.error(
+            f'Ошибка удаления файла изображения {url}: {str(e)}'
+        )
 
 
 async def delete_image_files(urls: List[str]) -> None:

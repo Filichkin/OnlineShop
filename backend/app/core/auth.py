@@ -9,6 +9,7 @@ from typing import Optional
 
 from fastapi import Cookie, Depends, HTTPException, Response, status
 from fastapi_users.authentication import Strategy
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,6 +52,10 @@ async def authenticate_user(
     user = result.scalars().first()
 
     if not user:
+        logger.warning(
+            f'Неудачная попытка аутентификации: '
+            f'пользователь не найден ({email_or_phone})'
+        )
         return None
 
     # Verify password
@@ -65,13 +70,19 @@ async def authenticate_user(
     )
 
     if not verified:
+        logger.warning(
+            f'Неудачная попытка аутентификации: '
+            f'неверный пароль для {email_or_phone}'
+        )
         return None
 
     # Update password hash if needed (e.g., algorithm changed)
     if updated_password_hash is not None:
         user.hashed_password = updated_password_hash
         await session.commit()
+        logger.debug(f'Обновлен хеш пароля для пользователя {user.id}')
 
+    logger.info(f'Успешная аутентификация пользователя: {user.email}')
     return user
 
 
@@ -90,6 +101,11 @@ async def merge_session_data(
     """
     if not session_id:
         return
+
+    logger.debug(
+        f'Слияние данных сессии для пользователя {user_id}, '
+        f'session_id={session_id}'
+    )
 
     # Get or create user cart and favorites
     user_cart = await cart_crud.get_or_create_for_user(
@@ -115,6 +131,10 @@ async def merge_session_data(
         cart_items_count = len(session_cart.items) if session_cart.items else 0
         if cart_items_count > 0:
             await cart_crud.merge_carts(session_cart, user_cart, session)
+            logger.info(
+                f'Корзина объединена для пользователя {user_id}: '
+                f'{cart_items_count} товаров'
+            )
         else:
             # Cart exists but is empty, delete it
             from sqlalchemy import delete
@@ -123,6 +143,7 @@ async def merge_session_data(
                 delete(Cart).where(Cart.id == session_cart.id)
             )
             await session.commit()
+            logger.debug(f'Удалена пустая корзина сессии для user {user_id}')
 
     if session_favorite:
         # Check if favorite has items by checking length
@@ -136,6 +157,10 @@ async def merge_session_data(
                 user_favorite,
                 session
             )
+            logger.info(
+                f'Избранное объединено для пользователя {user_id}: '
+                f'{fav_items_count} товаров'
+            )
         else:
             # Favorite exists but is empty, delete it
             from sqlalchemy import delete
@@ -144,6 +169,9 @@ async def merge_session_data(
                 delete(Favorite).where(Favorite.id == session_favorite.id)
             )
             await session.commit()
+            logger.debug(
+                f'Удалено пустое избранное сессии для user {user_id}'
+            )
 
 
 async def login_user(
@@ -173,6 +201,8 @@ async def login_user(
         HTTPException: If authentication fails
     """
     # Authenticate user
+    logger.info(f'Попытка входа: {credentials.email_or_phone}')
+
     user = await authenticate_user(
         credentials.email_or_phone,
         credentials.password,
@@ -180,6 +210,10 @@ async def login_user(
     )
 
     if not user:
+        logger.warning(
+            f'Неудачная попытка входа: неверные учетные данные '
+            f'для {credentials.email_or_phone}'
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=Messages.INVALID_CREDENTIALS
@@ -187,6 +221,9 @@ async def login_user(
 
     # Check if user is active
     if not user.is_active:
+        logger.warning(
+            f'Попытка входа неактивного пользователя: {user.email}'
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='User account is not active'
@@ -199,7 +236,13 @@ async def login_user(
     strategy: Strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
 
-    # Clear session cookie (user is now authenticated)
+    logger.bind(user_id=user.id).info(
+        f'Успешный вход пользователя: {user.email}'
+    )
+
+    # SECURITY: Delete session cookie to prevent session fixation attacks
+    # User is now authenticated via JWT, no longer needs anonymous session
+    # This ensures old session cannot be hijacked after authentication
     response.delete_cookie(
         key=Constants.SESSION_COOKIE_NAME,
         path='/'

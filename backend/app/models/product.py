@@ -54,12 +54,14 @@ class Product(Base):
     category_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey('categories.id'),
-        nullable=False
+        nullable=False,
+        index=True  # Add index for foreign key queries
     )
     brand_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey('brands.id'),
-        nullable=False
+        nullable=False,
+        index=True  # Add index for foreign key queries
     )
 
     category = relationship(

@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -72,15 +73,26 @@ async def get_products(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить список продуктов с фильтрацией"""
+    logger.debug(
+        f'Запрос списка продуктов: category_id={category_id}, '
+        f'search={search}, min_price={min_price}, max_price={max_price}, '
+        f'skip={skip}, limit={limit}, is_active={is_active}'
+    )
+
     # Validate price range if both are provided
     if min_price is not None and max_price is not None:
         if min_price > max_price:
+            logger.warning(
+                f'Неверный диапазон цен: min_price={min_price} > '
+                f'max_price={max_price}'
+            )
             raise HTTPException(
                 status_code=Constants.HTTP_400_BAD_REQUEST,
                 detail='min_price cannot be greater than max_price'
             )
 
     if category_id:
+        logger.debug(f'Загрузка продуктов для категории: {category_id}')
         products = await product_crud.get_by_category(
             category_id=category_id,
             session=session,
@@ -92,11 +104,13 @@ async def get_products(
         # Validate and sanitize search string
         search = search.strip()
         if not search:
+            logger.warning('Пустая строка поиска отклонена')
             raise HTTPException(
                 status_code=Constants.HTTP_400_BAD_REQUEST,
                 detail='Search string cannot be empty or whitespace only'
             )
 
+        logger.debug(f'Поиск продуктов по запросу: "{search}"')
         products = await product_crud.search_by_name(
             name_pattern=search,
             session=session,
@@ -105,6 +119,10 @@ async def get_products(
             is_active=is_active
         )
     elif min_price is not None and max_price is not None:
+        logger.debug(
+            f'Поиск продуктов в диапазоне цен: '
+            f'{min_price}-{max_price}'
+        )
         products = await product_crud.get_by_price_range(
             min_price=min_price,
             max_price=max_price,
@@ -114,6 +132,7 @@ async def get_products(
             is_active=is_active
         )
     else:
+        logger.debug('Загрузка всех продуктов')
         products = await product_crud.get_multi(
             session=session,
             skip=skip,
@@ -152,7 +171,7 @@ async def get_products(
     brands_dict = {brand.id: brand for brand in brands.scalars().all()}
 
     # Преобразуем в ProductListResponse с главным изображением
-    return [
+    result = [
         ProductListResponse(
             id=p.id,
             name=p.name,
@@ -167,6 +186,8 @@ async def get_products(
             brand=brands_dict.get(p.brand_id)
         ) for p in products
     ]
+    logger.info(f'Возвращено продуктов: {len(result)}')
+    return result
 
 
 @router.get(
@@ -183,16 +204,27 @@ async def get_product(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить продукт по ID"""
+    logger.debug(
+        f'Запрос продукта: product_id={product_id}, '
+        f'is_active={is_active}'
+    )
+
     db_product = await product_crud.get_with_status(
         product_id=product_id,
         session=session,
         is_active=is_active
     )
     if not db_product:
+        logger.warning(f'Продукт не найден: product_id={product_id}')
         raise HTTPException(
             status_code=Constants.HTTP_404_NOT_FOUND,
             detail='Продукт не найден'
         )
+
+    logger.info(
+        f'Продукт получен: id={db_product.id}, '
+        f'name={db_product.name}'
+    )
     return db_product
 
 
@@ -210,6 +242,8 @@ async def get_product_images(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить все изображения продукта"""
+    logger.debug(f'Запрос изображений продукта: product_id={product_id}')
+
     # Проверяем существование продукта
     db_product = await product_crud.get_with_status(
         product_id=product_id,
@@ -217,6 +251,10 @@ async def get_product_images(
         is_active=None
     )
     if not db_product:
+        logger.warning(
+            f'Продукт не найден при запросе изображений: '
+            f'product_id={product_id}'
+        )
         raise HTTPException(
             status_code=Constants.HTTP_404_NOT_FOUND,
             detail='Продукт не найден'
@@ -225,6 +263,10 @@ async def get_product_images(
     images = await media_crud.get_product_images(
         product_id=product_id,
         session=session
+    )
+    logger.info(
+        f'Получено изображений продукта: product_id={product_id}, '
+        f'count={len(images)}'
     )
     return images
 
@@ -244,6 +286,11 @@ async def add_product_images(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Добавить изображения к продукту"""
+    logger.info(
+        f'Начало загрузки изображений: product_id={product_id}, '
+        f'count={len(images)}'
+    )
+
     # Проверяем существование продукта
     db_product = await product_crud.get_with_status(
         product_id=product_id,
@@ -251,6 +298,10 @@ async def add_product_images(
         is_active=None
     )
     if not db_product:
+        logger.warning(
+            f'Продукт не найден при добавлении изображений: '
+            f'product_id={product_id}'
+        )
         raise HTTPException(
             status_code=Constants.HTTP_404_NOT_FOUND,
             detail='Продукт не найден'
@@ -258,6 +309,10 @@ async def add_product_images(
 
     # Проверяем количество изображений
     if not images:
+        logger.warning(
+            f'Попытка загрузки пустого списка изображений: '
+            f'product_id={product_id}'
+        )
         raise HTTPException(
             status_code=Constants.HTTP_400_BAD_REQUEST,
             detail='Необходимо загрузить хотя бы одно изображение'
@@ -272,12 +327,18 @@ async def add_product_images(
 
     # Сохраняем изображения на диск
     try:
+        logger.debug(f'Сохранение файлов изображений на диск')
         image_urls = await save_images(
             images,
             Constants.PRODUCTS_DIR,
             f'product_{product_id}'
         )
+        logger.debug(f'Файлы сохранены: count={len(image_urls)}')
     except Exception as e:
+        logger.error(
+            f'Ошибка сохранения файлов изображений: '
+            f'product_id={product_id}, error={str(e)}'
+        )
         raise HTTPException(
             status_code=Constants.HTTP_400_BAD_REQUEST,
             detail=f'Ошибка сохранения изображений: {str(e)}'
@@ -301,10 +362,19 @@ async def add_product_images(
             media_objects,
             session
         )
+        logger.info(
+            f'Изображения добавлены к продукту: product_id={product_id}, '
+            f'count={len(saved_images)}'
+        )
         return saved_images
     except Exception as e:
         # Если не удалось сохранить в БД, удаляем файлы
+        logger.error(
+            f'Ошибка сохранения изображений в БД: '
+            f'product_id={product_id}, error={str(e)}'
+        )
         await delete_image_files(image_urls)
+        logger.debug('Файлы изображений удалены после ошибки БД')
         raise HTTPException(
             status_code=Constants.HTTP_400_BAD_REQUEST,
             detail=f'Ошибка сохранения в базу данных: {str(e)}'
@@ -323,6 +393,11 @@ async def set_main_product_image(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Установить главное изображение продукта"""
+    logger.info(
+        f'Установка главного изображения: product_id={product_id}, '
+        f'media_id={request.media_id}'
+    )
+
     # Проверяем существование продукта
     db_product = await product_crud.get_with_status(
         product_id=product_id,
@@ -330,6 +405,10 @@ async def set_main_product_image(
         is_active=None
     )
     if not db_product:
+        logger.warning(
+            f'Продукт не найден при установке главного изображения: '
+            f'product_id={product_id}'
+        )
         raise HTTPException(
             status_code=Constants.HTTP_404_NOT_FOUND,
             detail='Продукт не найден'
@@ -341,8 +420,17 @@ async def set_main_product_image(
             product_id=product_id,
             session=session
         )
+        logger.info(
+            f'Главное изображение установлено: product_id={product_id}, '
+            f'media_id={request.media_id}'
+        )
         return updated_image
     except ValueError as e:
+        logger.warning(
+            f'Ошибка установки главного изображения: '
+            f'product_id={product_id}, media_id={request.media_id}, '
+            f'error={str(e)}'
+        )
         raise HTTPException(
             status_code=Constants.HTTP_404_NOT_FOUND,
             detail=str(e)
@@ -361,6 +449,11 @@ async def delete_product_images(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Удалить изображения продукта"""
+    logger.info(
+        f'Удаление изображений продукта: product_id={product_id}, '
+        f'media_ids={request.media_ids}'
+    )
+
     # Проверяем существование продукта
     db_product = await product_crud.get_with_status(
         product_id=product_id,
@@ -368,6 +461,10 @@ async def delete_product_images(
         is_active=None
     )
     if not db_product:
+        logger.warning(
+            f'Продукт не найден при удалении изображений: '
+            f'product_id={product_id}'
+        )
         raise HTTPException(
             status_code=Constants.HTTP_404_NOT_FOUND,
             detail='Продукт не найден'
@@ -380,6 +477,10 @@ async def delete_product_images(
     )
 
     if len(all_images) == len(request.media_ids):
+        logger.warning(
+            f'Попытка удалить все изображения продукта: '
+            f'product_id={product_id}'
+        )
         raise HTTPException(
             status_code=Constants.HTTP_400_BAD_REQUEST,
             detail='Нельзя удалить все изображения продукта'
@@ -392,6 +493,10 @@ async def delete_product_images(
     ]
 
     if not images_to_delete:
+        logger.warning(
+            f'Изображения для удаления не найдены: '
+            f'product_id={product_id}, media_ids={request.media_ids}'
+        )
         raise HTTPException(
             status_code=Constants.HTTP_404_NOT_FOUND,
             detail='Изображения не найдены'
@@ -409,11 +514,19 @@ async def delete_product_images(
         image_urls = [img.url for img in images_to_delete]
         await delete_image_files(image_urls)
 
+        logger.info(
+            f'Изображения удалены: product_id={product_id}, '
+            f'count={deleted_count}'
+        )
         return DeleteImagesResponse(
             deleted_count=deleted_count,
             message=f'Удалено изображений: {deleted_count}'
         )
     except ValueError as e:
+        logger.error(
+            f'Ошибка удаления изображений: product_id={product_id}, '
+            f'error={str(e)}'
+        )
         raise HTTPException(
             status_code=Constants.HTTP_404_NOT_FOUND,
             detail=str(e)
@@ -432,6 +545,11 @@ async def reorder_product_images(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Изменить порядок изображений продукта"""
+    logger.info(
+        f'Изменение порядка изображений: product_id={product_id}, '
+        f'updates_count={len(request.order_updates)}'
+    )
+
     # Проверяем существование продукта
     db_product = await product_crud.get_with_status(
         product_id=product_id,
@@ -439,6 +557,10 @@ async def reorder_product_images(
         is_active=None
     )
     if not db_product:
+        logger.warning(
+            f'Продукт не найден при изменении порядка изображений: '
+            f'product_id={product_id}'
+        )
         raise HTTPException(
             status_code=Constants.HTTP_404_NOT_FOUND,
             detail='Продукт не найден'
@@ -456,8 +578,16 @@ async def reorder_product_images(
             product_id=product_id,
             session=session
         )
+        logger.info(
+            f'Порядок изображений изменен: product_id={product_id}, '
+            f'count={len(updated_images)}'
+        )
         return updated_images
     except ValueError as e:
+        logger.warning(
+            f'Ошибка изменения порядка изображений: '
+            f'product_id={product_id}, error={str(e)}'
+        )
         raise HTTPException(
             status_code=Constants.HTTP_404_NOT_FOUND,
             detail=str(e)

@@ -11,6 +11,7 @@ dependencies = [
     "fastapi-users>=14.0.1",
     "fastapi-users-db-sqlalchemy>=7.0.0",
     "libmagic>=1.0",
+    "loguru>=0.7.3",
     "pydantic-settings>=2.11.0",
     "python-magic>=0.4.27",
     "slowapi>=0.1.9",

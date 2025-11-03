@@ -9,8 +9,10 @@ from fastapi import (
     Response,
     status
 )
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.constants import Constants
 from app.core.db import get_async_session
 from app.core.user import current_user_optional
@@ -49,10 +51,13 @@ def get_or_create_session_id(
 
 def set_session_cookie(response: Response, session_id: str) -> None:
     '''
-    Set session_id cookie in response WITHOUT SameSite restriction.
+    Set session_id cookie in response with security flags.
 
-    This allows cookies to work across different ports on localhost
-    (frontend on :5173, backend on :8000).
+    Security features:
+    - httponly: Prevents JavaScript access (XSS protection)
+    - secure: HTTPS only in production (set via environment)
+    - samesite: CSRF protection
+    - max_age: Cookie expires after configured lifetime
 
     Args:
         response: FastAPI response object
@@ -63,15 +68,20 @@ def set_session_cookie(response: Response, session_id: str) -> None:
         Constants.FAVORITE_SESSION_LIFETIME_DAYS * 24 * 60 * 60
     )
 
-    # Cookie parameters for same-origin requests (via proxy)
+    # Determine if secure flag should be enabled
+    # In production with HTTPS, secure=True; in development, secure=False
+    is_production = settings.environment == 'production'
+    secure_flag = settings.cookie_secure and is_production
+
+    # Cookie parameters with security flags
     response.set_cookie(
         key=Constants.SESSION_COOKIE_NAME,
         value=session_id,
         max_age=max_age,
-        httponly=True,
+        httponly=settings.cookie_httponly,
         path='/',
-        secure=False,  # HTTP is OK for same-origin
-        samesite='lax',  # Standard protection for same-origin
+        secure=secure_flag,
+        samesite=settings.cookie_samesite,
     )
 
 
@@ -95,6 +105,11 @@ async def get_favorites(
 
     Returns favorite list with all items, including product details.
     '''
+    if user:
+        logger.bind(user_id=user.id).debug('Запрос избранного пользователя')
+    else:
+        logger.debug(f'Запрос избранного сессии: session_id={session_id}')
+
     # Use user favorites for authenticated users,
     # session favorites for anonymous
     if user:
@@ -137,6 +152,16 @@ async def get_favorites(
             )
         )
 
+    if user:
+        logger.bind(user_id=user.id).info(
+            f'Возвращено избранное: total_items={total_items}'
+        )
+    else:
+        logger.info(
+            f'Возвращено избранное сессии: '
+            f'session_id={session_id}, total_items={total_items}'
+        )
+
     return FavoriteResponse(
         id=favorite.id,
         session_id=favorite.session_id,
@@ -170,6 +195,16 @@ async def add_to_favorites(
 
     Raises 404 if product not found or 409 if already in favorites.
     '''
+    if user:
+        logger.bind(user_id=user.id).info(
+            f'Попытка добавления в избранное: product_id={product_id}'
+        )
+    else:
+        logger.info(
+            f'Попытка добавления в избранное сессии: '
+            f'product_id={product_id}, session_id={session_id}'
+        )
+
     # Use user favorites for authenticated users,
     # session favorites for anonymous
     if user:
@@ -192,11 +227,29 @@ async def add_to_favorites(
     except ValueError as e:
         error_message = str(e)
         if 'already in favorites' in error_message:
+            if user:
+                logger.bind(user_id=user.id).warning(
+                    f'Продукт уже в избранном: product_id={product_id}'
+                )
+            else:
+                logger.warning(
+                    f'Продукт уже в избранном сессии: '
+                    f'product_id={product_id}'
+                )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=error_message
             )
         else:
+            if user:
+                logger.bind(user_id=user.id).warning(
+                    f'Продукт не найден при добавлении в избранное: '
+                    f'product_id={product_id}'
+                )
+            else:
+                logger.warning(
+                    f'Продукт не найден: product_id={product_id}'
+                )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=error_message
@@ -223,6 +276,16 @@ async def add_to_favorites(
         },
         created_at=favorite_item.created_at
     )
+
+    if user:
+        logger.bind(user_id=user.id).info(
+            f'Продукт добавлен в избранное: product_id={product_id}'
+        )
+    else:
+        logger.info(
+            f'Продукт добавлен в избранное сессии: '
+            f'product_id={product_id}'
+        )
 
     return FavoriteItemAddResponse(
         message='Item added to favorites',
@@ -251,6 +314,16 @@ async def remove_from_favorites(
 
     Raises 404 if favorite list or item not found.
     '''
+    if user:
+        logger.bind(user_id=user.id).info(
+            f'Попытка удаления из избранного: product_id={product_id}'
+        )
+    else:
+        logger.info(
+            f'Попытка удаления из избранного сессии: '
+            f'product_id={product_id}'
+        )
+
     # Use user favorites for authenticated users,
     # session favorites for anonymous
     if user:
@@ -259,6 +332,12 @@ async def remove_from_favorites(
         favorite = await favorite_crud.get_by_session(session_id, session)
 
     if not favorite:
+        if user:
+            logger.bind(user_id=user.id).warning(
+                'Список избранного не найден'
+            )
+        else:
+            logger.warning('Список избранного сессии не найден')
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail='Favorite list not found'
@@ -271,9 +350,28 @@ async def remove_from_favorites(
     )
 
     if not removed:
+        if user:
+            logger.bind(user_id=user.id).warning(
+                f'Продукт не найден в избранном: product_id={product_id}'
+            )
+        else:
+            logger.warning(
+                f'Продукт не найден в избранном сессии: '
+                f'product_id={product_id}'
+            )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f'Product {product_id} not found in favorites'
+        )
+
+    if user:
+        logger.bind(user_id=user.id).info(
+            f'Продукт удален из избранного: product_id={product_id}'
+        )
+    else:
+        logger.info(
+            f'Продукт удален из избранного сессии: '
+            f'product_id={product_id}'
         )
 
     return FavoriteItemDeleteResponse(
