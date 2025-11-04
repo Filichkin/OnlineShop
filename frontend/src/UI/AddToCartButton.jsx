@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart, updateQuantity, removeFromCart, selectCartItems, selectUpdatingItems } from '../store/slices/cartSlice';
 
@@ -22,6 +22,9 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Ref для отслеживания таймеров, чтобы очистить их при размонтировании
+  const errorTimeoutRef = useRef(null);
+
   // Получаем список товаров в корзине и список обновляющихся товаров
   const cartItems = useSelector(selectCartItems);
   const updatingItems = useSelector(selectUpdatingItems);
@@ -31,6 +34,15 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
   const isInCart = !!cartItem;
   const currentQuantity = cartItem ? cartItem.quantity : 0;
   const isUpdating = updatingItems.includes(product.id);
+
+  // Cleanup: очищаем таймер при размонтировании компонента
+  useEffect(() => {
+    return () => {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Добавление товара в корзину
   const handleAddToCart = async () => {
@@ -52,9 +64,13 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
       console.error('Ошибка при добавлении товара в корзину:', err);
       setError(err || 'Не удалось добавить товар в корзину');
 
-      // Сбрасываем ошибку через 3 секунды
-      setTimeout(() => {
+      // Сбрасываем ошибку через 3 секунды с очисткой предыдущего таймера
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+      errorTimeoutRef.current = setTimeout(() => {
         setError(null);
+        errorTimeoutRef.current = null;
       }, 3000);
     } finally {
       setIsLoading(false);
@@ -73,9 +89,13 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
         console.error('Ошибка при удалении товара из корзины:', err);
         setError(err || 'Не удалось удалить товар');
 
-        // Сбрасываем ошибку через 3 секунды
-        setTimeout(() => {
+        // Сбрасываем ошибку через 3 секунды с очисткой предыдущего таймера
+        if (errorTimeoutRef.current) {
+          clearTimeout(errorTimeoutRef.current);
+        }
+        errorTimeoutRef.current = setTimeout(() => {
           setError(null);
+          errorTimeoutRef.current = null;
         }, 3000);
       }
       return;
@@ -87,9 +107,13 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
       console.error('Ошибка при обновлении количества:', err);
       setError(err || 'Не удалось обновить количество');
 
-      // Сбрасываем ошибку через 3 секунды
-      setTimeout(() => {
+      // Сбрасываем ошибку через 3 секунды с очисткой предыдущего таймера
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+      errorTimeoutRef.current = setTimeout(() => {
         setError(null);
+        errorTimeoutRef.current = null;
       }, 3000);
     }
   };

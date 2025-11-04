@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   toggleFavorite,
@@ -25,9 +25,21 @@ function FavoriteButton({ product, className = "" }) {
   const dispatch = useDispatch();
   const [error, setError] = useState(null);
 
+  // Ref для отслеживания таймера, чтобы очистить его при размонтировании
+  const errorTimeoutRef = useRef(null);
+
   // Получаем состояние избранного из Redux
   const isFavorite = useSelector(selectIsFavorite(product.id));
   const isUpdating = useSelector(selectIsUpdatingFavorite(product.id));
+
+  // Cleanup: очищаем таймер при размонтировании компонента
+  useEffect(() => {
+    return () => {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Переключение состояния избранного
   const handleToggleFavorite = async (e) => {
@@ -46,9 +58,13 @@ function FavoriteButton({ product, className = "" }) {
       console.error('Ошибка при переключении избранного:', err);
       setError(err?.message || 'Не удалось обновить избранное');
 
-      // Сбрасываем ошибку через 3 секунды
-      setTimeout(() => {
+      // Сбрасываем ошибку через 3 секунды с очисткой предыдущего таймера
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+      errorTimeoutRef.current = setTimeout(() => {
         setError(null);
+        errorTimeoutRef.current = null;
       }, 3000);
     }
   };

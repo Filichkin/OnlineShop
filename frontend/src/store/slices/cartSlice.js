@@ -205,9 +205,13 @@ const cartSlice = createSlice({
         }
         state.error = null;
 
-        // Оптимистичное обновление UI
+        // Сохраняем предыдущее значение для возможного отката
         const item = state.items.find((item) => item.product.id === productId);
         if (item) {
+          // Сохраняем предыдущее количество в meta
+          action.meta.previousQuantity = item.quantity;
+
+          // Оптимистичное обновление UI
           item.quantity = quantity;
           // Пересчитываем итоги
           state.totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
@@ -236,13 +240,26 @@ const cartSlice = createSlice({
         );
       })
       .addCase(updateQuantity.rejected, (state, action) => {
-        const { productId } = action.payload;
-        state.updatingItems = state.updatingItems.filter(id => id !== productId);
-        state.error = action.payload.message;
+        const { productId } = action.payload || {};
+        if (productId) {
+          state.updatingItems = state.updatingItems.filter(id => id !== productId);
+        }
+        state.error = action.payload?.message || 'Ошибка обновления количества';
 
-        // Откатываем оптимистичное обновление
-        // В идеале нужно хранить previousQuantity, но для упрощения перезагрузим корзину
-        // Или можно реализовать полноценный rollback через мета-данные
+        // Откатываем оптимистичное обновление используя сохраненное предыдущее значение
+        const previousQuantity = action.meta?.previousQuantity;
+        if (previousQuantity !== undefined) {
+          const item = state.items.find((item) => item.product.id === productId);
+          if (item) {
+            item.quantity = previousQuantity;
+            // Пересчитываем итоги после отката
+            state.totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
+            state.totalPrice = state.items.reduce(
+              (sum, item) => sum + item.price_at_addition * item.quantity,
+              0
+            );
+          }
+        }
       });
 
     // Remove from cart
@@ -253,6 +270,13 @@ const cartSlice = createSlice({
           state.updatingItems.push(productId);
         }
         state.error = null;
+
+        // Сохраняем удаляемый товар для возможного отката
+        const removedItem = state.items.find((item) => item.product.id === productId);
+        if (removedItem) {
+          // Сохраняем удаленный товар в meta для rollback
+          action.meta.removedItem = { ...removedItem };
+        }
 
         // Оптимистичное удаление из UI
         state.items = state.items.filter((item) => item.product.id !== productId);
@@ -269,18 +293,36 @@ const cartSlice = createSlice({
         // Товар уже удален в pending, ничего делать не нужно
       })
       .addCase(removeFromCart.rejected, (state, action) => {
-        const { productId } = action.payload;
-        state.updatingItems = state.updatingItems.filter(id => id !== productId);
-        state.error = action.payload.message;
+        const { productId } = action.payload || {};
+        if (productId) {
+          state.updatingItems = state.updatingItems.filter(id => id !== productId);
+        }
+        state.error = action.payload?.message || 'Ошибка удаления товара';
 
-        // Откатываем удаление - нужно перезагрузить корзину
-        // Для полноценного rollback можно сохранить removedItem в мета-данных
+        // Откатываем удаление используя сохраненный товар
+        const removedItem = action.meta?.removedItem;
+        if (removedItem) {
+          // Восстанавливаем товар в корзине
+          state.items.push(removedItem);
+          // Пересчитываем итоги после отката
+          state.totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
+          state.totalPrice = state.items.reduce(
+            (sum, item) => sum + item.price_at_addition * item.quantity,
+            0
+          );
+        }
       });
 
     // Clear cart
     builder
-      .addCase(clearCart.pending, (state) => {
+      .addCase(clearCart.pending, (state, action) => {
         state.error = null;
+
+        // Сохраняем состояние корзины для возможного отката
+        action.meta.previousItems = [...state.items];
+        action.meta.previousTotalItems = state.totalItems;
+        action.meta.previousTotalPrice = state.totalPrice;
+
         // Оптимистичная очистка
         state.items = [];
         state.totalItems = 0;
@@ -291,7 +333,13 @@ const cartSlice = createSlice({
       })
       .addCase(clearCart.rejected, (state, action) => {
         state.error = action.payload;
-        // Откатываем очистку - нужно перезагрузить корзину
+
+        // Откатываем очистку используя сохраненное состояние
+        if (action.meta?.previousItems) {
+          state.items = action.meta.previousItems;
+          state.totalItems = action.meta.previousTotalItems || 0;
+          state.totalPrice = action.meta.previousTotalPrice || 0;
+        }
       });
   },
 });
