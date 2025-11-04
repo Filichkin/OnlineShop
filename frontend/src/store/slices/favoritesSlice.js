@@ -205,6 +205,13 @@ const favoritesSlice = createSlice({
         }
         state.error = null;
 
+        // Сохраняем удаляемый товар для возможного отката
+        const removedItem = state.items.find(item => item.id === productId);
+        if (removedItem) {
+          // Сохраняем удаленный товар в meta для rollback
+          action.meta.removedItem = { ...removedItem };
+        }
+
         // Оптимистичное удаление из UI
         state.items = state.items.filter(item => item.id !== productId);
         state.favoriteIds = state.favoriteIds.filter(id => id !== productId);
@@ -216,12 +223,20 @@ const favoritesSlice = createSlice({
         // Товар уже удален в pending, ничего делать не нужно
       })
       .addCase(removeFromFavorites.rejected, (state, action) => {
-        const { productId } = action.payload;
-        state.updatingItems = state.updatingItems.filter(id => id !== productId);
-        state.error = action.payload.message;
+        const { productId } = action.payload || {};
+        if (productId) {
+          state.updatingItems = state.updatingItems.filter(id => id !== productId);
+        }
+        state.error = action.payload?.message || 'Ошибка удаления из избранного';
 
-        // Откатываем удаление - перезагружаем избранное
-        // Для полноценного rollback можно сохранить removedItem в мета-данных
+        // Откатываем удаление используя сохраненный товар
+        const removedItem = action.meta?.removedItem;
+        if (removedItem) {
+          // Восстанавливаем товар в избранном
+          state.items.push(removedItem);
+          state.favoriteIds.push(removedItem.id);
+          state.totalItems = state.items.length;
+        }
       });
 
     // Toggle favorite (doesn't need specific handlers as it uses add/remove)

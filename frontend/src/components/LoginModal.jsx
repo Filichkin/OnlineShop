@@ -72,7 +72,7 @@ function LoginModal({ isOpen, onClose }) {
       // Close modal after short delay
       setTimeout(() => {
         onClose();
-      }, 800); // Reduced delay from 1500ms to 800ms
+      }, 1500);
     }
   }, [successMessage, mode, onClose, dispatch]);
 
@@ -266,26 +266,59 @@ function LoginModal({ isOpen, onClose }) {
 
         {/* Modal Content */}
         <div className="p-6 sm:p-8">
-          {/* Title */}
-          <h2 id="modal-title" className="text-2xl font-bold text-gray-900 mb-6">
-            {mode === 'login' && 'Вход'}
-            {mode === 'register' && 'Регистрация'}
-            {mode === 'recovery' && 'Восстановление пароля'}
-          </h2>
+          {/* Показываем спиннер с сообщением при успешном входе/регистрации */}
+          {successMessage && (mode === 'login' || mode === 'register') ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              {/* Спиннер */}
+              <div className="relative mb-6">
+                <svg className="animate-spin h-16 w-16 text-blue-600" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+              </div>
 
-          {/* Success Message */}
-          {successMessage && (
-            <div className="mb-4 p-3 bg-green-100 text-green-800 rounded-md text-sm">
-              {successMessage}
+              {/* Сообщение */}
+              <p className="text-lg font-medium text-gray-900 mb-2">
+                {mode === 'login' ? 'Выполняется вход...' : 'Выполняется регистрация...'}
+              </p>
+              <p className="text-sm text-gray-500">
+                Пожалуйста, подождите
+              </p>
             </div>
-          )}
+          ) : (
+            <>
+              {/* Title */}
+              <h2 id="modal-title" className="text-2xl font-bold text-gray-900 mb-6">
+                {mode === 'login' && 'Вход'}
+                {mode === 'register' && 'Регистрация'}
+                {mode === 'recovery' && 'Восстановление пароля'}
+              </h2>
 
-          {/* Error Message - don't show "Токен не найден" error */}
-          {error && error !== 'Токен не найден' && !error.includes('Сессия истекла') && (
-            <div className="mb-4 p-3 bg-red-100 text-red-800 rounded-md text-sm">
-              {error}
-            </div>
-          )}
+              {/* Success Message для восстановления пароля */}
+              {successMessage && mode === 'recovery' && (
+                <div className="mb-4 p-3 bg-green-100 text-green-800 rounded-md text-sm">
+                  {successMessage}
+                </div>
+              )}
+
+              {/* Error Message - don't show "Токен не найден" error */}
+              {error && error !== 'Токен не найден' && !error.includes('Сессия истекла') && (
+                <div className="mb-4 p-3 bg-red-100 text-red-800 rounded-md text-sm">
+                  {error}
+                </div>
+              )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -579,37 +612,39 @@ function LoginModal({ isOpen, onClose }) {
             </button>
           </form>
 
-          {/* Mode Switcher */}
-          <div className="mt-6 space-y-2">
-            {mode === 'login' && (
-              <>
-                <button
-                  onClick={() => setMode('recovery')}
-                  className="block w-full text-sm text-center text-blue-600 hover:text-blue-800 transition-colors focus:outline-none focus:underline"
-                  disabled={loading}
-                >
-                  Забыли пароль?
-                </button>
-                <button
-                  onClick={() => setMode('register')}
-                  className="block w-full text-sm text-center text-gray-600 hover:text-gray-900 transition-colors focus:outline-none focus:underline"
-                  disabled={loading}
-                >
-                  Нет аккаунта? Зарегистрируйтесь
-                </button>
-              </>
-            )}
+              {/* Mode Switcher */}
+              <div className="mt-6 space-y-2">
+                {mode === 'login' && (
+                  <>
+                    <button
+                      onClick={() => setMode('recovery')}
+                      className="block w-full text-sm text-center text-blue-600 hover:text-blue-800 transition-colors focus:outline-none focus:underline"
+                      disabled={loading}
+                    >
+                      Забыли пароль?
+                    </button>
+                    <button
+                      onClick={() => setMode('register')}
+                      className="block w-full text-sm text-center text-gray-600 hover:text-gray-900 transition-colors focus:outline-none focus:underline"
+                      disabled={loading}
+                    >
+                      Нет аккаунта? Зарегистрируйтесь
+                    </button>
+                  </>
+                )}
 
-            {(mode === 'register' || mode === 'recovery') && (
-              <button
-                onClick={() => setMode('login')}
-                className="block w-full text-sm text-center text-blue-600 hover:text-blue-800 transition-colors focus:outline-none focus:underline"
-                disabled={loading}
-              >
-                Вернуться к входу
-              </button>
-            )}
-          </div>
+                {(mode === 'register' || mode === 'recovery') && (
+                  <button
+                    onClick={() => setMode('login')}
+                    className="block w-full text-sm text-center text-blue-600 hover:text-blue-800 transition-colors focus:outline-none focus:underline"
+                    disabled={loading}
+                  >
+                    Вернуться к входу
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

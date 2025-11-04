@@ -17,6 +17,10 @@ function ProductDetails() {
   const categoryId = location.state?.categoryId;
 
   useEffect(() => {
+    // AbortController для отмены запроса при размонтировании или изменении параметров
+    const abortController = new AbortController();
+    let isComponentMounted = true;
+
     const fetchProduct = async () => {
       try {
         setLoading(true);
@@ -26,23 +30,62 @@ function ProductDetails() {
           throw new Error('Не указан ID категории');
         }
 
-        const productData = await categoriesAPI.getCategoryProduct(categoryId, productId);
+        // Передаем signal в API запрос для возможности отмены
+        const productData = await categoriesAPI.getCategoryProduct(categoryId, productId, {
+          signal: abortController.signal
+        });
+
+        // Проверяем, что компонент все еще смонтирован перед обновлением state
+        if (!isComponentMounted) {
+          return;
+        }
+
+        // Валидация ответа API: проверяем, что данные получены и имеют правильную структуру
+        if (!productData) {
+          throw new Error('Не удалось получить данные о товаре');
+        }
+
+        if (!productData.id || !productData.name) {
+          throw new Error('Получены некорректные данные о товаре');
+        }
+
         setProduct(productData);
+
         // Устанавливаем главное изображение по умолчанию
         if (productData.main_image) {
           setSelectedImage(productData.main_image);
-        } else if (productData.images && productData.images.length > 0) {
-          setSelectedImage(productData.images[0].url);
+        } else if (Array.isArray(productData.images) && productData.images.length > 0) {
+          setSelectedImage(productData.images[0]?.url || null);
         }
       } catch (err) {
+        // Игнорируем ошибки отмены запроса
+        if (err.name === 'AbortError' || err.name === 'CanceledError') {
+          console.log('Запрос продукта был отменен');
+          return;
+        }
+
+        // Проверяем, что компонент все еще смонтирован перед обновлением state
+        if (!isComponentMounted) {
+          return;
+        }
+
         console.error('Ошибка загрузки продукта:', err);
-        setError(err.message);
+        setError(err.message || 'Не удалось загрузить данные о товаре');
       } finally {
-        setLoading(false);
+        // Проверяем, что компонент все еще смонтирован перед обновлением state
+        if (isComponentMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchProduct();
+
+    // Cleanup функция: отменяем запрос при размонтировании или изменении параметров
+    return () => {
+      isComponentMounted = false;
+      abortController.abort();
+    };
   }, [categoryId, productId]);
 
   function handleAddToCart(product) {
@@ -70,14 +113,15 @@ function ProductDetails() {
     );
   }
 
-  // Собираем все изображения для галереи
+  // Собираем все изображения для галереи с валидацией данных
   const allImages = [];
   if (product.main_image) {
     allImages.push(product.main_image);
   }
-  if (product.images && product.images.length > 0) {
+  if (Array.isArray(product.images) && product.images.length > 0) {
     product.images.forEach(img => {
-      if (img.url !== product.main_image) {
+      // Проверяем, что img существует и имеет url
+      if (img && img.url && img.url !== product.main_image) {
         allImages.push(img.url);
       }
     });

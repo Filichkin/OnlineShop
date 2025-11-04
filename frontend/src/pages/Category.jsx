@@ -1,26 +1,54 @@
 import { Link, useLoaderData, useSearchParams } from "react-router-dom";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import AddToCartButton from "../UI/AddToCartButton";
 import FavoriteButton from "../UI/FavoriteButton";
 import { getImageUrl, formatPrice } from "../utils";
+import useDebounce from "../hooks/useDebounce";
 
 function Category() {
-  const { products, categoryId } = useLoaderData();
+  const loaderData = useLoaderData();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const maxPrice = searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : Infinity;
+  // Валидация данных из loader с безопасными fallback значениями
+  const products = Array.isArray(loaderData?.products) ? loaderData.products : [];
+  const categoryId = loaderData?.categoryId;
 
-  // Memoized filtered products for performance
+  // Локальное состояние для input значения (обновляется мгновенно)
+  const [inputValue, setInputValue] = useState(searchParams.get("maxPrice") || "");
+
+  // Debounced значение для фильтрации (обновляется с задержкой)
+  const debouncedInputValue = useDebounce(inputValue, 300);
+
+  // Используем debounced значение для фильтрации
+  const maxPrice = debouncedInputValue ? Number(debouncedInputValue) : Infinity;
+
+  // Memoized filtered products for performance - теперь зависит от debounced значения
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => product.price <= maxPrice);
+    return products.filter((product) => {
+      // Дополнительная проверка на корректность данных продукта
+      return product && typeof product.price === 'number' && product.price <= maxPrice;
+    });
   }, [products, maxPrice]);
 
-  const categoryName = products.length > 0 ? products[0].category?.name : "Категория";
+  const categoryName = products.length > 0 && products[0].category?.name
+    ? products[0].category.name
+    : "Категория";
 
+  // Обработчик изменения input - обновляет локальное состояние мгновенно
   function handleChange(e) {
     const value = e.target.value;
-    setSearchParams(value ? { maxPrice: value } : {});
+    setInputValue(value);
+    // URL обновится только после debounce через useEffect ниже
   }
+
+  // Синхронизируем URL с debounced значением
+  useEffect(() => {
+    if (debouncedInputValue) {
+      setSearchParams({ maxPrice: debouncedInputValue });
+    } else {
+      setSearchParams({});
+    }
+  }, [debouncedInputValue, setSearchParams]);
 
   function handleAddToCart(product) {
     console.log('Добавление товара в корзину:', product);
@@ -40,7 +68,7 @@ function Category() {
           type="number"
           id="maxPrice"
           placeholder="Введите максимальную стоимость"
-          value={searchParams.get("maxPrice") || ""}
+          value={inputValue}
           onChange={handleChange}
           min="0"
           step="1"
