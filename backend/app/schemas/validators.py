@@ -143,3 +143,47 @@ def validate_date_of_birth_optional(value: Optional[date]) -> Optional[date]:
         if value > dt_date.today():
             raise ValueError(Messages.INVALID_DATE_OF_BIRTH)
     return value
+
+
+def validate_email(value: str) -> str:
+    """
+    Валидация email адреса (обязательное поле).
+
+    Args:
+        value: Email адрес
+
+    Returns:
+        Очищенный email адрес
+
+    Raises:
+        ValueError: Если email невалиден
+    """
+    if not value:
+        raise ValueError('Email is required')
+    # Remove whitespace
+    value = value.strip()
+    if not re.match(Constants.EMAIL_PATTERN, value):
+        raise ValueError('Invalid email format')
+    return value
+
+
+def validate_postal_code(value: str) -> str:
+    """
+    Валидация почтового индекса (обязательное поле).
+
+    Args:
+        value: Почтовый индекс
+
+    Returns:
+        Очищенный почтовый индекс
+
+    Raises:
+        ValueError: Если индекс невалиден
+    """
+    if not value:
+        raise ValueError('Postal code is required')
+    # Remove whitespace
+    value = value.strip()
+    if not re.match(Constants.POSTAL_CODE_PATTERN, value):
+        raise ValueError('Invalid postal code format. Use 5-10 digits')
+    return value
