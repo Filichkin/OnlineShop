@@ -900,3 +900,72 @@ export const ordersAPI = {
     }
   },
 };
+
+// API для админ-панели заказов
+export const adminOrdersAPI = {
+  // Получить все заказы (только для администратора)
+  getAllOrders: async (skip = 0, limit = 20, status = null) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('Необходимо войти в систему');
+      }
+
+      const params = new URLSearchParams({
+        skip: skip.toString(),
+        limit: limit.toString(),
+      });
+
+      if (status) {
+        params.append('status', status);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/orders/admin/all?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        await handleOrderError(response);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Обновить статус заказа (только для администратора)
+  updateOrderStatus: async (orderId, newStatus) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('Необходимо войти в систему');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/orders/admin/${orderId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        await handleOrderError(response);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+};

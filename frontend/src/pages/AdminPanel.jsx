@@ -7,9 +7,12 @@ import { fetchProducts } from '../store/slices/productsSlice';
 import CategoryManager from '../components/admin/CategoryManager';
 import ProductManager from '../components/admin/ProductManager';
 import BrandManager from '../components/admin/BrandManager';
+import OrderManager from '../components/admin/OrderManager';
+import { adminOrdersAPI } from '../api';
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('categories');
+  const [ordersStats, setOrdersStats] = useState({ total: 0, pending: 0 });
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { isAuthenticated, user, token } = useSelector((state) => state.auth);
@@ -23,6 +26,24 @@ const AdminPanel = () => {
     }
     dispatch(fetchCategories());
     dispatch(fetchProducts());
+
+    // Загружаем статистику заказов
+    const fetchOrdersStats = async () => {
+      try {
+        const data = await adminOrdersAPI.getAllOrders(0, 1000); // Получаем все заказы для статистики
+        const total = data.total || data.orders.length;
+        const pending = data.orders.filter(order =>
+          order.status === 'created' || order.status === 'updated'
+        ).length;
+        setOrdersStats({ total, pending });
+      } catch (error) {
+        console.error('Error fetching orders stats:', error);
+      }
+    };
+
+    if (token) {
+      fetchOrdersStats();
+    }
   }, [dispatch, token]);
 
   const handleLogout = () => {
@@ -89,13 +110,28 @@ const AdminPanel = () => {
             >
               Бренды
             </button>
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'orders'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Заказы
+              {ordersStats.pending > 0 && (
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  {ordersStats.pending}
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </nav>
 
       {/* Statistics */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white overflow-hidden shadow rounded-lg">
             <div className="p-5">
               <div className="flex items-center">
@@ -157,6 +193,26 @@ const AdminPanel = () => {
               </div>
             </div>
           </div>
+
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-orange-500 rounded-md flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Всего заказов</dt>
+                    <dd className="text-lg font-medium text-gray-900">{ordersStats.total}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -166,6 +222,7 @@ const AdminPanel = () => {
           {activeTab === 'categories' && <CategoryManager />}
           {activeTab === 'products' && <ProductManager />}
           {activeTab === 'brands' && <BrandManager />}
+          {activeTab === 'orders' && <OrderManager />}
         </div>
       </main>
     </div>
