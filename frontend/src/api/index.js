@@ -939,6 +939,33 @@ export const adminOrdersAPI = {
     }
   },
 
+  // Получить заказ по ID (только для администратора)
+  getOrderById: async (orderId) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('Необходимо войти в систему');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        await handleOrderError(response);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
   // Обновить статус заказа (только для администратора)
   updateOrderStatus: async (orderId, newStatus) => {
     try {

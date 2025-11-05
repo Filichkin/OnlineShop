@@ -9,9 +9,7 @@ const OrderManager = () => {
   const [error, setError] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [updatingOrderId, setUpdatingOrderId] = useState(null);
-  const [selectedStatus, setSelectedStatus] = useState('');
+  const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
 
   // Filters and pagination
   const [statusFilter, setStatusFilter] = useState('all');
@@ -20,8 +18,6 @@ const OrderManager = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
   const ordersPerPage = 20;
-
-  const statusModalRef = useRef(null);
 
   // Fetch orders
   const fetchOrders = async () => {
@@ -100,70 +96,30 @@ const OrderManager = () => {
   };
 
   // Handle view order details
-  const handleViewDetails = (order) => {
-    setSelectedOrder(order);
-    setShowDetailsModal(true);
-  };
-
-  // Handle status update
-  const handleOpenStatusUpdate = (order) => {
-    setSelectedOrder(order);
-    setSelectedStatus(order.status);
-    setShowStatusModal(true);
-  };
-
-  const handleUpdateStatus = async () => {
-    if (!selectedOrder || !selectedStatus || selectedStatus === selectedOrder.status) {
-      setShowStatusModal(false);
-      return;
-    }
-
-    setUpdatingOrderId(selectedOrder.id);
+  const handleViewDetails = async (order) => {
     try {
-      await adminOrdersAPI.updateOrderStatus(selectedOrder.id, selectedStatus);
-
-      // Update order in list
-      setOrders(orders.map(order =>
-        order.id === selectedOrder.id
-          ? { ...order, status: selectedStatus, updated_at: new Date().toISOString() }
-          : order
-      ));
-
-      setShowStatusModal(false);
-      setSelectedOrder(null);
-      setSelectedStatus('');
+      setLoadingOrderDetails(true);
+      // Fetch full order details with items
+      const fullOrder = await adminOrdersAPI.getOrderById(order.id);
+      setSelectedOrder(fullOrder);
+      setShowDetailsModal(true);
     } catch (err) {
-      alert(err.message || 'Не удалось обновить статус заказа');
+      alert(err.message || 'Не удалось загрузить детали заказа');
+      console.error('Error fetching order details:', err);
     } finally {
-      setUpdatingOrderId(null);
+      setLoadingOrderDetails(false);
     }
   };
 
-  // Focus management for status modal
-  useEffect(() => {
-    if (showStatusModal && statusModalRef.current) {
-      const previouslyFocusedElement = document.activeElement;
-      statusModalRef.current.focus();
-
-      return () => {
-        if (previouslyFocusedElement && previouslyFocusedElement.focus) {
-          previouslyFocusedElement.focus();
-        }
-      };
-    }
-  }, [showStatusModal]);
-
-  // Handle escape key for status modal
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape' && showStatusModal) {
-        setShowStatusModal(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [showStatusModal]);
+  // Handle status update from modal
+  const handleStatusUpdate = (orderId, newStatus) => {
+    // Update order in list
+    setOrders(orders.map(order =>
+      order.id === orderId
+        ? { ...order, status: newStatus, updated_at: new Date().toISOString() }
+        : order
+    ));
+  };
 
   return (
     <div className="space-y-6">
@@ -302,7 +258,7 @@ const OrderManager = () => {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Сумма
                     </th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Действия
                     </th>
                   </tr>
@@ -343,21 +299,14 @@ const OrderManager = () => {
                             {formatPrice(order.total_price)} ₽
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                           <button
                             onClick={() => handleViewDetails(order)}
-                            className="text-indigo-600 hover:text-indigo-900 mr-4"
+                            className="text-indigo-600 hover:text-indigo-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={loadingOrderDetails}
                             aria-label={`Просмотреть детали заказа ${order.order_number}`}
                           >
-                            Подробнее
-                          </button>
-                          <button
-                            onClick={() => handleOpenStatusUpdate(order)}
-                            className="text-green-600 hover:text-green-900"
-                            disabled={updatingOrderId === order.id}
-                            aria-label={`Изменить статус заказа ${order.order_number}`}
-                          >
-                            {updatingOrderId === order.id ? 'Обновление...' : 'Статус'}
+                            {loadingOrderDetails ? 'Загрузка...' : 'Подробнее'}
                           </button>
                         </td>
                       </tr>
@@ -465,96 +414,8 @@ const OrderManager = () => {
             setShowDetailsModal(false);
             setSelectedOrder(null);
           }}
+          onStatusUpdate={handleStatusUpdate}
         />
-      )}
-
-      {/* Status Update Modal */}
-      {showStatusModal && selectedOrder && (
-        <div
-          className="fixed inset-0 z-50 overflow-y-auto"
-          aria-labelledby="status-modal-title"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Background overlay */}
-            <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-              aria-hidden="true"
-              onClick={() => setShowStatusModal(false)}
-            ></div>
-
-            {/* Center modal */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">
-              &#8203;
-            </span>
-
-            {/* Modal panel */}
-            <div
-              ref={statusModalRef}
-              tabIndex={-1}
-              className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
-            >
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <svg className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </div>
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="status-modal-title">
-                      Изменить статус заказа
-                    </h3>
-                    <div className="mt-4">
-                      <p className="text-sm text-gray-500 mb-3">
-                        Заказ: <span className="font-medium text-gray-900">{selectedOrder.order_number}</span>
-                      </p>
-                      <label htmlFor="new-status" className="block text-sm font-medium text-gray-700 mb-2">
-                        Новый статус
-                      </label>
-                      <select
-                        id="new-status"
-                        value={selectedStatus}
-                        onChange={(e) => setSelectedStatus(e.target.value)}
-                        className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                      >
-                        {statuses.map(status => (
-                          <option key={status.value} value={status.value}>
-                            {status.label}
-                          </option>
-                        ))}
-                      </select>
-                      {selectedStatus !== selectedOrder.status && (
-                        <p className="mt-2 text-xs text-gray-500">
-                          После изменения статуса на email пользователя будет отправлено уведомление.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  onClick={handleUpdateStatus}
-                  disabled={updatingOrderId === selectedOrder.id || selectedStatus === selectedOrder.status}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {updatingOrderId === selectedOrder.id ? 'Обновление...' : 'Обновить статус'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowStatusModal(false)}
-                  disabled={updatingOrderId === selectedOrder.id}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Отмена
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

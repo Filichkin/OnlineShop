@@ -104,7 +104,8 @@ export const clearCart = createAsyncThunk(
       await cartAPI.clearCart();
       return null;
     } catch (error) {
-      return rejectWithValue(error.message || 'Не удалось очистить корзину');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Не удалось очистить корзину';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -199,34 +200,18 @@ const cartSlice = createSlice({
     // Update quantity
     builder
       .addCase(updateQuantity.pending, (state, action) => {
-        const { productId, quantity } = action.meta.arg;
+        const { productId } = action.meta.arg;
         if (!state.updatingItems.includes(productId)) {
           state.updatingItems.push(productId);
         }
         state.error = null;
-
-        // Сохраняем предыдущее значение для возможного отката
-        const item = state.items.find((item) => item.product.id === productId);
-        if (item) {
-          // Сохраняем предыдущее количество в meta
-          action.meta.previousQuantity = item.quantity;
-
-          // Оптимистичное обновление UI
-          item.quantity = quantity;
-          // Пересчитываем итоги
-          state.totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
-          state.totalPrice = state.items.reduce(
-            (sum, item) => sum + item.price_at_addition * item.quantity,
-            0
-          );
-        }
       })
       .addCase(updateQuantity.fulfilled, (state, action) => {
         const { productId, data } = action.payload;
         state.updatingItems = state.updatingItems.filter(id => id !== productId);
 
         // API возвращает обновленный товар (CartItemResponse)
-        // Обновляем товар в массиве данными с сервера (подтверждение)
+        // Обновляем товар в массиве данными с сервера
         const itemIndex = state.items.findIndex(item => item.product.id === productId);
         if (itemIndex !== -1) {
           state.items[itemIndex] = data;
@@ -246,20 +231,8 @@ const cartSlice = createSlice({
         }
         state.error = action.payload?.message || 'Ошибка обновления количества';
 
-        // Откатываем оптимистичное обновление используя сохраненное предыдущее значение
-        const previousQuantity = action.meta?.previousQuantity;
-        if (previousQuantity !== undefined) {
-          const item = state.items.find((item) => item.product.id === productId);
-          if (item) {
-            item.quantity = previousQuantity;
-            // Пересчитываем итоги после отката
-            state.totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
-            state.totalPrice = state.items.reduce(
-              (sum, item) => sum + item.price_at_addition * item.quantity,
-              0
-            );
-          }
-        }
+        // При ошибке перезагружаем корзину с сервера для синхронизации
+        state.isLoaded = false;
       });
 
     // Remove from cart
@@ -270,15 +243,12 @@ const cartSlice = createSlice({
           state.updatingItems.push(productId);
         }
         state.error = null;
+      })
+      .addCase(removeFromCart.fulfilled, (state, action) => {
+        const productId = action.payload;
+        state.updatingItems = state.updatingItems.filter(id => id !== productId);
 
-        // Сохраняем удаляемый товар для возможного отката
-        const removedItem = state.items.find((item) => item.product.id === productId);
-        if (removedItem) {
-          // Сохраняем удаленный товар в meta для rollback
-          action.meta.removedItem = { ...removedItem };
-        }
-
-        // Оптимистичное удаление из UI
+        // Удаляем товар из корзины
         state.items = state.items.filter((item) => item.product.id !== productId);
         // Пересчитываем итоги
         state.totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
@@ -287,11 +257,6 @@ const cartSlice = createSlice({
           0
         );
       })
-      .addCase(removeFromCart.fulfilled, (state, action) => {
-        const productId = action.payload;
-        state.updatingItems = state.updatingItems.filter(id => id !== productId);
-        // Товар уже удален в pending, ничего делать не нужно
-      })
       .addCase(removeFromCart.rejected, (state, action) => {
         const { productId } = action.payload || {};
         if (productId) {
@@ -299,47 +264,27 @@ const cartSlice = createSlice({
         }
         state.error = action.payload?.message || 'Ошибка удаления товара';
 
-        // Откатываем удаление используя сохраненный товар
-        const removedItem = action.meta?.removedItem;
-        if (removedItem) {
-          // Восстанавливаем товар в корзине
-          state.items.push(removedItem);
-          // Пересчитываем итоги после отката
-          state.totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
-          state.totalPrice = state.items.reduce(
-            (sum, item) => sum + item.price_at_addition * item.quantity,
-            0
-          );
-        }
+        // При ошибке перезагружаем корзину с сервера для синхронизации
+        state.isLoaded = false;
       });
 
     // Clear cart
     builder
-      .addCase(clearCart.pending, (state, action) => {
+      .addCase(clearCart.pending, (state) => {
         state.error = null;
-
-        // Сохраняем состояние корзины для возможного отката
-        action.meta.previousItems = [...state.items];
-        action.meta.previousTotalItems = state.totalItems;
-        action.meta.previousTotalPrice = state.totalPrice;
-
-        // Оптимистичная очистка
+        state.isLoading = true;
+      })
+      .addCase(clearCart.fulfilled, (state) => {
+        // Очищаем корзину после успешного ответа от сервера
         state.items = [];
         state.totalItems = 0;
         state.totalPrice = 0;
-      })
-      .addCase(clearCart.fulfilled, (state) => {
-        // Корзина уже очищена в pending
+        state.isLoading = false;
       })
       .addCase(clearCart.rejected, (state, action) => {
         state.error = action.payload;
-
-        // Откатываем очистку используя сохраненное состояние
-        if (action.meta?.previousItems) {
-          state.items = action.meta.previousItems;
-          state.totalItems = action.meta.previousTotalItems || 0;
-          state.totalPrice = action.meta.previousTotalPrice || 0;
-        }
+        state.isLoading = false;
+        // Корзина остается без изменений при ошибке
       });
   },
 });

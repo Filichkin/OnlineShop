@@ -40,7 +40,7 @@ function Cart() {
   // Локальное состояние для toast-уведомлений об ошибках операций
   const [operationError, setOperationError] = useState(null);
 
-  // Загрузка корзины при первом монтировании (только если еще не загружена)
+  // Загрузка корзины при первом монтировании и после ошибок (когда isLoaded сбрасывается)
   useEffect(() => {
     if (!isLoaded && !isLoading) {
       dispatch(fetchCart());
@@ -57,7 +57,8 @@ function Cart() {
         await dispatch(updateQuantity({ productId, quantity: newQuantity })).unwrap();
       } catch (err) {
         console.error('Ошибка при обновлении количества:', err);
-        setOperationError(err || 'Не удалось обновить количество товара');
+        const errorMessage = typeof err === 'string' ? err : err?.message || 'Не удалось обновить количество товара';
+        setOperationError(errorMessage);
         setTimeout(() => setOperationError(null), 4000);
       }
     },
@@ -71,7 +72,8 @@ function Cart() {
         await dispatch(removeFromCart(productId)).unwrap();
       } catch (err) {
         console.error('Ошибка при удалении товара:', err);
-        setOperationError(err || 'Не удалось удалить товар из корзины');
+        const errorMessage = typeof err === 'string' ? err : err?.message || 'Не удалось удалить товар из корзины';
+        setOperationError(errorMessage);
         setTimeout(() => setOperationError(null), 4000);
       }
     },
@@ -88,7 +90,8 @@ function Cart() {
       await dispatch(clearCart()).unwrap();
     } catch (err) {
       console.error('Ошибка при очистке корзины:', err);
-      setOperationError(err || 'Не удалось очистить корзину');
+      const errorMessage = typeof err === 'string' ? err : err?.message || 'Не удалось очистить корзину';
+      setOperationError(errorMessage);
       setTimeout(() => setOperationError(null), 4000);
     }
   }, [dispatch]);

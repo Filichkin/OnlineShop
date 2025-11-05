@@ -1,8 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getImageUrl, formatPrice } from '../../utils';
+import { adminOrdersAPI } from '../../api';
 
-const OrderDetailsModal = ({ order, onClose }) => {
+const OrderDetailsModal = ({ order, onClose, onStatusUpdate }) => {
   const modalRef = useRef(null);
+  const [selectedStatus, setSelectedStatus] = useState(order.status);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Focus management
   useEffect(() => {
@@ -38,6 +41,33 @@ const OrderDetailsModal = ({ order, onClose }) => {
     };
   }, []);
 
+  // Handle status update
+  const handleStatusUpdate = async () => {
+    if (selectedStatus === order.status) {
+      return; // No change
+    }
+
+    setUpdatingStatus(true);
+    try {
+      await adminOrdersAPI.updateOrderStatus(order.id, selectedStatus);
+
+      // Notify parent component about the update
+      if (onStatusUpdate) {
+        onStatusUpdate(order.id, selectedStatus);
+      }
+
+      // Close modal after successful update
+      onClose();
+    } catch (err) {
+      alert(err.message || 'Не удалось обновить статус заказа');
+      console.error('Error updating order status:', err);
+      // Reset to original status on error
+      setSelectedStatus(order.status);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   const getStatusColor = (status) => {
     const colors = {
       created: 'bg-blue-100 text-blue-800',
@@ -59,6 +89,14 @@ const OrderDetailsModal = ({ order, onClose }) => {
     };
     return labels[status] || status;
   };
+
+  const statuses = [
+    { value: 'created', label: 'Создан' },
+    { value: 'updated', label: 'Обновлен' },
+    { value: 'confirmed', label: 'Подтвержден' },
+    { value: 'shipped', label: 'Отправлен' },
+    { value: 'canceled', label: 'Отменен' },
+  ];
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -104,13 +142,44 @@ const OrderDetailsModal = ({ order, onClose }) => {
                 <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
                   Заказ {order.order_number}
                 </h3>
-                <div className="mt-2 flex items-center space-x-3">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                    {getStatusLabel(order.status)}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    {formatDate(order.created_at)}
-                  </span>
+                <div className="mt-3 space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                      {getStatusLabel(order.status)}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      {formatDate(order.created_at)}
+                    </span>
+                  </div>
+
+                  {/* Status Update Section */}
+                  <div className="flex items-center space-x-3">
+                    <label htmlFor="status-select" className="text-sm font-medium text-gray-700">
+                      Изменить статус:
+                    </label>
+                    <select
+                      id="status-select"
+                      value={selectedStatus}
+                      onChange={(e) => setSelectedStatus(e.target.value)}
+                      disabled={updatingStatus}
+                      className="block w-48 pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {statuses.map(status => (
+                        <option key={status.value} value={status.value}>
+                          {status.label}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedStatus !== order.status && (
+                      <button
+                        onClick={handleStatusUpdate}
+                        disabled={updatingStatus}
+                        className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {updatingStatus ? 'Сохранение...' : 'Сохранить'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
               <button
@@ -136,89 +205,98 @@ const OrderDetailsModal = ({ order, onClose }) => {
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Имя:</span>
-                    <span className="text-sm font-medium text-gray-900">{order.user.full_name || order.user.username}</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {order.first_name} {order.last_name}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Email:</span>
-                    <span className="text-sm font-medium text-gray-900">{order.user.email}</span>
+                    <span className="text-sm font-medium text-gray-900">{order.email}</span>
                   </div>
-                  {order.user.phone && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Телефон:</span>
-                      <span className="text-sm font-medium text-gray-900">{order.user.phone}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Телефон:</span>
+                    <span className="text-sm font-medium text-gray-900">{order.phone}</span>
+                  </div>
                 </div>
               </div>
 
               {/* Shipping Address */}
-              {order.shipping_address && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">Адрес доставки</h4>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-900">{order.shipping_address}</p>
-                  </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-3">Адрес доставки</h4>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-1">
+                  <p className="text-sm text-gray-900">{order.city}, {order.postal_code}</p>
+                  <p className="text-sm text-gray-900">{order.address}</p>
                 </div>
-              )}
+              </div>
 
               {/* Order Items */}
               <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-3">Товары ({order.total_items} шт.)</h4>
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Товар
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Цена
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Количество
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Сумма
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {order.items.map((item) => (
-                        <tr key={item.product.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-10 w-10">
-                                <img
-                                  className="h-10 w-10 rounded object-cover"
-                                  src={getImageUrl(item.product.main_image)}
-                                  alt={item.product.name}
-                                  onError={(e) => {
-                                    e.target.src = 'https://via.placeholder.com/40';
-                                  }}
-                                />
-                              </div>
-                              <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{item.product.name}</div>
-                                <div className="text-sm text-gray-500">{item.product.category.name}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{formatPrice(item.price_at_purchase)} ₽</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{item.quantity}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {formatPrice(item.price_at_purchase * item.quantity)} ₽
-                            </div>
-                          </td>
+                <h4 className="text-sm font-medium text-gray-900 mb-3">Товары ({order.total_items || 0} шт.)</h4>
+                {order.items && order.items.length > 0 ? (
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Товар
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Цена
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Количество
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Сумма
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {order.items.map((item) => (
+                          <tr key={item.id}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 h-10 w-10">
+                                  <img
+                                    className="h-10 w-10 rounded object-cover"
+                                    src={item.product?.main_image ? getImageUrl(item.product.main_image) : 'https://via.placeholder.com/40'}
+                                    alt={item.product?.name || item.product_name}
+                                    onError={(e) => {
+                                      e.target.src = 'https://via.placeholder.com/40';
+                                    }}
+                                  />
+                                </div>
+                                <div className="ml-4">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {item.product?.name || item.product_name}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {item.product?.part_number || 'N/A'}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">{formatPrice(item.price_at_purchase)} ₽</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">{item.quantity}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                {formatPrice(item.price_at_purchase * item.quantity)} ₽
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 rounded-lg p-4 text-center text-sm text-gray-500">
+                    Нет товаров в заказе
+                  </div>
+                )}
               </div>
 
               {/* Order Summary */}
