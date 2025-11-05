@@ -17,6 +17,7 @@ from app.schemas.order import (
     OrderCreateResponse,
     OrderItemResponse,
     OrderListItem,
+    OrderListResponse,
     OrderResponse,
     OrderStatusUpdate,
     ProductInOrder,
@@ -352,7 +353,7 @@ async def cancel_order(
 
 @router.get(
     '/admin/all',
-    response_model=List[OrderListItem],
+    response_model=OrderListResponse,
     summary='Get all orders (superuser only)',
     description='Get all orders from all users with optional filtering'
 )
@@ -393,8 +394,17 @@ async def get_all_orders(
         status=status
     )
 
+    # Get total count
+    total_orders = await order_crud.get_all_orders(
+        session=session,
+        skip=0,
+        limit=10000,
+        status=status
+    )
+    total = len(total_orders)
+
     logger.bind(user_id=user.id).info(
-        f'Возвращено заказов: {len(orders)}'
+        f'Возвращено заказов: {len(orders)} из {total}'
     )
 
     # Convert to list response
@@ -405,12 +415,13 @@ async def get_all_orders(
             status=order.status,
             total_items=order.total_items,
             total_price=order.total_price,
-            created_at=order.created_at
+            created_at=order.created_at,
+            user_id=order.user_id
         )
         for order in orders
     ]
 
-    return orders_list
+    return OrderListResponse(orders=orders_list, total=total)
 
 
 @router.patch(

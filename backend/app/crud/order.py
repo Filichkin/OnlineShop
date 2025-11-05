@@ -5,7 +5,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import Order, OrderItem, OrderStatus, Product
+from app.models import Order, OrderItem, OrderStatus, Product, User
 from app.utils import (
     generate_order_number,
     send_order_confirmation_email,
@@ -233,7 +233,8 @@ class CRUDOrder:
             .options(
                 selectinload(Order.items)
                 .selectinload(OrderItem.product)
-                .selectinload(Product.images)
+                .selectinload(Product.images),
+                selectinload(Order.user)
             )
         )
 

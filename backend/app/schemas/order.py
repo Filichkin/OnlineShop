@@ -12,6 +12,18 @@ from app.schemas.validators import (
 )
 
 
+class UserInOrder(BaseModel):
+    """Minimal user information for order responses."""
+
+    id: int
+    email: str
+    username: str
+    full_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class OrderItemCreate(BaseModel):
     """Schema for creating order item from cart item."""
 
@@ -190,10 +202,37 @@ class OrderListItem(BaseModel):
     total_items: int
     total_price: float
     created_at: datetime
+    user_id: int
+    user: Optional[UserInOrder] = None
 
     class Config:
         from_attributes = True
         use_enum_values = True
+
+
+class OrderListResponse(BaseModel):
+    """Response schema for list of orders with pagination info."""
+
+    orders: List[OrderListItem]
+    total: int
+
+    class Config:
+        json_schema_extra = {
+            'example': {
+                'orders': [
+                    {
+                        'id': 1,
+                        'order_number': 'OR2500001',
+                        'status': 'created',
+                        'total_items': 3,
+                        'total_price': 15999.50,
+                        'created_at': '2025-01-15T10:30:00',
+                        'user_id': 5
+                    }
+                ],
+                'total': 1
+            }
+        }
 
 
 class OrderStatusUpdate(BaseModel):
