@@ -698,10 +698,12 @@ function Profile() {
                           <p className="text-sm font-semibold text-gray-900">
                             Сумма: {formatPrice(order.total_price)}
                           </p>
-                          {/* TODO: Add order details page */}
-                          {/* <button className="mt-3 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors focus:outline-none focus:underline">
-                            Подробнее
-                          </button> */}
+                          <Link
+                            to={`/order/${order.id}`}
+                            className="mt-3 inline-block text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors focus:outline-none focus:underline"
+                          >
+                            Подробнее →
+                          </Link>
                         </div>
                       );
                     })}

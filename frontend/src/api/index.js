@@ -871,4 +871,32 @@ export const ordersAPI = {
       throw error;
     }
   },
+
+  // Отменить заказ
+  cancelOrder: async (orderId) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('Необходимо войти в систему');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        await handleOrderError(response);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
 };

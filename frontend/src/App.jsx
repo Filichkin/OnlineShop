@@ -14,6 +14,7 @@ const About = lazy(() => import("./pages/About"));
 const Cart = lazy(() => import("./pages/Cart"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
+const OrderDetails = lazy(() => import("./pages/OrderDetails"));
 const Favorites = lazy(() => import("./pages/Favorites"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Category = lazy(() => import("./pages/Category"));
@@ -38,6 +39,7 @@ const router = createBrowserRouter([
       { path: "cart", element: <Cart /> },
       { path: "checkout", element: <Checkout /> },
       { path: "order-success", element: <OrderSuccess /> },
+      { path: "order/:orderId", element: <OrderDetails /> },
       { path: "favorites", element: <Favorites /> },
       { path: "profile", element: <Profile /> },
       { path: "thanks", element: <Thanks /> },
