@@ -1,10 +1,12 @@
 from typing import List, Optional
 
+from loguru import logger
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models import Order, OrderItem, OrderStatus, Product
+from app.utils import generate_order_number, send_order_confirmation_email
 
 
 class CRUDOrder:
@@ -19,6 +21,8 @@ class CRUDOrder:
     ) -> Order:
         """
         Create order from cart items.
+
+        Generates unique order number and sends confirmation email.
 
         Args:
             user_id: User ID
@@ -35,6 +39,10 @@ class CRUDOrder:
         if not cart_items:
             raise ValueError('Cannot create order from empty cart')
 
+        # Generate unique order number
+        order_number = await generate_order_number(session)
+        logger.info(f'Generated order number: {order_number}')
+
         # Calculate totals
         total_items = sum(item.quantity for item in cart_items)
         total_price = sum(
@@ -44,6 +52,7 @@ class CRUDOrder:
         # Create order
         order = Order(
             user_id=user_id,
+            order_number=order_number,
             status=OrderStatus.CREATED,
             first_name=order_data['first_name'],
             last_name=order_data['last_name'],
@@ -73,6 +82,28 @@ class CRUDOrder:
         try:
             await session.commit()
             await session.refresh(order, attribute_names=['items'])
+
+            # Send confirmation email (non-blocking)
+            # Don't fail order creation if email fails
+            try:
+                email_sent = send_order_confirmation_email(order)
+                if email_sent:
+                    logger.info(
+                        f'Order confirmation email sent successfully '
+                        f'for order {order_number}'
+                    )
+                else:
+                    logger.warning(
+                        f'Failed to send order confirmation email '
+                        f'for order {order_number}'
+                    )
+            except Exception as e:
+                logger.error(
+                    f'Unexpected error sending email for order '
+                    f'{order_number}: {str(e)}',
+                    exc_info=True
+                )
+
         except Exception:
             await session.rollback()
             raise
@@ -164,6 +195,45 @@ class CRUDOrder:
                 .selectinload(Product.images)
             )
         )
+        return list(result.scalars().all())
+
+    async def get_all_orders(
+        self,
+        session: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        status: Optional[OrderStatus] = None
+    ) -> List[Order]:
+        """
+        Get all orders (superuser only).
+
+        Args:
+            session: Database session
+            skip: Number of records to skip
+            limit: Maximum number of records to return
+            status: Optional status filter
+
+        Returns:
+            List of Order objects
+        """
+        query = select(Order)
+
+        if status:
+            query = query.where(Order.status == status)
+
+        query = (
+            query
+            .order_by(Order.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .options(
+                selectinload(Order.items)
+                .selectinload(OrderItem.product)
+                .selectinload(Product.images)
+            )
+        )
+
+        result = await session.execute(query)
         return list(result.scalars().all())
 
     async def cancel_order(

@@ -42,6 +42,14 @@ class Order(Base):
         index=True
     )
 
+    # Unique order number (OR{YY}{NNNNN})
+    order_number: Mapped[str] = mapped_column(
+        String(9),
+        nullable=False,
+        unique=True,
+        index=True
+    )
+
     # Order status
     status: Mapped[OrderStatus] = mapped_column(
         SQLAlchemyEnum(
@@ -122,12 +130,14 @@ class Order(Base):
         Index('ix_order_user_id', 'user_id'),
         Index('ix_order_status', 'status'),
         Index('ix_order_created_at', 'created_at'),
+        Index('ix_order_number', 'order_number', unique=True),
     )
 
     def __repr__(self) -> str:
         return (
-            f'Order(id={self.id}, user_id={self.user_id}, '
-            f'status={self.status}, total_price={self.total_price})'
+            f'Order(id={self.id}, order_number={self.order_number}, '
+            f'user_id={self.user_id}, status={self.status}, '
+            f'total_price={self.total_price})'
         )
 
 

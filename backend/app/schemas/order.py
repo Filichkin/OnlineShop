@@ -159,6 +159,7 @@ class OrderResponse(BaseModel):
     """Complete order response with all items."""
 
     id: int
+    order_number: str
     user_id: int
     status: OrderStatus
     first_name: str
@@ -184,6 +185,7 @@ class OrderListItem(BaseModel):
     """Brief order information for order list."""
 
     id: int
+    order_number: str
     status: OrderStatus
     total_items: int
     total_price: float
@@ -243,6 +245,9 @@ class OrderCreateResponse(BaseModel):
     order_id: int = Field(
         description='ID of the created order'
     )
+    order_number: str = Field(
+        description='Unique order number'
+    )
     total_price: float = Field(
         description='Total order price'
     )
@@ -252,6 +257,7 @@ class OrderCreateResponse(BaseModel):
             'example': {
                 'message': 'Order created successfully',
                 'order_id': 1,
+                'order_number': 'OR2500001',
                 'total_price': 15999.50
             }
         }

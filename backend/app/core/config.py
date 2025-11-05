@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     postgres_host: str
 
     # Email settings
-    yandax_email: str
+    yandex_email: str
     yandex_app_pass: str
     smtp_host: str = 'smtp.yandex.ru'
     smtp_port: int = 587

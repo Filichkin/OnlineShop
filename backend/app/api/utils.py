@@ -76,7 +76,7 @@ class EmailService:
     def __init__(self):
         self.smtp_host = settings.smtp_host
         self.smtp_port = settings.smtp_port
-        self.email = settings.yandax_email
+        self.email = settings.yandex_email
         self.password = settings.yandex_app_pass
 
     async def send_password_reset_email(
