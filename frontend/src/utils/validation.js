@@ -181,3 +181,68 @@ export const getPasswordStrengthLabel = (strength) => {
   }
   return { label: 'Отличный', color: 'text-green-600' };
 };
+
+/**
+ * Validates postal code (6 digits for Russian postal codes)
+ * @param {string} postalCode - Postal code to validate
+ * @returns {boolean} True if valid
+ */
+export const isValidPostalCode = (postalCode) => {
+  const postalCodeRegex = /^\d{6}$/;
+  return postalCodeRegex.test(postalCode);
+};
+
+/**
+ * Validates last name
+ * @param {string} lastName - Last name to validate
+ * @returns {object} { isValid: boolean, error: string }
+ */
+export const validateLastName = (lastName) => {
+  if (!lastName || lastName.trim().length === 0) {
+    return { isValid: false, error: 'Фамилия обязательна для заполнения' };
+  }
+
+  if (lastName.length > 50) {
+    return { isValid: false, error: 'Фамилия не может быть длиннее 50 символов' };
+  }
+
+  return { isValid: true, error: '' };
+};
+
+/**
+ * Validates city name
+ * @param {string} city - City name to validate
+ * @returns {object} { isValid: boolean, error: string }
+ */
+export const validateCity = (city) => {
+  if (!city || city.trim().length === 0) {
+    return { isValid: false, error: 'Город обязателен для заполнения' };
+  }
+
+  if (city.length > 100) {
+    return { isValid: false, error: 'Город не может быть длиннее 100 символов' };
+  }
+
+  return { isValid: true, error: '' };
+};
+
+/**
+ * Validates address
+ * @param {string} address - Address to validate
+ * @returns {object} { isValid: boolean, error: string }
+ */
+export const validateAddress = (address) => {
+  if (!address || address.trim().length === 0) {
+    return { isValid: false, error: 'Адрес обязателен для заполнения' };
+  }
+
+  if (address.length < 10) {
+    return { isValid: false, error: 'Адрес слишком короткий (минимум 10 символов)' };
+  }
+
+  if (address.length > 255) {
+    return { isValid: false, error: 'Адрес не может быть длиннее 255 символов' };
+  }
+
+  return { isValid: true, error: '' };
+};

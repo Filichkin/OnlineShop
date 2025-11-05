@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { logout, updateProfile, getCurrentUser, clearError, clearSuccessMessage } from '../store/slices/authSlice';
 import { selectFavoriteItems, selectFavoritesIsLoading, fetchFavorites } from '../store/slices/favoritesSlice';
 import { isValidPhone, isValidTelegramId, isValidBirthDate, formatPhoneNumber } from '../utils/validation';
 import { getImageUrl, formatPrice } from '../utils';
+import { ordersAPI } from '../api';
 import ordersIcon from '../assets/images/orders.webp';
 import favoriteIcon from '../assets/images/favorite.webp';
 import profileIcon from '../assets/images/profile.webp';
@@ -22,6 +23,7 @@ import FavoriteButton from '../UI/FavoriteButton';
 function Profile() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, loading, error, successMessage } = useSelector((state) => state.auth);
   const favoriteItems = useSelector(selectFavoriteItems);
   const favoritesLoading = useSelector(selectFavoritesIsLoading);
@@ -40,6 +42,19 @@ function Profile() {
   });
   const [validationErrors, setValidationErrors] = useState({});
 
+  // Orders state
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState(null);
+
+  // Check if we should open orders tab from URL
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'orders') {
+      setActiveTab('orders');
+    }
+  }, [searchParams]);
+
   // Load user data when component mounts or user changes
   useEffect(() => {
     if (!user) {
@@ -53,6 +68,27 @@ function Profile() {
       dispatch(fetchFavorites());
     }
   }, [user, dispatch]);
+
+  // Load orders when orders tab is active
+  useEffect(() => {
+    if (activeTab === 'orders' && user && orders.length === 0) {
+      loadOrders();
+    }
+  }, [activeTab, user]);
+
+  const loadOrders = async () => {
+    setOrdersLoading(true);
+    setOrdersError(null);
+    try {
+      const data = await ordersAPI.getOrders(0, 20);
+      setOrders(data);
+    } catch (err) {
+      console.error('Error loading orders:', err);
+      setOrdersError(err || 'Не удалось загрузить заказы');
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
 
   // Update local state when user data is loaded
   useEffect(() => {
@@ -579,35 +615,98 @@ function Profile() {
             {/* Orders Tab */}
             {activeTab === 'orders' && (
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Заказы</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Мои заказы</h2>
 
-                {/* Placeholder для заказов */}
-                <div className="space-y-4">
-                  {[1, 2, 3].map((orderId) => (
-                    <div
-                      key={orderId}
-                      className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
+                {ordersLoading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  </div>
+                ) : ordersError ? (
+                  <div className="text-center py-12">
+                    <div className="text-red-600 mb-4">{ordersError}</div>
+                    <button
+                      onClick={loadOrders}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                     >
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-gray-900">
-                          Заказ #{orderId.toString().padStart(6, '0')}
-                        </h3>
-                        <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                          Доставлен
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600">Дата: 15 января 2025</p>
-                      <p className="text-sm text-gray-600">Сумма: 15 000 руб.</p>
-                      <button className="mt-3 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors focus:outline-none focus:underline">
-                        Подробнее
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                      Попробовать снова
+                    </button>
+                  </div>
+                ) : orders.length === 0 ? (
+                  <div className="text-center py-12">
+                    <img
+                      src={ordersIcon}
+                      alt="Заказы"
+                      className="w-24 h-24 mx-auto mb-4 opacity-50"
+                    />
+                    <p className="text-gray-500 mb-4">
+                      У вас пока нет заказов
+                    </p>
+                    <button
+                      onClick={() => navigate('/')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                    >
+                      Начать покупки
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {orders.map((order) => {
+                      const statusColors = {
+                        created: 'bg-blue-100 text-blue-800',
+                        updated: 'bg-yellow-100 text-yellow-800',
+                        confirmed: 'bg-purple-100 text-purple-800',
+                        shipped: 'bg-green-100 text-green-800',
+                        canceled: 'bg-red-100 text-red-800',
+                      };
 
-                <p className="mt-6 text-center text-gray-500 text-sm">
-                  Здесь будут отображаться ваши заказы
-                </p>
+                      const statusLabels = {
+                        created: 'Создан',
+                        updated: 'Обновлен',
+                        confirmed: 'Подтвержден',
+                        shipped: 'Отправлен',
+                        canceled: 'Отменен',
+                      };
+
+                      return (
+                        <div
+                          key={order.id}
+                          className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
+                        >
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                            <h3 className="font-semibold text-gray-900">
+                              Заказ {order.order_number}
+                            </h3>
+                            <span className={`px-3 py-1 text-sm rounded-full ${statusColors[order.status] || 'bg-gray-100 text-gray-800'}`}>
+                              {statusLabels[order.status] || order.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            Дата: {new Date(order.created_at).toLocaleDateString('ru-RU', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Товаров: {order.total_items} шт.
+                          </p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            Сумма: {formatPrice(order.total_price)}
+                          </p>
+                          {/* TODO: Add order details page */}
+                          {/* <button className="mt-3 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors focus:outline-none focus:underline">
+                            Подробнее
+                          </button> */}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 

@@ -748,3 +748,127 @@ export const favoritesAPI = {
     }
   },
 };
+
+// Helper function for handling orders API errors
+const handleOrderError = async (response) => {
+  let errorMessage = 'Произошла ошибка при оформлении заказа';
+
+  try {
+    const errorData = await response.json();
+    errorMessage = errorData.detail || errorMessage;
+  } catch {
+    // If JSON parsing fails, use status-based messages
+    switch (response.status) {
+      case 400:
+        errorMessage = 'Некорректные данные заказа';
+        break;
+      case 401:
+        errorMessage = 'Необходимо войти в систему';
+        break;
+      case 404:
+        errorMessage = 'Корзина пуста или товары не найдены';
+        break;
+      case 500:
+        errorMessage = 'Ошибка сервера. Попробуйте позже';
+        break;
+      default:
+        errorMessage = `Ошибка: ${response.statusText}`;
+    }
+  }
+
+  const error = new Error(errorMessage);
+  error.status = response.status;
+  throw error;
+};
+
+// API для заказов
+export const ordersAPI = {
+  // Создать новый заказ
+  createOrder: async (orderData) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('Необходимо войти в систему для оформления заказа');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/orders/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) {
+        await handleOrderError(response);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Получить список заказов пользователя
+  getOrders: async (skip = 0, limit = 10) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('Необходимо войти в систему');
+      }
+
+      const params = new URLSearchParams({
+        skip: skip.toString(),
+        limit: limit.toString(),
+      });
+
+      const response = await fetch(`${API_BASE_URL}/orders/?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        await handleOrderError(response);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Получить заказ по ID
+  getOrder: async (orderId) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('Необходимо войти в систему');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        await handleOrderError(response);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+};
