@@ -31,6 +31,11 @@ A modern full-stack e-commerce platform built with React and FastAPI, featuring 
 - **Responsive Design** - Mobile-first approach
 - **Image Gallery** - Multiple product images with main image support
 - **Shopping Cart** - Server-synced cart with quantity updates, clear cart, and checkout CTA
+- **Favorites System** - Add products to favorites, view and manage favorite items
+- **User Authentication** - JWT-based registration and login
+- **User Profile** - View and update personal information
+- **Order Management** - Place orders, view order history, track order status
+- **Order Details** - Detailed order view with cancellation option
 
 ### 👨‍💼 Admin Features
 - **Product Management** - Full CRUD operations for products
@@ -42,6 +47,8 @@ A modern full-stack e-commerce platform built with React and FastAPI, featuring 
   - Drag & drop reordering
   - Bulk image operations
 - **User Management** - Admin user authentication
+- **Order Management** - View all orders, filter by status, update order status
+- **Email Notifications** - Automatic order confirmation and status update emails
 - **Real-time Updates** - Live data synchronization
 
 ### 🖼️ Image Management System
@@ -59,6 +66,16 @@ A modern full-stack e-commerce platform built with React and FastAPI, featuring 
 - **Granular Controls** - Users can adjust quantities, remove individual items, or clear the cart entirely with confirmation prompts.
 - **Sticky Summary Card** - Desktop layout keeps totals and checkout button visible (sticky sidebar).
 - **Checkout Hand-off** - Dedicated handler navigates toward the checkout flow (`/checkout`).
+
+### 📦 Order Management System
+- **Order Placement** - Convert cart to order with shipping information
+- **Order Numbers** - Unique sequential order numbers (format: OR{YY}{NNNNN})
+- **Order Statuses** - Created, Updated, Confirmed, Shipped, Canceled
+- **Email Notifications** - Automatic order confirmation and status update emails
+- **Order History** - View all past orders with details
+- **Order Tracking** - Track order status in real-time
+- **Order Cancellation** - Cancel orders with status restrictions
+- **Admin Order Management** - Full order management interface for administrators
 
 ## 🏗️ Project Structure
 
@@ -179,6 +196,26 @@ Once the backend is running, visit:
 - `DELETE /cart/items/{product_id}` - Remove product from cart
 - `DELETE /cart/` - Clear all items from cart
 
+#### Favorites
+- `GET /favorites/` - Get user's favorite items
+- `POST /favorites/{product_id}` - Add product to favorites
+- `DELETE /favorites/{product_id}` - Remove product from favorites
+
+#### Orders
+- `POST /orders/` - Create order from cart
+- `GET /orders/` - Get user's orders
+- `GET /orders/{id}` - Get order details
+- `DELETE /orders/{id}` - Cancel order
+- `GET /orders/admin/all` - Get all orders (admin only)
+- `PATCH /orders/admin/{id}/status` - Update order status (admin only)
+
+#### Authentication
+- `POST /auth/register` - Register new user
+- `POST /auth/login` - User login
+- `POST /auth/logout` - User logout
+- `GET /auth/me` - Get current user info
+- `PATCH /auth/me` - Update user profile
+
 ## 🔧 Configuration
 
 ### Environment Variables
@@ -193,6 +230,12 @@ POSTGRES_USER=onlineshop
 POSTGRES_PASSWORD=replace-with-strong-password
 FIRST_SUPERUSER_EMAIL=admin@example.com
 FIRST_SUPERUSER_PASSWORD=replace-with-strong-password
+
+# Email settings (for order notifications)
+SMTP_HOST=smtp.yandex.ru
+SMTP_PORT=587
+YANDEX_EMAIL=your-email@yandex.ru
+YANDEX_APP_PASS=your-app-password
 ```
 
 #### Frontend (.env)
@@ -216,11 +259,14 @@ VITE_API_BASE_URL=http://localhost:8000
 
 ## 🛡️ Security Features
 
-- **JWT Authentication** - Secure token-based auth
+- **JWT Authentication** - Secure token-based auth with fastapi-users
+- **Password Hashing** - Bcrypt password hashing
 - **Input Validation** - Pydantic schema validation
 - **File Upload Security** - Type and size validation
 - **CORS Configuration** - Cross-origin request handling
 - **SQL Injection Protection** - SQLAlchemy ORM protection
+- **Session Management** - Secure session cookies for anonymous carts
+- **Email Security** - SMTP with TLS for email notifications
 
 ## 📱 Responsive Design
 
@@ -301,6 +347,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Status**: 🚀 Active Development  
-**Version**: 1.0.0  
-**Last Updated**: October 2025
+**Status**: 🚀 Active Development
+**Version**: 1.1.0
+**Last Updated**: November 2025
