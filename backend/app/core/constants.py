@@ -129,3 +129,12 @@ class Constants:
     TELEGRAM_ID_MIN_LEN = 6
     TELEGRAM_ID_MAX_LEN = 33
     ADDRESS_MAX_LEN = 255
+
+    # Order Constants
+    ORDERS_PREFIX = '/orders'
+    ORDERS_TAGS = ('orders',)
+    POSTAL_CODE_MIN_LEN = 5
+    POSTAL_CODE_MAX_LEN = 10
+    EMAIL_MAX_LEN = 320
+    ORDER_NOTES_MAX_LEN = 500
+    POSTAL_CODE_PATTERN: str = r'^\d{5,10}$'
