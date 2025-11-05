@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models import Order, OrderItem, OrderStatus, Product
-from app.utils import generate_order_number, send_order_confirmation_email
+from app.utils import (
+    generate_order_number,
+    send_order_confirmation_email,
+    send_order_status_update_email,
+)
 
 
 class CRUDOrder:
@@ -286,7 +290,8 @@ class CRUDOrder:
         self,
         order: Order,
         new_status: OrderStatus,
-        session: AsyncSession
+        session: AsyncSession,
+        send_notification: bool = True
     ) -> Order:
         """
         Update order status (admin operation).
@@ -295,14 +300,40 @@ class CRUDOrder:
             order: Order object to update
             new_status: New status
             session: Database session
+            send_notification: Whether to send email notification
 
         Returns:
             Updated Order object
         """
+        old_status = order.status.value
         order.status = new_status
         try:
             await session.commit()
             await session.refresh(order)
+
+            # Send email notification if status changed
+            if send_notification and old_status != new_status.value:
+                try:
+                    email_sent = send_order_status_update_email(
+                        order,
+                        old_status
+                    )
+                    if email_sent:
+                        logger.info(
+                            f'Status update email sent for order '
+                            f'{order.order_number}'
+                        )
+                    else:
+                        logger.warning(
+                            f'Failed to send status update email for order '
+                            f'{order.order_number}'
+                        )
+                except Exception as e:
+                    logger.error(
+                        f'Error sending status update email for order '
+                        f'{order.order_number}: {str(e)}',
+                        exc_info=True
+                    )
         except Exception:
             await session.rollback()
             raise
