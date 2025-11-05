@@ -202,7 +202,7 @@ class OrderListItem(BaseModel):
     total_items: int
     total_price: float
     created_at: datetime
-    user_id: int
+    user_id: Optional[int] = None
     user: Optional[UserInOrder] = None
 
     class Config:

@@ -155,7 +155,8 @@ async def get_user_orders(
             status=order.status,
             total_items=order.total_items,
             total_price=order.total_price,
-            created_at=order.created_at
+            created_at=order.created_at,
+            user_id=order.user_id
         )
         for order in orders
     ]
