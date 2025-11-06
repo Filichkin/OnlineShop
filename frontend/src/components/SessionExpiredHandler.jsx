@@ -19,16 +19,26 @@ function SessionExpiredHandler({ onOpenLoginModal }) {
   useEffect(() => {
     // Show notification only when session has expired (not on explicit logout)
     if (sessionExpired && !loading) {
-      // Show notification
-      setShowNotification(true);
-
       // If user was on a protected page, redirect to home
       const protectedPaths = ['/profile', '/checkout', '/order'];
       const isProtectedPath = protectedPaths.some(path => location.pathname.startsWith(path));
 
       if (isProtectedPath) {
         navigate('/', { replace: true });
+
+        // Special handling for profile page - no popup, immediate login modal
+        if (location.pathname.startsWith('/profile')) {
+          if (onOpenLoginModal) {
+            onOpenLoginModal();
+          }
+          dispatch(clearSessionExpired());
+          return; // Exit early - no notification shown
+        }
       }
+
+      // For other cases (non-profile protected pages or general session expiration)
+      // Show notification popup
+      setShowNotification(true);
 
       // Auto-hide notification after 4 seconds
       const timer = setTimeout(() => {

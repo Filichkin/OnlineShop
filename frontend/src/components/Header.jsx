@@ -1,4 +1,4 @@
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import NavMenuLink from "../UI/NavLinkMenu";
@@ -10,6 +10,7 @@ import profileIcon from "../assets/images/profile.webp";
 import adminIcon from "../assets/images/admin.webp";
 import { selectCartTotalItems } from '../store/slices/cartSlice';
 import { selectFavoritesTotalItems } from '../store/slices/favoritesSlice';
+import { getCurrentUser } from '../store/slices/authSlice';
 import LoginModal from './LoginModal';
 
 /**
@@ -27,12 +28,25 @@ function Header({ onOpenLoginModal }) {
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  const handleProfileClick = () => {
+  const handleProfileClick = async () => {
     if (isAuthenticated) {
-      navigate('/profile');
+      // Proactively check token validity before navigation
+      try {
+        await dispatch(getCurrentUser()).unwrap();
+        // Token is valid, proceed to profile
+        navigate('/profile');
+      } catch (error) {
+        // Token is invalid or expired - do not navigate, open login modal instead
+        if (onOpenLoginModal) {
+          onOpenLoginModal();
+        } else {
+          setIsLoginModalOpen(true);
+        }
+      }
     } else {
-      // Use parent's login modal if provided, otherwise use local
+      // User not authenticated, show login modal
       if (onOpenLoginModal) {
         onOpenLoginModal();
       } else {

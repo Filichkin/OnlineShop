@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authAPI } from '../../api';
 import { resetCart } from './cartSlice';
 import { resetFavorites } from './favoritesSlice';
+import { isTokenValid } from '../../utils/tokenUtils';
 
 // Асинхронные действия
 
@@ -100,7 +101,7 @@ export const logout = createAsyncThunk(
 const initialState = {
   user: null, // User object with: first_name, last_name, email, phone, date_of_birth, city, telegram_id, address
   token: localStorage.getItem('token'),
-  isAuthenticated: !!localStorage.getItem('token'),
+  isAuthenticated: isTokenValid(), // Check both existence and validity
   loading: false,
   error: null,
   successMessage: null,
@@ -122,6 +123,15 @@ const authSlice = createSlice({
     },
     clearSessionExpired: (state) => {
       state.sessionExpired = false;
+    },
+    checkTokenValidity: (state) => {
+      const token = localStorage.getItem('token');
+      if (!token || !isTokenValid()) {
+        state.isAuthenticated = false;
+        state.token = null;
+        state.user = null;
+        localStorage.removeItem('token');
+      }
     },
   },
   extraReducers: (builder) => {
@@ -248,5 +258,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, clearSuccessMessage, setUser, clearSessionExpired } = authSlice.actions;
+export const { clearError, clearSuccessMessage, setUser, clearSessionExpired, checkTokenValidity } = authSlice.actions;
 export default authSlice.reducer;

@@ -56,19 +56,14 @@ function Profile() {
   }, [searchParams]);
 
   // Check authentication and redirect if needed
+  // NOTE: Token validation happens in Header before navigation
+  // This is a fallback for edge cases
   useEffect(() => {
     if (!isAuthenticated && !loading) {
-      // Session expired or user not logged in - redirect to home and show login modal
+      // Session expired or user not logged in - redirect to home
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, loading, navigate]);
-
-  // Load user data when component mounts or user changes
-  useEffect(() => {
-    if (isAuthenticated && !user) {
-      dispatch(getCurrentUser());
-    }
-  }, [user, isAuthenticated, dispatch]);
 
   // Load favorites when user is authenticated
   useEffect(() => {
@@ -271,8 +266,14 @@ function Profile() {
     { id: 'favorites', label: 'Избранное', icon: favoriteIcon },
   ];
 
-  // Show loading state while checking authentication or loading user data
-  if (loading || (!user && isAuthenticated)) {
+  // If not authenticated, don't render anything (redirect will happen via useEffect)
+  // This prevents showing empty profile data
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  // Show loading state while user data is being fetched
+  if (loading || !user) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center items-center min-h-[400px]">
@@ -286,11 +287,6 @@ function Profile() {
         </div>
       </div>
     );
-  }
-
-  // If not authenticated, don't render anything (redirect will happen via useEffect)
-  if (!isAuthenticated) {
-    return null;
   }
 
   return (
