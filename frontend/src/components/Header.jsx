@@ -7,6 +7,7 @@ import homeIcon from "../assets/images/home.webp";
 import cartIcon from "../assets/images/cart.webp";
 import favoriteIcon from "../assets/images/favorite.webp";
 import profileIcon from "../assets/images/profile.webp";
+import adminIcon from "../assets/images/admin.webp";
 import { selectCartTotalItems } from '../store/slices/cartSlice';
 import { selectFavoritesTotalItems } from '../store/slices/favoritesSlice';
 import LoginModal from './LoginModal';
@@ -17,7 +18,7 @@ import LoginModal from './LoginModal';
  * ОПТИМИЗАЦИЯ: Использует useSelector для получения количества товаров из Redux.
  * Компонент ре-рендерится только когда изменяется totalItems или totalFavorites.
  */
-function Header() {
+function Header({ onOpenLoginModal }) {
   // Получаем количество товаров в корзине и избранном из Redux
   const totalItems = useSelector(selectCartTotalItems);
   const totalFavorites = useSelector(selectFavoritesTotalItems);
@@ -31,7 +32,12 @@ function Header() {
     if (isAuthenticated) {
       navigate('/profile');
     } else {
-      setIsLoginModalOpen(true);
+      // Use parent's login modal if provided, otherwise use local
+      if (onOpenLoginModal) {
+        onOpenLoginModal();
+      } else {
+        setIsLoginModalOpen(true);
+      }
     }
   };
 
@@ -107,6 +113,17 @@ function Header() {
                 </span>
               </button>
             </li>
+            {/* Admin icon - only visible for superusers */}
+            {isAuthenticated && user?.is_superuser && (
+              <li>
+                <NavMenuLink to={"/admin"}>
+                  <span className="flex flex-col items-center gap-1">
+                    <img className="w-8 h-8 sm:w-10 sm:h-10 object-contain" src={adminIcon} alt="Админ-панель" />
+                    <span className="hidden sm:inline">Админ</span>
+                  </span>
+                </NavMenuLink>
+              </li>
+            )}
           </ul>
         </nav>
       </header>

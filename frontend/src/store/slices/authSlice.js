@@ -104,6 +104,7 @@ const initialState = {
   loading: false,
   error: null,
   successMessage: null,
+  sessionExpired: false, // Flag to distinguish explicit logout from session expiration
 };
 
 const authSlice = createSlice({
@@ -118,6 +119,9 @@ const authSlice = createSlice({
     },
     setUser: (state, action) => {
       state.user = action.payload;
+    },
+    clearSessionExpired: (state) => {
+      state.sessionExpired = false;
     },
   },
   extraReducers: (builder) => {
@@ -134,6 +138,7 @@ const authSlice = createSlice({
         state.user = action.payload.user; // Save user data from response
         state.isAuthenticated = true;
         state.successMessage = 'Регистрация прошла успешно!';
+        state.sessionExpired = false; // Clear session expired flag on successful registration
         localStorage.setItem('token', action.payload.access_token);
       })
       .addCase(register.rejected, (state, action) => {
@@ -154,6 +159,7 @@ const authSlice = createSlice({
         state.user = action.payload.user; // Save user data from response
         state.isAuthenticated = true;
         state.successMessage = 'Вход выполнен успешно!';
+        state.sessionExpired = false; // Clear session expired flag on successful login
         localStorage.setItem('token', action.payload.access_token);
       })
       .addCase(login.rejected, (state, action) => {
@@ -189,13 +195,17 @@ const authSlice = createSlice({
       })
       .addCase(getCurrentUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || 'Не удалось загрузить данные пользователя';
-        // If token is invalid, logout
-        if (action.payload?.includes('Сессия истекла')) {
+        // Check if session expired (401 error)
+        if (action.payload?.includes('Сессия истекла') || action.payload?.includes('Токен не найден')) {
+          // Clear authentication state
           state.isAuthenticated = false;
           state.token = null;
           state.user = null;
+          state.error = null; // Don't show error message, just redirect
+          state.sessionExpired = true; // Mark as session expired
           localStorage.removeItem('token');
+        } else {
+          state.error = action.payload || 'Не удалось загрузить данные пользователя';
         }
       })
 
@@ -212,7 +222,18 @@ const authSlice = createSlice({
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || 'Ошибка при обновлении профиля';
+        // Check if session expired (401 error)
+        if (action.payload?.includes('Сессия истекла') || action.payload?.includes('Токен не найден')) {
+          // Clear authentication state
+          state.isAuthenticated = false;
+          state.token = null;
+          state.user = null;
+          state.error = null;
+          state.sessionExpired = true; // Mark as session expired
+          localStorage.removeItem('token');
+        } else {
+          state.error = action.payload || 'Ошибка при обновлении профиля';
+        }
       })
 
       // Выход
@@ -222,9 +243,10 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.error = null;
         state.successMessage = null;
+        state.sessionExpired = false; // Clear session expired flag on explicit logout
       });
   },
 });
 
-export const { clearError, clearSuccessMessage, setUser } = authSlice.actions;
+export const { clearError, clearSuccessMessage, setUser, clearSessionExpired } = authSlice.actions;
 export default authSlice.reducer;

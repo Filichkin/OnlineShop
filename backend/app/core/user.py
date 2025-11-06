@@ -7,19 +7,19 @@ from fastapi_users import (
     IntegerIDMixin,
     InvalidPasswordException
 )
-from loguru import logger
 from fastapi_users.authentication import (
     AuthenticationBackend,
     BearerTransport,
-    JWTStrategy
 )
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.constants import Constants
-from app.core.messages import Messages
 from app.core.db import get_async_session
+from app.core.jwt_strategy import CustomJWTStrategy
+from app.core.messages import Messages
 from app.models.user import User
 from app.schemas.user import UserCreate
 
@@ -35,8 +35,8 @@ bearer_transport = BearerTransport(
 )
 
 
-def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(
+def get_jwt_strategy() -> CustomJWTStrategy:
+    return CustomJWTStrategy(
         secret=settings.secret,
         lifetime_seconds=settings.jwt_token_lifetime,
     )

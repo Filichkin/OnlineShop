@@ -24,7 +24,7 @@ function Profile() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, loading, error, successMessage } = useSelector((state) => state.auth);
+  const { user, loading, error, successMessage, isAuthenticated } = useSelector((state) => state.auth);
   const favoriteItems = useSelector(selectFavoriteItems);
   const favoritesLoading = useSelector(selectFavoritesIsLoading);
 
@@ -55,12 +55,20 @@ function Profile() {
     }
   }, [searchParams]);
 
+  // Check authentication and redirect if needed
+  useEffect(() => {
+    if (!isAuthenticated && !loading) {
+      // Session expired or user not logged in - redirect to home and show login modal
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, loading, navigate]);
+
   // Load user data when component mounts or user changes
   useEffect(() => {
-    if (!user) {
+    if (isAuthenticated && !user) {
       dispatch(getCurrentUser());
     }
-  }, [user, dispatch]);
+  }, [user, isAuthenticated, dispatch]);
 
   // Load favorites when user is authenticated
   useEffect(() => {
@@ -263,7 +271,8 @@ function Profile() {
     { id: 'favorites', label: 'Избранное', icon: favoriteIcon },
   ];
 
-  if (!user && loading) {
+  // Show loading state while checking authentication or loading user data
+  if (loading || (!user && isAuthenticated)) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center items-center min-h-[400px]">
@@ -277,6 +286,11 @@ function Profile() {
         </div>
       </div>
     );
+  }
+
+  // If not authenticated, don't render anything (redirect will happen via useEffect)
+  if (!isAuthenticated) {
+    return null;
   }
 
   return (

@@ -163,12 +163,29 @@ function Favorites() {
                 <div className="flex flex-col flex-grow p-3 border-t border-gray-200">
                   <Link
                     to={`/product/${product.id}`}
-                    className="hover:text-blue-600 transition-colors"
+                    className="hover:text-blue-600 transition-colors block"
                   >
-                    <h3 className="text-sm font-semibold text-gray-800 mb-3 line-clamp-2 min-h-[3rem]">
+                    <h3
+                      className="text-sm font-semibold text-gray-800 mb-2"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        lineHeight: '1.25rem',
+                        maxHeight: '2.5rem'
+                      }}>
                       {product.name}
                     </h3>
                   </Link>
+
+                  {/* Артикул */}
+                  {product.part_number && (
+                    <p className="text-xs text-gray-500 mb-3">
+                      Арт: {product.part_number}
+                    </p>
+                  )}
 
                   {/* Цена и кнопка */}
                   <div className="mt-auto flex items-center justify-between gap-3">
