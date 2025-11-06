@@ -7,6 +7,7 @@ import homeIcon from "../assets/images/home.webp";
 import cartIcon from "../assets/images/cart.webp";
 import favoriteIcon from "../assets/images/favorite.webp";
 import profileIcon from "../assets/images/profile.webp";
+import adminIcon from "../assets/images/admin.webp";
 import { selectCartTotalItems } from '../store/slices/cartSlice';
 import { selectFavoritesTotalItems } from '../store/slices/favoritesSlice';
 import LoginModal from './LoginModal';
@@ -112,6 +113,17 @@ function Header({ onOpenLoginModal }) {
                 </span>
               </button>
             </li>
+            {/* Admin icon - only visible for superusers */}
+            {isAuthenticated && user?.is_superuser && (
+              <li>
+                <NavMenuLink to={"/admin"}>
+                  <span className="flex flex-col items-center gap-1">
+                    <img className="w-8 h-8 sm:w-10 sm:h-10 object-contain" src={adminIcon} alt="Админ-панель" />
+                    <span className="hidden sm:inline">Админ</span>
+                  </span>
+                </NavMenuLink>
+              </li>
+            )}
           </ul>
         </nav>
       </header>

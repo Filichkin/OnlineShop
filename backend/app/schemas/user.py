@@ -26,6 +26,7 @@ class UserRead(schemas.BaseUser[int]):
     Schema for reading user data.
 
     Returns all user information except password.
+    Inherits id, email, is_active, is_superuser, is_verified from BaseUser.
     """
     first_name: str
     phone: str
@@ -34,6 +35,7 @@ class UserRead(schemas.BaseUser[int]):
     city: Optional[str] = None
     telegram_id: Optional[str] = None
     address: Optional[str] = None
+    is_superuser: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -108,9 +108,19 @@ function Category() {
                   <Link
                     to={`/product/${product.id}`}
                     state={{ categoryId }}
-                    className="hover:text-blue-600 transition-colors"
+                    className="hover:text-blue-600 transition-colors block"
                   >
-                    <h3 className="text-sm font-semibold text-gray-800 mb-3 line-clamp-2 min-h-[3rem]">
+                    <h3
+                      className="text-sm font-semibold text-gray-800 mb-3"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        lineHeight: '1.25rem',
+                        maxHeight: '2.5rem'
+                      }}>
                       {product.name}
                     </h3>
                   </Link>

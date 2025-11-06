@@ -19,7 +19,6 @@ const Favorites = lazy(() => import("./pages/Favorites"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Category = lazy(() => import("./pages/Category"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
-const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
 const router = createBrowserRouter([
   {
@@ -50,28 +49,15 @@ const router = createBrowserRouter([
         errorElement: <ErrorBoundary />,
       },
       { path: "product/:productId", element: <ProductDetails /> },
-      { path: "*", element: <NotFound /> },
-    ],
-  },
-  {
-    path: "/admin",
-    children: [
       {
-        index: true,
-        element: <Navigate to="/admin/login" replace />,
-      },
-      {
-        path: "login",
-        element: <AdminLogin />,
-      },
-      {
-        path: "panel",
+        path: "admin",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requireSuperuser={true}>
             <AdminPanel />
           </ProtectedRoute>
         ),
       },
+      { path: "*", element: <NotFound /> },
     ],
   },
 ]);
