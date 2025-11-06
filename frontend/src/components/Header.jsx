@@ -17,7 +17,7 @@ import LoginModal from './LoginModal';
  * ОПТИМИЗАЦИЯ: Использует useSelector для получения количества товаров из Redux.
  * Компонент ре-рендерится только когда изменяется totalItems или totalFavorites.
  */
-function Header() {
+function Header({ onOpenLoginModal }) {
   // Получаем количество товаров в корзине и избранном из Redux
   const totalItems = useSelector(selectCartTotalItems);
   const totalFavorites = useSelector(selectFavoritesTotalItems);
@@ -31,7 +31,12 @@ function Header() {
     if (isAuthenticated) {
       navigate('/profile');
     } else {
-      setIsLoginModalOpen(true);
+      // Use parent's login modal if provided, otherwise use local
+      if (onOpenLoginModal) {
+        onOpenLoginModal();
+      } else {
+        setIsLoginModalOpen(true);
+      }
     }
   };
 
