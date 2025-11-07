@@ -4,7 +4,7 @@ import { productsAPI } from '../../api';
 // Асинхронные действия
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
-  async ({ skip = 0, limit = 10, categoryId = null, search = null, minPrice = null, maxPrice = null, isActive = true } = {}) => {
+  async ({ skip = 0, limit = 20, categoryId = null, search = null, minPrice = null, maxPrice = null, isActive = true } = {}) => {
     // Убеждаемся, что isActive не null
     const activeFilter = isActive === null ? undefined : isActive;
     const response = await productsAPI.getProducts(skip, limit, categoryId, search, minPrice, maxPrice, activeFilter);
@@ -75,7 +75,7 @@ const initialState = {
   },
   pagination: {
     skip: 0,
-    limit: 10,
+    limit: 20,
     total: 0,
   },
 };
