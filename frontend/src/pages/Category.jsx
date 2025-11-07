@@ -111,7 +111,7 @@ function Category() {
                     className="hover:text-blue-600 transition-colors block"
                   >
                     <h3
-                      className="text-sm font-semibold text-gray-800 mb-2"
+                      className="text-[14px] font-[500] text-gray-900 mb-2"
                       style={{
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
@@ -128,13 +128,13 @@ function Category() {
                   {/* Артикул */}
                   {product.part_number && (
                     <p className="text-xs text-gray-500 mb-3">
-                      Арт: {product.part_number}
+                      Артикул: {product.part_number}
                     </p>
                   )}
 
                   {/* Цена и кнопка */}
                   <div className="mt-auto flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
+                    <span className="text-[16px] font-semibold text-gray-800 whitespace-nowrap">
                       {formatPrice(product.price)}
                     </span>
                     <AddToCartButton
