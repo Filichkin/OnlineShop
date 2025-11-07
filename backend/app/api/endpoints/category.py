@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import List, Optional
 
 from fastapi import (
@@ -32,6 +33,14 @@ from app.schemas.product import (
     ProductDetailResponse,
     ProductListResponse
 )
+
+
+class ProductSortBy(str, Enum):
+    """Варианты сортировки продуктов"""
+    PRICE_ASC = 'price_asc'
+    PRICE_DESC = 'price_desc'
+    NAME_ASC = 'name_asc'
+    NAME_DESC = 'name_desc'
 
 
 router = APIRouter()
@@ -340,7 +349,7 @@ async def restore_category(
     '/{category_id}/products/',
     response_model=List[ProductListResponse],
     summary='Получить продукты категории',
-    description='Получить список продуктов категории'
+    description='Получить список продуктов категории с сортировкой'
 )
 async def get_category_products(
     category_id: int,
@@ -359,24 +368,34 @@ async def get_category_products(
         True,
         description='Фильтр по активности продуктов'
     ),
+    sort_by: ProductSortBy = Query(
+        ProductSortBy.PRICE_ASC,
+        description='Сортировка продуктов: '
+                    'price_asc - по цене от меньшей к большей, '
+                    'price_desc - по цене от большей к меньшей, '
+                    'name_asc - по названию А-Я, '
+                    'name_desc - по названию Я-А'
+    ),
     session: AsyncSession = Depends(get_async_session)
 ):
-    """Получить продукты категории"""
+    """Получить продукты категории с сортировкой"""
     logger.debug(
         f'Запрос продуктов категории: category_id={category_id}, '
-        f'skip={skip}, limit={limit}, is_active={is_active}'
+        f'skip={skip}, limit={limit}, is_active={is_active}, '
+        f'sort_by={sort_by.value}'
     )
 
     # Проверяем существование и активность категории
     await validate_category_exists(category_id, session, must_be_active=True)
 
-    # Получаем продукты категории
+    # Получаем продукты категории с сортировкой
     products = await product_crud.get_by_category(
         category_id=category_id,
         session=session,
         skip=skip,
         limit=limit,
-        is_active=is_active
+        is_active=is_active,
+        sort_by=sort_by.value
     )
 
     # Получаем главные изображения для всех продуктов одним запросом
@@ -435,7 +454,7 @@ async def get_category_products(
     '/slug/{slug}/products/',
     response_model=List[ProductListResponse],
     summary='Получить продукты категории по слагу',
-    description='Получить список продуктов категории по слагу'
+    description='Получить список продуктов категории по слагу с сортировкой'
 )
 async def get_category_products_by_slug(
     slug: str,
@@ -454,12 +473,20 @@ async def get_category_products_by_slug(
         True,
         description='Фильтр по активности продуктов'
     ),
+    sort_by: ProductSortBy = Query(
+        ProductSortBy.PRICE_ASC,
+        description='Сортировка продуктов: '
+                    'price_asc - по цене от меньшей к большей, '
+                    'price_desc - по цене от большей к меньшей, '
+                    'name_asc - по названию А-Я, '
+                    'name_desc - по названию Я-А'
+    ),
     session: AsyncSession = Depends(get_async_session)
 ):
-    """Получить продукты категории по слагу"""
+    """Получить продукты категории по слагу с сортировкой"""
     logger.debug(
         f'Запрос продуктов категории по слагу: slug={slug}, '
-        f'skip={skip}, limit={limit}'
+        f'skip={skip}, limit={limit}, sort_by={sort_by.value}'
     )
 
     db_category = await category_crud.get_with_status_by_slug(
@@ -482,7 +509,8 @@ async def get_category_products_by_slug(
         session=session,
         skip=skip,
         limit=limit,
-        is_active=is_active
+        is_active=is_active,
+        sort_by=sort_by.value
     )
 
     # Получаем главные изображения для всех продуктов одним запросом
