@@ -367,7 +367,7 @@ async def get_all_orders(
     limit: int = Query(
         Constants.DEFAULT_LIMIT,
         ge=1,
-        le=100,
+        le=Constants.MAX_LIMIT,
         description='Maximum records to return'
     ),
     status: Optional[OrderStatus] = Query(

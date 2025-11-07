@@ -13,11 +13,11 @@ import { adminOrdersAPI } from '../api';
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('categories');
   const [ordersStats, setOrdersStats] = useState({ total: 0, pending: 0 });
+  const [productsStats, setProductsStats] = useState({ total: 0, active: 0 });
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { isAuthenticated, user, token } = useSelector((state) => state.auth);
   const { categories, loading: categoriesLoading } = useSelector((state) => state.categories);
-  const { products, loading: productsLoading } = useSelector((state) => state.products);
 
   useEffect(() => {
     // Загружаем данные при входе в админ-панель
@@ -25,25 +25,40 @@ const AdminPanel = () => {
       dispatch(getCurrentUser(token));
     }
     dispatch(fetchCategories());
-    // Загружаем ВСЕ продукты для статистики (включая неактивные)
-    // Используем большой лимит для получения всех продуктов
-    dispatch(fetchProducts({ skip: 0, limit: 1000, isActive: undefined }));
+
+    // Загружаем статистику продуктов отдельным запросом
+    const fetchProductsStats = async () => {
+      try {
+        // Загружаем ВСЕ продукты для подсчета статистики
+        const allProductsResponse = await dispatch(
+          fetchProducts({ skip: 0, limit: 1000, isActive: undefined })
+        ).unwrap();
+
+        const total = allProductsResponse.length;
+        const active = allProductsResponse.filter(p => p.is_active).length;
+        setProductsStats({ total, active });
+      } catch (error) {
+        // Silently handle error
+      }
+    };
 
     // Загружаем статистику заказов
     const fetchOrdersStats = async () => {
       try {
-        const data = await adminOrdersAPI.getAllOrders(0, 1000); // Получаем все заказы для статистики
-        const total = data.total || data.orders.length;
-        const pending = data.orders.filter(order =>
+        const data = await adminOrdersAPI.getAllOrders(0, 1000);
+        const total = data.total || (data.orders ? data.orders.length : 0);
+        const pending = data.orders ? data.orders.filter(order =>
           order.status === 'created' || order.status === 'updated'
-        ).length;
+        ).length : 0;
         setOrdersStats({ total, pending });
       } catch (error) {
-        console.error('Error fetching orders stats:', error);
+        // Set default stats on error
+        setOrdersStats({ total: 0, pending: 0 });
       }
     };
 
     if (token) {
+      fetchProductsStats();
       fetchOrdersStats();
     }
   }, [dispatch, token]);
@@ -151,7 +166,7 @@ const AdminPanel = () => {
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">Всего продуктов</dt>
-                    <dd className="text-lg font-medium text-gray-900">{products.length}</dd>
+                    <dd className="text-lg font-medium text-gray-900">{productsStats.total}</dd>
                   </dl>
                 </div>
               </div>
@@ -171,9 +186,7 @@ const AdminPanel = () => {
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">Активных продуктов</dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {products.filter(p => p.is_active).length}
-                    </dd>
+                    <dd className="text-lg font-medium text-gray-900">{productsStats.active}</dd>
                   </dl>
                 </div>
               </div>

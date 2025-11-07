@@ -68,7 +68,7 @@ async def get_products(
         description='Максимальная цена'
     ),
     is_active: Optional[bool] = Query(
-        True, description='Фильтр по статусу активности'
+        None, description='Фильтр по статусу активности (None = все продукты)'
     ),
     session: AsyncSession = Depends(get_async_session)
 ):

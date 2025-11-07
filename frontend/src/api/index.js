@@ -140,23 +140,26 @@ export const categoriesAPI = {
 // API для продуктов
 export const productsAPI = {
   // Получить все продукты
-  getProducts: async (skip = 0, limit = 10, categoryId = null, search = null, minPrice = null, maxPrice = null, isActive = true) => {
+  getProducts: async (skip = 0, limit = 10, categoryId = null, search = null, minPrice = null, maxPrice = null, isActive) => {
     const params = new URLSearchParams({
       skip: skip.toString(),
       limit: limit.toString(),
     });
-    
+
     // Добавляем is_active только если он не undefined
+    // undefined = не фильтровать, загрузить все продукты
     if (isActive !== undefined) {
       params.append('is_active', isActive.toString());
     }
-    
+
     if (categoryId) params.append('category_id', categoryId);
     if (search) params.append('search', search);
     if (minPrice) params.append('min_price', minPrice);
     if (maxPrice) params.append('max_price', maxPrice);
 
-    const response = await fetch(`${API_BASE_URL}/products/?${params}`);
+    const url = `${API_BASE_URL}/products/?${params}`;
+
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch products');
     return response.json();
   },
@@ -751,11 +754,27 @@ export const favoritesAPI = {
 
 // Helper function for handling orders API errors
 const handleOrderError = async (response) => {
-  let errorMessage = 'Произошла ошибка при оформлении заказа';
+  let errorMessage = 'Произошла ошибка при работе с заказами';
 
   try {
     const errorData = await response.json();
-    errorMessage = errorData.detail || errorMessage;
+    // Handle FastAPI validation errors (422)
+    if (errorData.detail) {
+      if (Array.isArray(errorData.detail)) {
+        // FastAPI validation errors are arrays
+        const messages = errorData.detail.map(err => {
+          if (typeof err === 'object' && err.msg) {
+            return `${err.loc?.join('.') || 'field'}: ${err.msg}`;
+          }
+          return String(err);
+        });
+        errorMessage = messages.join('; ');
+      } else {
+        errorMessage = errorData.detail;
+      }
+    } else if (errorData.message) {
+      errorMessage = errorData.message;
+    }
   } catch {
     // If JSON parsing fails, use status-based messages
     switch (response.status) {
@@ -768,16 +787,20 @@ const handleOrderError = async (response) => {
       case 404:
         errorMessage = 'Корзина пуста или товары не найдены';
         break;
+      case 422:
+        errorMessage = 'Ошибка валидации данных запроса';
+        break;
       case 500:
         errorMessage = 'Ошибка сервера. Попробуйте позже';
         break;
       default:
-        errorMessage = `Ошибка: ${response.statusText}`;
+        errorMessage = `Ошибка: ${response.statusText || response.status}`;
     }
   }
 
   const error = new Error(errorMessage);
   error.status = response.status;
+  error.response = response;
   throw error;
 };
 

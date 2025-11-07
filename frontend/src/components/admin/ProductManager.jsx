@@ -17,7 +17,7 @@ const ProductManager = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
+  const [statusFilter, setStatusFilter] = useState('active'); // 'active', 'inactive'
   const [brands, setBrands] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState(null); // Для менеджера изображений
   const [currentPage, setCurrentPage] = useState(1);
@@ -41,17 +41,40 @@ const ProductManager = () => {
 
   const ITEMS_PER_PAGE = 20;
 
+  // Используем useRef для отслеживания предыдущих значений фильтров
+  const prevFiltersRef = useRef({ searchTerm, selectedCategory, statusFilter });
+  const prevFiltersForPageRef = useRef({ searchTerm, selectedCategory, statusFilter });
+
+  useEffect(() => {
+    // Проверяем, изменились ли фильтры
+    const filtersChanged = 
+      prevFiltersRef.current.searchTerm !== searchTerm ||
+      prevFiltersRef.current.selectedCategory !== selectedCategory ||
+      prevFiltersRef.current.statusFilter !== statusFilter;
+
+    // Если фильтры изменились, сбрасываем страницу на 1
+    if (filtersChanged) {
+      setCurrentPage(1);
+      prevFiltersRef.current = { searchTerm, selectedCategory, statusFilter };
+    }
+  }, [searchTerm, selectedCategory, statusFilter]);
+
   useEffect(() => {
     // Определяем параметр isActive на основе фильтра статуса
-    let isActive = true; // по умолчанию только активные
-    if (statusFilter === 'inactive') {
-      isActive = false;
-    } else if (statusFilter === 'all') {
-      isActive = undefined; // все продукты (не передаем параметр)
-    }
+    const isActive = statusFilter === 'inactive' ? false : true;
 
-    // Вычисляем skip для текущей страницы
-    const skip = (currentPage - 1) * ITEMS_PER_PAGE;
+    // Проверяем, изменились ли фильтры - если да, используем страницу 1
+    const filtersChanged = 
+      prevFiltersForPageRef.current.searchTerm !== searchTerm ||
+      prevFiltersForPageRef.current.selectedCategory !== selectedCategory ||
+      prevFiltersForPageRef.current.statusFilter !== statusFilter;
+    
+    // Если фильтры изменились, используем страницу 1, иначе текущую страницу
+    const pageToUse = filtersChanged ? 1 : currentPage;
+    const skip = (pageToUse - 1) * ITEMS_PER_PAGE;
+
+    // Обновляем ref после использования, чтобы в следующем рендере знать, что фильтры уже применены
+    prevFiltersForPageRef.current = { searchTerm, selectedCategory, statusFilter };
 
     dispatch(fetchProducts({
       skip,
@@ -70,12 +93,7 @@ const ProductManager = () => {
       }
     };
     loadBrands();
-  }, [dispatch, statusFilter, currentPage]);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedCategory, statusFilter]);
+  }, [dispatch, statusFilter, currentPage, searchTerm, selectedCategory]);
 
   // Focus management for modal
   useEffect(() => {
@@ -318,7 +336,6 @@ const ProductManager = () => {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             >
-              <option value="all">Все продукты</option>
               <option value="active">Только активные</option>
               <option value="inactive">Только неактивные</option>
             </select>
@@ -332,7 +349,7 @@ const ProductManager = () => {
             onClick={() => {
               setSearchTerm('');
               setSelectedCategory('');
-              setStatusFilter('all');
+              setStatusFilter('active');
               setCurrentPage(1); // Сброс страницы при очистке фильтров
             }}
             className="text-sm text-indigo-600 hover:text-indigo-900"
