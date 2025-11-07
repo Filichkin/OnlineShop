@@ -4,10 +4,22 @@ import { productsAPI } from '../../api';
 // Асинхронные действия
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
-  async ({ skip = 0, limit = 10, categoryId = null, search = null, minPrice = null, maxPrice = null, isActive = true } = {}) => {
-    // Убеждаемся, что isActive не null
-    const activeFilter = isActive === null ? undefined : isActive;
-    const response = await productsAPI.getProducts(skip, limit, categoryId, search, minPrice, maxPrice, activeFilter);
+  async (params = {}) => {
+    // Используем деструктуризацию с дефолтными значениями, но только для определенных параметров
+    const {
+      skip = 0,
+      limit = 20,
+      categoryId = null,
+      search = null,
+      minPrice = null,
+      maxPrice = null
+    } = params;
+
+    // isActive обрабатываем отдельно: если явно не передан, используем true по умолчанию
+    // если передан undefined, оставляем undefined для загрузки всех продуктов
+    const isActive = 'isActive' in params ? params.isActive : true;
+
+    const response = await productsAPI.getProducts(skip, limit, categoryId, search, minPrice, maxPrice, isActive);
     return response;
   }
 );
@@ -75,7 +87,7 @@ const initialState = {
   },
   pagination: {
     skip: 0,
-    limit: 10,
+    limit: 20,
     total: 0,
   },
 };

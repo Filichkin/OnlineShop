@@ -87,15 +87,34 @@ class CRUDProduct(CRUDBase):
         skip: int = Constants.DEFAULT_SKIP,
         limit: int = Constants.DEFAULT_LIMIT,
         is_active: Optional[bool] = None,
+        sort_by: str = 'price_asc',
     ):
         """
         Получить продукты по категории
-        с опциональной фильтрацией по статусу
+        с опциональной фильтрацией по статусу и сортировкой
+
+        Args:
+            category_id: ID категории
+            session: Сессия БД
+            skip: Количество элементов для пропуска
+            limit: Количество элементов для возврата
+            is_active: Фильтр по статусу активности
+            sort_by: Тип сортировки (price_asc, price_desc, name_asc, name_desc)
         """
         query = select(Product).where(Product.category_id == category_id)
 
         if is_active is not None:
             query = query.where(Product.is_active.is_(is_active))
+
+        # Применяем сортировку
+        if sort_by == 'price_desc':
+            query = query.order_by(Product.price.desc())
+        elif sort_by == 'name_asc':
+            query = query.order_by(Product.name.asc())
+        elif sort_by == 'name_desc':
+            query = query.order_by(Product.name.desc())
+        else:  # price_asc (по умолчанию)
+            query = query.order_by(Product.price.asc())
 
         result = await session.execute(
             query.offset(skip).limit(limit)

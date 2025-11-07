@@ -16,39 +16,79 @@ function Category() {
   // Локальное состояние для input значения (обновляется мгновенно)
   const [inputValue, setInputValue] = useState(searchParams.get("maxPrice") || "");
 
+  // Состояние для сортировки, синхронизированное с URL
+  const [sortBy, setSortBy] = useState(searchParams.get("sort_by") || "price_asc");
+
   // Debounced значение для фильтрации (обновляется с задержкой)
   const debouncedInputValue = useDebounce(inputValue, 300);
 
   // Используем debounced значение для фильтрации
   const maxPrice = debouncedInputValue ? Number(debouncedInputValue) : Infinity;
 
-  // Memoized filtered products for performance - теперь зависит от debounced значения
+  // Memoized filtered and sorted products for performance
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
+    // Сначала фильтруем по цене
+    const filtered = products.filter((product) => {
       // Дополнительная проверка на корректность данных продукта
       return product && typeof product.price === 'number' && product.price <= maxPrice;
     });
-  }, [products, maxPrice]);
+
+    // Затем сортируем
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case "price_asc":
+          return a.price - b.price;
+        case "price_desc":
+          return b.price - a.price;
+        case "name_asc":
+          return a.name.localeCompare(b.name, 'ru');
+        case "name_desc":
+          return b.name.localeCompare(a.name, 'ru');
+        default:
+          return a.price - b.price;
+      }
+    });
+
+    return sorted;
+  }, [products, maxPrice, sortBy]);
 
   const categoryName = products.length > 0 && products[0].category?.name
     ? products[0].category.name
     : "Категория";
 
   // Обработчик изменения input - обновляет локальное состояние мгновенно
-  function handleChange(e) {
+  function handlePriceChange(e) {
     const value = e.target.value;
     setInputValue(value);
     // URL обновится только после debounce через useEffect ниже
   }
 
-  // Синхронизируем URL с debounced значением
-  useEffect(() => {
+  // Обработчик изменения сортировки
+  function handleSortChange(e) {
+    const value = e.target.value;
+    setSortBy(value);
+
+    // Обновляем URL параметры, сохраняя существующие фильтры
+    const newParams = {};
     if (debouncedInputValue) {
-      setSearchParams({ maxPrice: debouncedInputValue });
-    } else {
-      setSearchParams({});
+      newParams.maxPrice = debouncedInputValue;
     }
-  }, [debouncedInputValue, setSearchParams]);
+    newParams.sort_by = value;
+    setSearchParams(newParams);
+  }
+
+  // Синхронизируем URL с debounced значением цены
+  useEffect(() => {
+    const newParams = {};
+    if (debouncedInputValue) {
+      newParams.maxPrice = debouncedInputValue;
+    }
+    // Сохраняем текущую сортировку при изменении цены
+    if (sortBy && sortBy !== "price_asc") {
+      newParams.sort_by = sortBy;
+    }
+    setSearchParams(newParams);
+  }, [debouncedInputValue, setSearchParams, sortBy]);
 
   function handleAddToCart(product) {
     console.log('Добавление товара в корзину:', product);
@@ -59,20 +99,43 @@ function Category() {
     <div className="py-10">
       <div className="container mx-auto px-4">
         <h1 className="mb-3 text-2xl font-semibold text-left text-gray-700">{categoryName}</h1>
-        <div className="mb-4">
-        <label className="block mb-2 text-sm font-medium text-gray-700" htmlFor="maxPrice">
-          Фильтр по цене
-        </label>
-        <input
-          className="block w-full px-3 py-2 placeholder-gray-400 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          type="number"
-          id="maxPrice"
-          placeholder="Введите максимальную стоимость"
-          value={inputValue}
-          onChange={handleChange}
-          min="0"
-          step="1"
-        />
+
+        {/* Контейнер для фильтров и сортировки */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Фильтр по цене */}
+          <div>
+            <label className="block mb-2 text-sm font-medium text-gray-700" htmlFor="maxPrice">
+              Фильтр по цене
+            </label>
+            <input
+              className="block w-full px-3 py-2 placeholder-gray-400 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              type="number"
+              id="maxPrice"
+              placeholder="Введите максимальную стоимость"
+              value={inputValue}
+              onChange={handlePriceChange}
+              min="0"
+              step="1"
+            />
+          </div>
+
+          {/* Сортировка */}
+          <div>
+            <label className="block mb-2 text-sm font-medium text-gray-700" htmlFor="sortBy">
+              Сортировка
+            </label>
+            <select
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white cursor-pointer"
+              id="sortBy"
+              value={sortBy}
+              onChange={handleSortChange}
+            >
+              <option value="price_asc">Цена по возрастанию</option>
+              <option value="price_desc">Цена по убыванию</option>
+              <option value="name_asc">Название А-Я</option>
+              <option value="name_desc">Название Я-А</option>
+            </select>
+          </div>
         </div>
         {filteredProducts.length === 0 ? (
           <p className="text-xl font-semibold text-center text-gray-500">

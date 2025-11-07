@@ -20,6 +20,7 @@ const ProductManager = () => {
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [brands, setBrands] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState(null); // Для менеджера изображений
+  const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
     part_number: '',
@@ -38,6 +39,8 @@ const ProductManager = () => {
   const { products, loading, error } = useSelector((state) => state.products);
   const { categories } = useSelector((state) => state.categories);
 
+  const ITEMS_PER_PAGE = 20;
+
   useEffect(() => {
     // Определяем параметр isActive на основе фильтра статуса
     let isActive = true; // по умолчанию только активные
@@ -46,10 +49,17 @@ const ProductManager = () => {
     } else if (statusFilter === 'all') {
       isActive = undefined; // все продукты (не передаем параметр)
     }
-    
-    dispatch(fetchProducts({ isActive }));
+
+    // Вычисляем skip для текущей страницы
+    const skip = (currentPage - 1) * ITEMS_PER_PAGE;
+
+    dispatch(fetchProducts({
+      skip,
+      limit: ITEMS_PER_PAGE,
+      isActive
+    }));
     dispatch(fetchCategories());
-    
+
     // Загружаем бренды
     const loadBrands = async () => {
       try {
@@ -60,7 +70,12 @@ const ProductManager = () => {
       }
     };
     loadBrands();
-  }, [dispatch, statusFilter]);
+  }, [dispatch, statusFilter, currentPage]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory, statusFilter]);
 
   // Focus management for modal
   useEffect(() => {
@@ -318,6 +333,7 @@ const ProductManager = () => {
               setSearchTerm('');
               setSelectedCategory('');
               setStatusFilter('all');
+              setCurrentPage(1); // Сброс страницы при очистке фильтров
             }}
             className="text-sm text-indigo-600 hover:text-indigo-900"
           >
@@ -457,6 +473,70 @@ const ProductManager = () => {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && filteredProducts.length > 0 && (
+        <div className="mt-6 flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 rounded-b-md sm:px-6">
+          {/* Mobile version */}
+          <div className="flex flex-1 justify-between sm:hidden">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Предыдущая
+            </button>
+            <button
+              onClick={() => setCurrentPage(prev => prev + 1)}
+              disabled={filteredProducts.length < ITEMS_PER_PAGE}
+              className="relative ml-3 inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Следующая
+            </button>
+          </div>
+
+          {/* Desktop version */}
+          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Страница <span className="font-medium">{currentPage}</span>
+                {' '}<span className="text-gray-500">
+                  (показано {filteredProducts.length} продуктов)
+                </span>
+              </p>
+            </div>
+            <div>
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                  aria-label="Предыдущая страница"
+                >
+                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+
+                <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                  {currentPage}
+                </span>
+
+                <button
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  disabled={filteredProducts.length < ITEMS_PER_PAGE}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                  aria-label="Следующая страница"
+                >
+                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </nav>
+            </div>
+          </div>
         </div>
       )}
 

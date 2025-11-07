@@ -25,7 +25,9 @@ const AdminPanel = () => {
       dispatch(getCurrentUser(token));
     }
     dispatch(fetchCategories());
-    dispatch(fetchProducts());
+    // Загружаем ВСЕ продукты для статистики (включая неактивные)
+    // Используем большой лимит для получения всех продуктов
+    dispatch(fetchProducts({ skip: 0, limit: 1000, isActive: undefined }));
 
     // Загружаем статистику заказов
     const fetchOrdersStats = async () => {
