@@ -7,6 +7,7 @@ import {
   selectFavoritesIsLoading,
   selectFavoritesError,
   selectFavoritesIsLoaded,
+  selectFavoritesIsUnauthorized,
 } from '../store/slices/favoritesSlice';
 import { getImageUrl, formatPrice } from '../utils';
 import AddToCartButton from '../UI/AddToCartButton';
@@ -28,13 +29,14 @@ function Favorites() {
   const isLoading = useSelector(selectFavoritesIsLoading);
   const error = useSelector(selectFavoritesError);
   const isLoaded = useSelector(selectFavoritesIsLoaded);
+  const isUnauthorized = useSelector(selectFavoritesIsUnauthorized);
 
   // Загрузка избранного при первом монтировании (только если еще не загружено)
   useEffect(() => {
-    if (!isLoaded && !isLoading) {
+    if (!isLoaded && !isLoading && !isUnauthorized) {
       dispatch(fetchFavorites());
     }
-  }, [dispatch, isLoaded, isLoading]);
+  }, [dispatch, isLoaded, isLoading, isUnauthorized]);
 
   // Состояние загрузки с skeleton screen
   if (isLoading && !isLoaded) {
@@ -92,6 +94,48 @@ function Favorites() {
             >
               Попробовать снова
             </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isUnauthorized) {
+    return (
+      <div className="py-10">
+        <div className="container mx-auto px-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center max-w-md mx-auto">
+            <svg
+              className="w-12 h-12 text-blue-500 mx-auto mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 11c0-1.105-.895-2-2-2s-2 .895-2 2a2 2 0 004 0zm0 0v1a3 3 0 01-3 3m5-4h3.75a2.25 2.25 0 012.25 2.25V17a2.25 2.25 0 01-2.25 2.25H9m3-8a3 3 0 013-3h3a3 3 0 013 3v1"
+              />
+            </svg>
+            <h2 className="text-xl font-semibold text-blue-800 mb-2">Войдите, чтобы увидеть избранное</h2>
+            <p className="text-blue-700 mb-6">
+              Сессия истекла. Авторизуйтесь через иконку профиля или вернитесь в каталог, чтобы продолжить покупки.
+            </p>
+            <div className="flex justify-center gap-3">
+              <Link
+                to="/profile"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Перейти к авторизации
+              </Link>
+              <Link
+                to="/"
+                className="px-4 py-2 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-100 transition-colors"
+              >
+                Каталог товаров
+              </Link>
+            </div>
           </div>
         </div>
       </div>

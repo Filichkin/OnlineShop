@@ -15,22 +15,56 @@ function Category() {
 
   // Локальное состояние для input значения (обновляется мгновенно)
   const [inputValue, setInputValue] = useState(searchParams.get("maxPrice") || "");
+  const [partNumberValue, setPartNumberValue] = useState(searchParams.get("part_number") || "");
+  const [nameSearchValue, setNameSearchValue] = useState(searchParams.get("search") || "");
 
   // Состояние для сортировки, синхронизированное с URL
   const [sortBy, setSortBy] = useState(searchParams.get("sort_by") || "price_asc");
 
   // Debounced значение для фильтрации (обновляется с задержкой)
   const debouncedInputValue = useDebounce(inputValue, 300);
+  const debouncedPartNumber = useDebounce(partNumberValue.trim(), 300);
+  const debouncedNameSearch = useDebounce(nameSearchValue.trim(), 300);
 
   // Используем debounced значение для фильтрации
   const maxPrice = debouncedInputValue ? Number(debouncedInputValue) : Infinity;
 
   // Memoized filtered and sorted products for performance
   const filteredProducts = useMemo(() => {
-    // Сначала фильтруем по цене
+    const normalizedPartNumber = debouncedPartNumber ? debouncedPartNumber.toLowerCase() : "";
+    const normalizedNameSearch = debouncedNameSearch ? debouncedNameSearch.toLowerCase() : "";
+
+    // Сначала фильтруем по цене, артикулу и названию
     const filtered = products.filter((product) => {
-      // Дополнительная проверка на корректность данных продукта
-      return product && typeof product.price === 'number' && product.price <= maxPrice;
+      if (!product || typeof product.price !== 'number') {
+        return false;
+      }
+
+      if (product.price > maxPrice) {
+        return false;
+      }
+
+      if (normalizedPartNumber) {
+        const productPartNumber = typeof product.part_number === 'string'
+          ? product.part_number.toLowerCase()
+          : '';
+
+        if (!productPartNumber.includes(normalizedPartNumber)) {
+          return false;
+        }
+      }
+
+      if (normalizedNameSearch) {
+        const productName = typeof product.name === 'string'
+          ? product.name.toLowerCase()
+          : '';
+
+        if (!productName.includes(normalizedNameSearch)) {
+          return false;
+        }
+      }
+
+      return true;
     });
 
     // Затем сортируем
@@ -50,7 +84,7 @@ function Category() {
     });
 
     return sorted;
-  }, [products, maxPrice, sortBy]);
+  }, [products, maxPrice, sortBy, debouncedPartNumber, debouncedNameSearch]);
 
   const categoryName = products.length > 0 && products[0].category?.name
     ? products[0].category.name
@@ -63,6 +97,14 @@ function Category() {
     // URL обновится только после debounce через useEffect ниже
   }
 
+  function handlePartNumberChange(e) {
+    setPartNumberValue(e.target.value);
+  }
+
+  function handleNameSearchChange(e) {
+    setNameSearchValue(e.target.value);
+  }
+
   // Обработчик изменения сортировки
   function handleSortChange(e) {
     const value = e.target.value;
@@ -72,6 +114,12 @@ function Category() {
     const newParams = {};
     if (debouncedInputValue) {
       newParams.maxPrice = debouncedInputValue;
+    }
+    if (debouncedPartNumber) {
+      newParams.part_number = debouncedPartNumber;
+    }
+    if (debouncedNameSearch) {
+      newParams.search = debouncedNameSearch;
     }
     newParams.sort_by = value;
     setSearchParams(newParams);
@@ -83,12 +131,18 @@ function Category() {
     if (debouncedInputValue) {
       newParams.maxPrice = debouncedInputValue;
     }
-    // Сохраняем текущую сортировку при изменении цены
+    if (debouncedPartNumber) {
+      newParams.part_number = debouncedPartNumber;
+    }
+    if (debouncedNameSearch) {
+      newParams.search = debouncedNameSearch;
+    }
+    // Сохраняем текущую сортировку при изменении фильтров
     if (sortBy && sortBy !== "price_asc") {
       newParams.sort_by = sortBy;
     }
     setSearchParams(newParams);
-  }, [debouncedInputValue, setSearchParams, sortBy]);
+  }, [debouncedInputValue, debouncedPartNumber, debouncedNameSearch, setSearchParams, sortBy]);
 
   function handleAddToCart(product) {
     console.log('Добавление товара в корзину:', product);
@@ -101,7 +155,39 @@ function Category() {
         <h1 className="mb-3 text-2xl font-semibold text-left text-gray-700">{categoryName}</h1>
 
         {/* Контейнер для фильтров и сортировки */}
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Фильтр по артикулу */}
+          <div>
+            <label className="block mb-2 text-sm font-medium text-gray-700" htmlFor="partNumber">
+              Фильтр по артикулу
+            </label>
+            <input
+              className="block w-full px-3 py-2 placeholder-gray-400 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              type="text"
+              id="partNumber"
+              placeholder="Введите артикул"
+              value={partNumberValue}
+              onChange={handlePartNumberChange}
+              autoComplete="off"
+            />
+          </div>
+
+          {/* Поиск по названию */}
+          <div>
+            <label className="block mb-2 text-sm font-medium text-gray-700" htmlFor="searchByName">
+              Поиск по названию
+            </label>
+            <input
+              className="block w-full px-3 py-2 placeholder-gray-400 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              type="text"
+              id="searchByName"
+              placeholder="Введите часть названия"
+              value={nameSearchValue}
+              onChange={handleNameSearchChange}
+              autoComplete="off"
+            />
+          </div>
+
           {/* Фильтр по цене */}
           <div>
             <label className="block mb-2 text-sm font-medium text-gray-700" htmlFor="maxPrice">
@@ -120,7 +206,7 @@ function Category() {
           </div>
 
           {/* Сортировка */}
-          <div>
+          <div className="md:col-span-1 lg:col-span-1">
             <label className="block mb-2 text-sm font-medium text-gray-700" htmlFor="sortBy">
               Сортировка
             </label>

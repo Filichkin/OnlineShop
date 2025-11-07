@@ -11,9 +11,11 @@ import {
   selectCartError,
   selectCartIsLoaded,
   selectUpdatingItems,
+  selectCartIsUnauthorized,
 } from '../store/slices/cartSlice';
 import { formatPrice } from '../utils/formatPrice';
 import CartItem from '../components/CartItem';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 import CartSkeleton from '../components/CartSkeleton';
 
 /**
@@ -36,16 +38,18 @@ function Cart() {
   const error = useSelector(selectCartError);
   const isLoaded = useSelector(selectCartIsLoaded);
   const updatingItems = useSelector(selectUpdatingItems);
+  const isUnauthorized = useSelector(selectCartIsUnauthorized);
 
   // Локальное состояние для toast-уведомлений об ошибках операций
   const [operationError, setOperationError] = useState(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   // Загрузка корзины при первом монтировании и после ошибок (когда isLoaded сбрасывается)
   useEffect(() => {
-    if (!isLoaded && !isLoading) {
+    if (!isLoaded && !isLoading && !error && !isUnauthorized) {
       dispatch(fetchCart());
     }
-  }, [dispatch, isLoaded, isLoading]);
+  }, [dispatch, isLoaded, isLoading, error, isUnauthorized]);
 
   // Мемоизированный обработчик изменения количества
   // useCallback предотвращает ре-рендеры дочерних компонентов
@@ -81,11 +85,7 @@ function Cart() {
   );
 
   // Мемоизированный обработчик очистки корзины
-  const handleClearCart = useCallback(async () => {
-    if (!window.confirm('Вы уверены, что хотите очистить корзину?')) {
-      return;
-    }
-
+  const handleConfirmClearCart = useCallback(async () => {
     try {
       await dispatch(clearCart()).unwrap();
     } catch (err) {
@@ -93,6 +93,8 @@ function Cart() {
       const errorMessage = typeof err === 'string' ? err : err?.message || 'Не удалось очистить корзину';
       setOperationError(errorMessage);
       setTimeout(() => setOperationError(null), 4000);
+    } finally {
+      setIsConfirmOpen(false);
     }
   }, [dispatch]);
 
@@ -143,6 +145,47 @@ function Cart() {
           >
             Попробовать снова
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isUnauthorized) {
+    return (
+      <div className="max-w-4xl mx-auto p-5 py-16">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+          <svg
+            className="w-12 h-12 text-blue-500 mx-auto mb-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 11c0-1.105-.895-2-2-2s-2 .895-2 2a2 2 0 004 0zm0 0v1a3 3 0 01-3 3m5-4h3.75a2.25 2.25 0 012.25 2.25V17a2.25 2.25 0 01-2.25 2.25H9m3-8a3 3 0 013-3h3a3 3 0 013 3v1"
+            />
+          </svg>
+          <h2 className="text-xl font-semibold text-blue-800 mb-2">Войдите, чтобы увидеть корзину</h2>
+          <p className="text-blue-700 mb-6">
+            Сессия истекла. Авторизуйтесь через иконку профиля в шапке или перейдите к каталогу, чтобы продолжить
+            покупки.
+          </p>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => navigate('/profile')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Перейти к авторизации
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="px-4 py-2 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-100 transition-colors"
+            >
+              Каталог товаров
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -228,12 +271,24 @@ function Cart() {
                 Товары ({totalQuantity})
               </h2>
               {items.length > 0 && (
-                <button
-                  onClick={handleClearCart}
-                  className="text-sm text-gray-500 hover:text-gray-700 hover:underline transition-colors"
-                >
-                  Очистить корзину
-                </button>
+                <>
+                  <button
+                    onClick={() => setIsConfirmOpen(true)}
+                    className="text-sm text-gray-500 hover:text-gray-700 hover:underline transition-colors"
+                  >
+                    Очистить корзину
+                  </button>
+                  <ConfirmDialog
+                    isOpen={isConfirmOpen}
+                    title="Очистить корзину?"
+                    description="Вы уверены, что хотите удалить все товары из корзины? Это действие нельзя отменить."
+                    confirmText="Очистить"
+                    cancelText="Отмена"
+                    onConfirm={handleConfirmClearCart}
+                    onCancel={() => setIsConfirmOpen(false)}
+                    type="danger"
+                  />
+                </>
               )}
             </div>
 
