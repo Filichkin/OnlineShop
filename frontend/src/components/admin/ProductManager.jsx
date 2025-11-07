@@ -17,7 +17,7 @@ const ProductManager = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
+  const [statusFilter, setStatusFilter] = useState('active'); // 'active', 'inactive'
   const [brands, setBrands] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState(null); // Для менеджера изображений
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,12 +43,7 @@ const ProductManager = () => {
 
   useEffect(() => {
     // Определяем параметр isActive на основе фильтра статуса
-    let isActive = true; // по умолчанию только активные
-    if (statusFilter === 'inactive') {
-      isActive = false;
-    } else if (statusFilter === 'all') {
-      isActive = undefined; // все продукты (не передаем параметр)
-    }
+    const isActive = statusFilter === 'inactive' ? false : true;
 
     // Вычисляем skip для текущей страницы
     const skip = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -318,7 +313,6 @@ const ProductManager = () => {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             >
-              <option value="all">Все продукты</option>
               <option value="active">Только активные</option>
               <option value="inactive">Только неактивные</option>
             </select>
@@ -332,7 +326,7 @@ const ProductManager = () => {
             onClick={() => {
               setSearchTerm('');
               setSelectedCategory('');
-              setStatusFilter('all');
+              setStatusFilter('active');
               setCurrentPage(1); // Сброс страницы при очистке фильтров
             }}
             className="text-sm text-indigo-600 hover:text-indigo-900"
