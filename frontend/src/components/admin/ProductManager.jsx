@@ -41,12 +41,40 @@ const ProductManager = () => {
 
   const ITEMS_PER_PAGE = 20;
 
+  // Используем useRef для отслеживания предыдущих значений фильтров
+  const prevFiltersRef = useRef({ searchTerm, selectedCategory, statusFilter });
+  const prevFiltersForPageRef = useRef({ searchTerm, selectedCategory, statusFilter });
+
+  useEffect(() => {
+    // Проверяем, изменились ли фильтры
+    const filtersChanged = 
+      prevFiltersRef.current.searchTerm !== searchTerm ||
+      prevFiltersRef.current.selectedCategory !== selectedCategory ||
+      prevFiltersRef.current.statusFilter !== statusFilter;
+
+    // Если фильтры изменились, сбрасываем страницу на 1
+    if (filtersChanged) {
+      setCurrentPage(1);
+      prevFiltersRef.current = { searchTerm, selectedCategory, statusFilter };
+    }
+  }, [searchTerm, selectedCategory, statusFilter]);
+
   useEffect(() => {
     // Определяем параметр isActive на основе фильтра статуса
     const isActive = statusFilter === 'inactive' ? false : true;
 
-    // Вычисляем skip для текущей страницы
-    const skip = (currentPage - 1) * ITEMS_PER_PAGE;
+    // Проверяем, изменились ли фильтры - если да, используем страницу 1
+    const filtersChanged = 
+      prevFiltersForPageRef.current.searchTerm !== searchTerm ||
+      prevFiltersForPageRef.current.selectedCategory !== selectedCategory ||
+      prevFiltersForPageRef.current.statusFilter !== statusFilter;
+    
+    // Если фильтры изменились, используем страницу 1, иначе текущую страницу
+    const pageToUse = filtersChanged ? 1 : currentPage;
+    const skip = (pageToUse - 1) * ITEMS_PER_PAGE;
+
+    // Обновляем ref после использования, чтобы в следующем рендере знать, что фильтры уже применены
+    prevFiltersForPageRef.current = { searchTerm, selectedCategory, statusFilter };
 
     dispatch(fetchProducts({
       skip,
@@ -65,12 +93,7 @@ const ProductManager = () => {
       }
     };
     loadBrands();
-  }, [dispatch, statusFilter, currentPage]);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedCategory, statusFilter]);
+  }, [dispatch, statusFilter, currentPage, searchTerm, selectedCategory]);
 
   // Focus management for modal
   useEffect(() => {
