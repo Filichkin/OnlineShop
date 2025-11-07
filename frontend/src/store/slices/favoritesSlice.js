@@ -23,6 +23,8 @@ const initialState = {
   updatingItems: [],
   // Флаг успешной загрузки (для предотвращения повторных запросов)
   isLoaded: false,
+  // Флаг отсутствия авторизации
+  isUnauthorized: false,
 };
 
 // Async thunks
@@ -38,7 +40,14 @@ export const fetchFavorites = createAsyncThunk(
       const data = await favoritesAPI.getFavorites();
       return data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Не удалось загрузить избранное');
+      const status = error?.status;
+      if (status === 401) {
+        return rejectWithValue({ type: 'unauthorized' });
+      }
+      return rejectWithValue({
+        message: error?.message || 'Не удалось загрузить избранное',
+        status,
+      });
     }
   }
 );
@@ -139,6 +148,7 @@ const favoritesSlice = createSlice({
       state.error = null;
       state.updatingItems = [];
       state.isLoaded = false;
+       state.isUnauthorized = false;
     },
   },
   extraReducers: (builder) => {
@@ -147,6 +157,7 @@ const favoritesSlice = createSlice({
       .addCase(fetchFavorites.pending, (state) => {
         state.isLoading = true;
         state.error = null;
+        state.isUnauthorized = false;
       })
       .addCase(fetchFavorites.fulfilled, (state, action) => {
         state.isLoading = false;
@@ -157,10 +168,20 @@ const favoritesSlice = createSlice({
         state.favoriteIds = state.items.map(product => product.id);
         state.totalItems = action.payload?.total_items || state.items.length;
         state.isLoaded = true;
+        state.isUnauthorized = false;
       })
       .addCase(fetchFavorites.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
+        if (action.payload?.type === 'unauthorized') {
+          state.items = [];
+          state.favoriteIds = [];
+          state.totalItems = 0;
+          state.isLoaded = true;
+          state.isUnauthorized = true;
+          state.error = null;
+          return;
+        }
+        state.error = action.payload?.message || action.error?.message || 'Не удалось загрузить избранное';
         state.isLoaded = false;
       });
 
@@ -262,6 +283,7 @@ export const selectFavoritesIsLoading = (state) => state.favorites.isLoading;
 export const selectFavoritesError = (state) => state.favorites.error;
 export const selectFavoritesIsLoaded = (state) => state.favorites.isLoaded;
 export const selectFavoritesUpdatingItems = (state) => state.favorites.updatingItems;
+export const selectFavoritesIsUnauthorized = (state) => state.favorites.isUnauthorized;
 
 // Helper selectors
 export const selectIsFavorite = (productId) => (state) =>

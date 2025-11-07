@@ -11,6 +11,7 @@
     "start:api": "json-server --watch data/data.json --port 9000"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
     "@reduxjs/toolkit": "^2.9.2",
     "@tailwindcss/vite": "^4.1.12",
     "json-server": "^1.0.0-beta.3",

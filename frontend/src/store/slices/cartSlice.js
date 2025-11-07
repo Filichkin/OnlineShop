@@ -20,6 +20,8 @@ const initialState = {
   updatingItems: [],
   // Флаг успешной загрузки (для предотвращения повторных запросов)
   isLoaded: false,
+  // Флаг отсутствия авторизации для отображения соответствующего UX
+  isUnauthorized: false,
 };
 
 // Async thunks
@@ -35,7 +37,14 @@ export const fetchCart = createAsyncThunk(
       const data = await cartAPI.getCart();
       return data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Не удалось загрузить корзину');
+      const status = error?.status;
+      if (status === 401) {
+        return rejectWithValue({ type: 'unauthorized' });
+      }
+      return rejectWithValue({
+        message: error?.message || 'Не удалось загрузить корзину',
+        status,
+      });
     }
   }
 );
@@ -138,6 +147,7 @@ const cartSlice = createSlice({
       state.error = null;
       state.updatingItems = [];
       state.isLoaded = false;
+      state.isUnauthorized = false;
     },
   },
   extraReducers: (builder) => {
@@ -146,11 +156,13 @@ const cartSlice = createSlice({
       .addCase(fetchCart.pending, (state) => {
         state.isLoading = true;
         state.error = null;
+        state.isUnauthorized = false;
       })
       .addCase(fetchCart.fulfilled, (state, action) => {
         state.isLoading = false;
         state.items = action.payload.items || [];
         state.isLoaded = true;
+        state.isUnauthorized = false;
         // Вычисляем общую информацию
         state.totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
         state.totalPrice = state.items.reduce(
@@ -160,7 +172,16 @@ const cartSlice = createSlice({
       })
       .addCase(fetchCart.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
+        if (action.payload?.type === 'unauthorized') {
+          state.items = [];
+          state.totalItems = 0;
+          state.totalPrice = 0;
+          state.isLoaded = true;
+          state.error = null;
+          state.isUnauthorized = true;
+          return;
+        }
+        state.error = action.payload?.message || action.error?.message || 'Не удалось загрузить корзину';
         state.isLoaded = false;
       });
 
@@ -301,6 +322,7 @@ export const selectCartIsLoading = (state) => state.cart.isLoading;
 export const selectCartError = (state) => state.cart.error;
 export const selectCartIsLoaded = (state) => state.cart.isLoaded;
 export const selectUpdatingItems = (state) => state.cart.updatingItems;
+export const selectCartIsUnauthorized = (state) => state.cart.isUnauthorized;
 
 // Reducer
 export default cartSlice.reducer;
