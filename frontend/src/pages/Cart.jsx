@@ -213,7 +213,7 @@ function Cart() {
             </p>
             <a
               href="/"
-              className="inline-block px-6 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors font-medium"
+              className="inline-block px-6 py-3 bg-gray-800 text-white rounded-md hover:bg-gray-700 transition-colors font-medium"
             >
               Перейти к покупкам
             </a>
@@ -230,7 +230,7 @@ function Cart() {
               {items.length > 0 && (
                 <button
                   onClick={handleClearCart}
-                  className="text-sm text-red-600 hover:text-red-700 hover:underline transition-colors"
+                  className="text-sm text-gray-500 hover:text-gray-700 hover:underline transition-colors"
                 >
                   Очистить корзину
                 </button>
@@ -259,15 +259,15 @@ function Cart() {
                   <span className="text-gray-600">Товары:</span>
                   <span className="text-lg text-gray-800">{totalQuantity} шт.</span>
                 </div>
-                <div className="flex justify-between items-baseline font-bold text-2xl pb-6 border-b border-gray-200">
-                  <span className="text-gray-900">Итого:</span>
-                  <span className="text-red-600">{formatPrice(totalPrice)}</span>
+                <div className="flex justify-between items-baseline font-bold text-xl pb-6 border-b border-gray-200">
+                  <span className="text-gray-700">Итого:</span>
+                  <span className="text-gray-700">{formatPrice(totalPrice)}</span>
                 </div>
 
                 {/* Кнопка оформления заказа */}
                 <button
                   onClick={handleSubmit}
-                  className="w-full px-6 py-3 text-base font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 hover:shadow-lg"
+                  className="w-full px-6 py-3 text-base font-semibold text-white bg-gray-800 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-offset-2 transition-all duration-200 hover:shadow-lg"
                 >
                   Оформить заказ
                 </button>

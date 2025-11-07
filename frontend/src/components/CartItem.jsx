@@ -92,7 +92,7 @@ const CartItem = memo(({ item, onQuantityChange, onRemove, isUpdating }) => {
           <button
             onClick={() => onRemove(item.product.id)}
             disabled={isUpdating}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+            className="p-2 text-gray-500 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50"
             aria-label="Удалить товар"
             title="Удалить"
           >

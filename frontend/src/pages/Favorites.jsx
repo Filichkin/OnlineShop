@@ -128,7 +128,7 @@ function Favorites() {
               </p>
               <Link
                 to="/"
-                className="inline-block px-6 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors font-medium"
+                className="inline-block px-6 py-3 bg-gray-800 text-white rounded-md hover:bg-gray-700 transition-colors font-medium"
               >
                 Перейти к покупкам
               </Link>

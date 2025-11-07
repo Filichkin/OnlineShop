@@ -65,8 +65,8 @@ function Header({ onOpenLoginModal }) {
 
   return (
     <>
-      <header className="flex justify-between px-3 sm:px-5 py-4 bg-blue-100 shadow-md">
-        <img className="h-5 sm:h-6" src={logo} alt="logo" />
+      <header className="flex justify-between px-3 sm:px-5 py-4 bg-white shadow-sm">
+        <img className="h-8 sm:h-10 self-center" src={logo} alt="logo" />
         <nav>
           <ul className="flex gap-4 sm:gap-8 lg:gap-14">
             <li>
@@ -85,7 +85,7 @@ function Header({ onOpenLoginModal }) {
                     {/* Badge с количеством товаров - привязан к иконке */}
                     {totalItems > 0 && (
                       <span
-                        className="absolute -top-2 -right-2 flex items-center justify-center min-w-[1.125rem] h-[1.125rem] text-[10px] font-medium text-white bg-red-600 rounded-full"
+                        className="absolute -top-2 -right-2 flex items-center justify-center min-w-[1.125rem] h-[1.125rem] text-[10px] font-medium text-white bg-gray-700 rounded-full"
                         aria-label={`${totalItems} товаров в корзине`}
                       >
                         {totalItems > 99 ? '99+' : totalItems}
@@ -104,7 +104,7 @@ function Header({ onOpenLoginModal }) {
                     {/* Badge с количеством избранных товаров - привязан к иконке */}
                     {totalFavorites > 0 && (
                       <span
-                        className="absolute -top-2 -right-2 flex items-center justify-center min-w-[1.125rem] h-[1.125rem] text-[10px] font-medium text-white bg-red-600 rounded-full"
+                        className="absolute -top-2 -right-2 flex items-center justify-center min-w-[1.125rem] h-[1.125rem] text-[10px] font-medium text-white bg-gray-700 rounded-full"
                         aria-label={`${totalFavorites} товаров в избранном`}
                       >
                         {totalFavorites > 99 ? '99+' : totalFavorites}

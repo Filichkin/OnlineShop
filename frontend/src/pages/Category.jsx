@@ -157,7 +157,7 @@ function Category() {
                 <Link
                   to={`/product/${product.id}`}
                   state={{ categoryId }}
-                  className="block w-full aspect-square overflow-hidden bg-gray-100"
+                  className="block w-full aspect-square overflow-hidden bg-white-100"
                 >
                   <img
                     src={getImageUrl(product.main_image)}

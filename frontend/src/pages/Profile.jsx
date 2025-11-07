@@ -296,7 +296,7 @@ function Profile() {
         <h1 className="text-3xl font-bold text-gray-900">Личный кабинет</h1>
         <button
           onClick={handleLogout}
-          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+          className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-offset-2 transition-colors"
         >
           Выйти
         </button>
@@ -312,7 +312,7 @@ function Profile() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors ${
                   activeTab === tab.id
-                    ? 'bg-blue-100 text-blue-700 font-medium'
+                    ? 'bg-gray-100 text-gray-700 font-medium'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
                 aria-current={activeTab === tab.id ? 'page' : undefined}
@@ -339,7 +339,7 @@ function Profile() {
                   {!isEditing && (
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                      className="text-sm text-gray-500 hover:text-gray-700 hover:underline transition-colors"
                     >
                       Редактировать
                     </button>
@@ -536,7 +536,7 @@ function Profile() {
                       <button
                         type="submit"
                         disabled={loading}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                       >
                         {loading ? 'Сохранение...' : 'Сохранить'}
                       </button>
@@ -710,7 +710,7 @@ function Profile() {
                           </p>
                           <Link
                             to={`/order/${order.id}`}
-                            className="mt-3 inline-block text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors focus:outline-none focus:underline"
+                            className="mt-3 inline-block text-gray-500 hover:text-gray-800 text-sm font-medium transition-colors focus:outline-none focus:underline"
                           >
                             Подробнее →
                           </Link>
@@ -731,7 +731,7 @@ function Profile() {
                   </h2>
                   <button
                     onClick={() => navigate('/favorites')}
-                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                    className="text-sm text-gray-500 hover:text-gray-700 hover:underline transition-colors"
                   >
                     Перейти на страницу избранного
                   </button>
@@ -756,7 +756,7 @@ function Profile() {
                     </p>
                     <button
                       onClick={() => navigate('/')}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                      className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-offset-2 transition-colors"
                     >
                       Перейти к покупкам
                     </button>

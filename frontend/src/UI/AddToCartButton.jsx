@@ -179,7 +179,7 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
             ? 'bg-red-700 text-white focus:ring-red-600 hover:bg-red-800'
             : isLoading
               ? 'bg-gray-500 text-white cursor-not-allowed'
-              : 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 hover:shadow-lg'
+              : 'bg-gray-800 text-white hover:bg-gray-700 focus:ring-gray-600 hover:shadow-lg'
           }
           ${className}
         `}

@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 function Footer() {
   return (
-    <footer className="px-5 py-8 text-xs bg-blue-100">
+    <footer className="px-5 py-8 text-xs bg-white shadow-sm">
       <div className="grid grid-cols-3">
         {/* Customer Support */}
         <div>
