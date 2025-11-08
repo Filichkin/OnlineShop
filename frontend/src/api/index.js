@@ -1019,3 +1019,98 @@ export const adminOrdersAPI = {
     }
   },
 };
+
+// API для управления пользователями (администратор)
+export const adminUsersAPI = {
+  // Получить всех пользователей (с пагинацией)
+  getAllUsers: async (skip = 0, limit = 20) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('Необходимо войти в систему');
+      }
+
+      const params = new URLSearchParams({
+        skip: skip.toString(),
+        limit: limit.toString(),
+      });
+
+      const response = await fetch(`${API_BASE_URL}/admin/users?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to fetch users');
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Получить пользователя по ID
+  getUserById: async (userId) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('Необходимо войти в систему');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to fetch user');
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+
+  // Обновить пользователя
+  updateUser: async (userId, userData) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('Необходимо войти в систему');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to update user');
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Ошибка сети. Проверьте подключение к интернету');
+      }
+      throw error;
+    }
+  },
+};

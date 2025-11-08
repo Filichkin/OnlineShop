@@ -8,12 +8,14 @@ import CategoryManager from '../components/admin/CategoryManager';
 import ProductManager from '../components/admin/ProductManager';
 import BrandManager from '../components/admin/BrandManager';
 import OrderManager from '../components/admin/OrderManager';
-import { adminOrdersAPI } from '../api';
+import UserManager from '../components/admin/UserManager';
+import { adminOrdersAPI, adminUsersAPI } from '../api';
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('categories');
   const [ordersStats, setOrdersStats] = useState({ total: 0, pending: 0 });
   const [productsStats, setProductsStats] = useState({ total: 0, active: 0 });
+  const [usersStats, setUsersStats] = useState({ total: 0, active: 0 });
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { isAuthenticated, user, token } = useSelector((state) => state.auth);
@@ -57,9 +59,23 @@ const AdminPanel = () => {
       }
     };
 
+    // Загружаем статистику пользователей
+    const fetchUsersStats = async () => {
+      try {
+        const data = await adminUsersAPI.getAllUsers(0, 100);
+        const total = data.total || (data.users ? data.users.length : 0);
+        const active = data.users ? data.users.filter(u => u.is_active).length : 0;
+        setUsersStats({ total, active });
+      } catch (error) {
+        console.error('Error fetching users stats:', error);
+        setUsersStats({ total: 0, active: 0 });
+      }
+    };
+
     if (token) {
       fetchProductsStats();
       fetchOrdersStats();
+      fetchUsersStats();
     }
   }, [dispatch, token]);
 
@@ -126,13 +142,23 @@ const AdminPanel = () => {
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'users'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Пользователи
+            </button>
           </div>
         </div>
       </nav>
 
       {/* Statistics */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
           <div className="bg-white overflow-hidden shadow rounded-lg">
             <div className="p-5">
               <div className="flex items-center">
@@ -212,6 +238,26 @@ const AdminPanel = () => {
               </div>
             </div>
           </div>
+
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Пользователей</dt>
+                    <dd className="text-lg font-medium text-gray-900">{usersStats.total}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -222,6 +268,7 @@ const AdminPanel = () => {
           {activeTab === 'products' && <ProductManager />}
           {activeTab === 'brands' && <BrandManager />}
           {activeTab === 'orders' && <OrderManager />}
+          {activeTab === 'users' && <UserManager />}
         </div>
       </main>
     </div>
