@@ -5,6 +5,7 @@ from fastapi import (
     Cookie,
     Depends,
     HTTPException,
+    Query,
     Request,
     Response,
     status
@@ -18,14 +19,24 @@ from app.core.auth import login_user, merge_session_data
 from app.core.config import Constants
 from app.core.db import get_async_session
 from app.core.messages import Messages
-from app.core.user import auth_backend, current_user, fastapi_users
+from app.core.user import (
+    auth_backend,
+    current_superuser,
+    current_user,
+    fastapi_users
+)
+from app.crud.user import user_crud
 from app.models.user import User
 from app.schemas.user import (
     PasswordResetRequest,
     UserCreate,
+    UserDetail,
+    UserListItem,
+    UserListResponse,
     UserLogin,
     UserRead,
-    UserUpdate
+    UserUpdate,
+    UserUpdateAdmin
 )
 
 router = APIRouter()
@@ -403,4 +414,277 @@ async def update_current_user_profile(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail='Failed to update user profile'
+        )
+
+
+# ============ SUPERUSER ENDPOINTS ============
+
+
+@router.get(
+    '/admin/users',
+    response_model=UserListResponse,
+    tags=Constants.USERS_TAGS,
+    summary='Get all users (superuser only)',
+    description='Get paginated list of all users with basic information'
+)
+async def get_all_users(
+    skip: int = Query(
+        0,
+        ge=0,
+        description='Number of records to skip'
+    ),
+    limit: int = Query(
+        20,
+        ge=1,
+        le=100,
+        description='Maximum records to return (max 100)'
+    ),
+    current_user: User = Depends(current_superuser),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    Get all users with pagination (superuser only).
+
+    Returns list of users with basic information:
+    - id, first_name, last_name, email, city, is_active, is_superuser
+
+    Supports pagination with skip and limit parameters.
+    Default page size is 20 users.
+    """
+    logger.bind(user_id=current_user.id).info(
+        f'Superuser запрашивает список пользователей: '
+        f'skip={skip}, limit={limit}'
+    )
+
+    # Get paginated users
+    users = await user_crud.get_users_paginated(
+        session=session,
+        skip=skip,
+        limit=limit
+    )
+
+    # Get total count
+    total = await user_crud.get_total_users_count(session=session)
+
+    logger.bind(user_id=current_user.id).info(
+        f'Возвращено пользователей: {len(users)} из {total}'
+    )
+
+    # Convert to list response
+    users_list = [
+        UserListItem(
+            id=u.id,
+            first_name=u.first_name,
+            last_name=u.last_name,
+            email=u.email,
+            city=u.city,
+            is_active=u.is_active,
+            is_superuser=u.is_superuser
+        )
+        for u in users
+    ]
+
+    return UserListResponse(users=users_list, total=total)
+
+
+@router.get(
+    '/admin/users/{user_id}',
+    response_model=UserDetail,
+    tags=Constants.USERS_TAGS,
+    summary='Get user details (superuser only)',
+    description='Get detailed information about specific user'
+)
+async def get_user_details(
+    user_id: int,
+    current_user: User = Depends(current_superuser),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    Get detailed user information (superuser only).
+
+    Returns all user fields including:
+    - Basic info: id, email, first_name, last_name, phone
+    - Profile: date_of_birth, city, telegram_id, address
+    - Status: is_active, is_superuser, is_verified
+    """
+    logger.bind(user_id=current_user.id).info(
+        f'Superuser запрашивает детали пользователя: user_id={user_id}'
+    )
+
+    user = await user_crud.get_user_by_id(
+        user_id=user_id,
+        session=session
+    )
+
+    if not user:
+        logger.bind(user_id=current_user.id).warning(
+            f'Пользователь не найден: user_id={user_id}'
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f'User {user_id} not found'
+        )
+
+    logger.bind(user_id=current_user.id).info(
+        f'Возвращены детали пользователя: user_id={user_id}'
+    )
+
+    return UserDetail(
+        id=user.id,
+        email=user.email,
+        first_name=user.first_name,
+        phone=user.phone,
+        last_name=user.last_name,
+        date_of_birth=user.date_of_birth,
+        city=user.city,
+        telegram_id=user.telegram_id,
+        address=user.address,
+        is_active=user.is_active,
+        is_superuser=user.is_superuser,
+        is_verified=user.is_verified
+    )
+
+
+@router.patch(
+    '/admin/users/{user_id}',
+    response_model=UserDetail,
+    tags=Constants.USERS_TAGS,
+    summary='Update user (superuser only)',
+    description='Update any user field including is_active status'
+)
+async def update_user_by_admin(
+    user_id: int,
+    user_update: UserUpdateAdmin,
+    current_user: User = Depends(current_superuser),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    Update user by admin (superuser only).
+
+    Admin can update any user field including:
+    - Profile fields: first_name, last_name, phone, email, etc.
+    - Status fields: is_active, is_superuser, is_verified
+
+    All fields are optional. Only provided fields will be updated.
+    """
+    logger.bind(user_id=current_user.id).info(
+        f'Superuser обновляет пользователя: user_id={user_id}'
+    )
+
+    # Get user to update
+    user = await user_crud.get_user_by_id(
+        user_id=user_id,
+        session=session
+    )
+
+    if not user:
+        logger.bind(user_id=current_user.id).warning(
+            f'Пользователь не найден: user_id={user_id}'
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f'User {user_id} not found'
+        )
+
+    # Get update data and filter out None values for non-nullable fields
+    update_data = user_update.model_dump(exclude_unset=True)
+
+    # Save current_user.id to avoid accessing it after session issues
+    current_user_id = current_user.id
+
+    # Remove None values for fields that have NOT NULL constraint in DB
+    # Fields: first_name, phone, email, hashed_password,
+    # is_active, is_superuser, is_verified
+    non_nullable_fields = [
+        'first_name', 'phone', 'email', 'hashed_password',
+        'is_active', 'is_superuser', 'is_verified'
+    ]
+    for field in non_nullable_fields:
+        if field in update_data and update_data[field] is None:
+            del update_data[field]
+
+    if not update_data:
+        logger.bind(user_id=current_user_id).warning(
+            f'Попытка обновления пользователя без данных: '
+            f'user_id={user_id}'
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='No fields to update'
+        )
+
+    try:
+        # Check for email uniqueness if updating email
+        if 'email' in update_data and update_data['email'] != user.email:
+            existing_user = await user_crud.get_user_by_email(
+                email=update_data['email'],
+                session=session
+            )
+            if existing_user:
+                logger.bind(user_id=current_user_id).warning(
+                    f'Попытка использовать существующий email: '
+                    f'{update_data["email"]}'
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=Messages.EMAIL_ALREADY_EXISTS
+                )
+
+        # Check for phone uniqueness if updating phone
+        if (
+            'phone' in update_data and
+            update_data['phone'] is not None and
+            update_data['phone'] != user.phone
+        ):
+            existing_user = await user_crud.get_user_by_phone(
+                phone=update_data['phone'],
+                session=session
+            )
+            if existing_user:
+                logger.bind(user_id=current_user_id).warning(
+                    f'Попытка использовать существующий телефон: '
+                    f'{update_data["phone"]}'
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=Messages.PHONE_ALREADY_EXISTS
+                )
+
+        # Update user attributes
+        for field, value in update_data.items():
+            setattr(user, field, value)
+
+        await session.commit()
+        await session.refresh(user)
+
+        logger.bind(user_id=current_user_id).info(
+            f'Пользователь успешно обновлен: user_id={user_id}'
+        )
+
+        return UserDetail(
+            id=user.id,
+            email=user.email,
+            first_name=user.first_name,
+            phone=user.phone,
+            last_name=user.last_name,
+            date_of_birth=user.date_of_birth,
+            city=user.city,
+            telegram_id=user.telegram_id,
+            address=user.address,
+            is_active=user.is_active,
+            is_superuser=user.is_superuser,
+            is_verified=user.is_verified
+        )
+
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        await session.rollback()
+        logger.bind(user_id=current_user_id).exception(
+            f'Ошибка обновления пользователя {user_id}: {e}'
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail='Failed to update user'
         )

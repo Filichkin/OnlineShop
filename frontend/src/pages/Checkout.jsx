@@ -615,7 +615,7 @@ function Checkout() {
                 </div>
                 <div className="flex justify-between items-baseline font-bold text-xl pt-2 border-t border-gray-200">
                   <span className="text-gray-900">Итого:</span>
-                  <span className="text-red-600">{formatPrice(totalPrice)}</span>
+                  <span className="text-gray-600">{formatPrice(totalPrice)}</span>
                 </div>
               </div>
 
@@ -624,7 +624,7 @@ function Checkout() {
                 type="submit"
                 onClick={handleSubmit}
                 disabled={isSubmitting || cartItems.length === 0}
-                className="hidden lg:block w-full mt-6 px-6 py-3 text-base font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="hidden lg:block w-full mt-6 px-6 py-3 text-base font-semibold text-white bg-gray-800 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-offset-2 transition-all duration-200 hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <span className="flex items-center justify-center">
