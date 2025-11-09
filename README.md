@@ -2,6 +2,13 @@
 
 A modern full-stack e-commerce platform built with React and FastAPI, featuring comprehensive product management, image handling, and admin panel functionality.
 
+## 🆕 Latest Updates (November 2025)
+
+- **Security Hardening** – Strengthened secret/password validation, added timing-safe password reset flow, secured cookies (HttpOnly, SameSite, Secure), enforced session fixation protection, and enabled MIME sniffing with `python-magic`.
+- **Authentication Upgrades** – Users can log in with email or phone, recover access via secure password reset emails, and receive automatic cart/favorites migration after authentication.
+- **Logging & Monitoring** – Centralized Loguru-based logging (`backend/app/core/logging_config.py`) with daily file rotation stored in `backend/logs`, plus consistent security/context logging across critical flows.
+- **Developer Experience** – New `.env.example` template under `infra/`, expanded documentation set in `docs/`, and updated backend dependencies (`python-magic`, `libmagic`, `loguru`) to support the new safeguards.
+
 ## 🚀 Tech Stack
 
 ### Frontend
@@ -15,6 +22,8 @@ A modern full-stack e-commerce platform built with React and FastAPI, featuring 
 - **FastAPI** with async/await support
 - **SQLAlchemy** with PostgreSQL
 - **Pydantic** for data validation
+- **Loguru** for structured logging
+- **python-magic / libmagic** for MIME validation
 - **Uvicorn** as ASGI server
 - **JWT** authentication
 
@@ -32,8 +41,10 @@ A modern full-stack e-commerce platform built with React and FastAPI, featuring 
 - **Image Gallery** - Multiple product images with main image support
 - **Shopping Cart** - Server-synced cart with quantity updates, clear cart, and checkout CTA
 - **Favorites System** - Add products to favorites, view and manage favorite items
-- **User Authentication** - JWT-based registration and login
+- **User Authentication** - JWT-based registration with email or phone login plus session fixation protection
+- **Password Recovery** - Secure email-based password reset with timing-attack mitigation
 - **User Profile** - View and update personal information
+- **Seamless Migration** - Automatic cart and favorites merge after successful authentication
 - **Order Management** - Place orders, view order history, track order status
 - **Order Details** - Detailed order view with cancellation option
 
@@ -124,7 +135,11 @@ OnlineShop/
 
 3. **Configure environment variables**
 
-   Create `infra/.env` at the project root (one level above `backend`) with values matching your local setup. Use the template below as a starting point:
+   Copy the provided template and adjust values to match your environment:
+   ```bash
+   cp infra/.env.example infra/.env
+   ```
+   Then update `infra/.env` (project root, one level above `backend`) with strong secrets and local credentials. Use the template below as a starting point:
    ```env
    SECRET=replace-with-strong-secret
    POSTGRES_HOST=localhost
@@ -223,6 +238,10 @@ Once the backend is running, visit:
 #### Backend (`infra/.env`)
 ```env
 SECRET=replace-with-strong-secret
+ENVIRONMENT=development  # Set to production in live deployments
+COOKIE_SECURE=false      # true when served via HTTPS
+COOKIE_HTTPONLY=true
+COOKIE_SAMESITE=lax
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_DB=onlineshop
@@ -261,11 +280,14 @@ VITE_API_BASE_URL=http://localhost:8000
 
 - **JWT Authentication** - Secure token-based auth with fastapi-users
 - **Password Hashing** - Bcrypt password hashing
+- **Session Fixation Protection** - Session cookies cleared on auth to prevent hijacking
+- **Secure Cookies** - Environment-driven HttpOnly, SameSite, and Secure flags
 - **Input Validation** - Pydantic schema validation
-- **File Upload Security** - Type and size validation
+- **File Upload Security** - Type/size validation and magic-number MIME checks
 - **CORS Configuration** - Cross-origin request handling
 - **SQL Injection Protection** - SQLAlchemy ORM protection
 - **Session Management** - Secure session cookies for anonymous carts
+- **Timing-Safe Password Reset** - Dummy operations equalize response times
 - **Email Security** - SMTP with TLS for email notifications
 
 ## 📱 Responsive Design
@@ -288,6 +310,13 @@ pytest
 cd frontend
 npm test
 ```
+
+## 🗂️ Logging & Monitoring
+
+- **Centralized Setup** – Logging configured via `backend/app/core/logging_config.py` (Loguru) and initialized on app startup.
+- **File & Console Output** – Development prints to console; persistent logs rotate daily under `backend/logs/`.
+- **Security Context** – Authentication, password reset, and cart operations emit structured security logs for auditing.
+- **Customization** – Adjust log level/handlers in `logging_config.py` or via environment-specific overrides.
 
 ## 📈 Performance Features
 
