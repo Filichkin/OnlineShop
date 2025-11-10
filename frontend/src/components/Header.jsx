@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import NavMenuLink from "../UI/NavLinkMenu";
 import logo from "../assets/images/logo.svg";
 import homeIcon from "../assets/images/home.webp";
@@ -28,6 +28,7 @@ function Header({ onOpenLoginModal }) {
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
 
   const handleProfileClick = async () => {
@@ -57,9 +58,6 @@ function Header({ onOpenLoginModal }) {
 
   // Get display name for profile button
   const getDisplayName = () => {
-    if (user && user.first_name) {
-      return user.first_name;
-    }
     return isAuthenticated ? 'Профиль' : 'Вход';
   };
 
@@ -118,7 +116,9 @@ function Header({ onOpenLoginModal }) {
             <li>
               <button
                 onClick={handleProfileClick}
-                className="flex flex-col items-center gap-1 text-sm text-gray-600 transition-colors hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
+                className={`flex flex-col items-center gap-1 text-sm transition-colors ${
+                  location.pathname === '/profile' ? 'text-gray-900 font-semibold' : 'text-gray-600'
+                }`}
                 aria-label={isAuthenticated ? "Профиль" : "Вход"}
               >
                 <img className="w-8 h-8 sm:w-10 sm:h-10 object-contain" src={profileIcon} alt={isAuthenticated ? "Профиль" : "Вход"} />
