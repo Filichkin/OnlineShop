@@ -151,7 +151,7 @@ function Category() {
 
   return (
     <div className="py-10">
-      <div className="container mx-auto px-4">
+      <div className="container">
         <h1 className="mb-3 text-2xl font-semibold text-left text-gray-700">{categoryName}</h1>
 
         {/* Контейнер для фильтров и сортировки */}

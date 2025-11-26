@@ -9,6 +9,22 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
+    container: {
+      center: true,
+      padding: {
+        DEFAULT: '3rem',
+        lg: '3rem',
+        xl: '4rem',
+        '2xl': '5rem',
+      },
+      screens: {
+        sm: '100%',
+        md: '100%',
+        lg: '100%',
+        xl: '100%',
+        '2xl': '100%',
+      },
+    },
     extend: {
       backgroundImage: {
         "custom-gradient": "linear-gradient(to right, #ff7e5f, #feb47b)",
@@ -18,7 +34,7 @@ export default {
         secondary: "#feb47b",
       },
       fontFamily: {
-        poppins: "poppins, sans-serif",
+        roboto: ['Roboto', 'sans-serif'],
       },
       keyframes: {
         wiggle: {

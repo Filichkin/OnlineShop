@@ -57,10 +57,10 @@ class Product(Base):
         nullable=False,
         index=True  # Add index for foreign key queries
     )
-    brand_id: Mapped[int] = mapped_column(
+    brand_id: Mapped[Optional[int]] = mapped_column(
         Integer,
         ForeignKey('brands.id'),
-        nullable=False,
+        nullable=True,
         index=True  # Add index for foreign key queries
     )
 

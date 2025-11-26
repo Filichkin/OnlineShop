@@ -163,12 +163,19 @@ async def get_products(
     categories_dict = {cat.id: cat for cat in categories.scalars().all()}
 
     # Загружаем бренды для всех продуктов одним запросом
-    brand_ids = list(set(p.brand_id for p in products))
-    brands = await session.execute(
-        select(Brand)
-        .where(Brand.id.in_(brand_ids))
-    )
-    brands_dict = {brand.id: brand for brand in brands.scalars().all()}
+    # Фильтруем None значения для продуктов без бренда
+    brand_ids = list(set(
+        p.brand_id for p in products if p.brand_id is not None
+    ))
+    brands_dict = {}
+    if brand_ids:
+        brands = await session.execute(
+            select(Brand)
+            .where(Brand.id.in_(brand_ids))
+        )
+        brands_dict = {
+            brand.id: brand for brand in brands.scalars().all()
+        }
 
     # Преобразуем в ProductListResponse с главным изображением
     result = [

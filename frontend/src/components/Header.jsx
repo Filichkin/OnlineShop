@@ -2,7 +2,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import NavMenuLink from "../UI/NavLinkMenu";
-import logo from "../assets/images/logo.svg";
+import logo from "../assets/images/logo.webp";
 import homeIcon from "../assets/images/home.webp";
 import cartIcon from "../assets/images/cart.webp";
 import favoriteIcon from "../assets/images/favorite.webp";
@@ -63,8 +63,16 @@ function Header({ onOpenLoginModal }) {
 
   return (
     <>
-      <header className="flex justify-between px-3 sm:px-5 py-4 bg-white shadow-sm">
-        <img className="h-8 sm:h-10 self-center" src={logo} alt="logo" />
+      <header className="sticky top-0 z-50 flex items-center justify-between px-3 sm:px-5 h-18 sm:h-24 bg-white shadow-sm">
+        <NavMenuLink to="/">
+          <div className="h-18 sm:h-24 overflow-hidden flex items-center cursor-pointer">
+            <img
+              src={logo}
+              alt="logo"
+              className="h-[160%] object-contain"
+            />
+          </div>
+        </NavMenuLink>
         <nav>
           <ul className="flex gap-4 sm:gap-8 lg:gap-14">
             <li>

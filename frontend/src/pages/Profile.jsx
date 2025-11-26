@@ -275,7 +275,7 @@ function Profile() {
   // Show loading state while user data is being fetched
   if (loading || !user) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container py-8">
         <div className="flex justify-center items-center min-h-[400px]">
           <div className="text-center">
             <svg className="animate-spin h-12 w-12 text-blue-600 mx-auto mb-4" viewBox="0 0 24 24">
@@ -290,7 +290,7 @@ function Profile() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container py-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <h1 className="text-3xl font-bold text-gray-900">Личный кабинет</h1>

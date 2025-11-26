@@ -42,7 +42,7 @@ function Favorites() {
   if (isLoading && !isLoaded) {
     return (
       <div className="py-10">
-        <div className="container mx-auto px-4">
+        <div className="container">
           <h1 className="mb-8 text-2xl font-semibold text-left text-gray-700">Избранное</h1>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
             {[...Array(6)].map((_, index) => (
@@ -71,7 +71,7 @@ function Favorites() {
   if (error && !isLoaded) {
     return (
       <div className="py-10">
-        <div className="container mx-auto px-4">
+        <div className="container">
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center max-w-md mx-auto">
             <svg
               className="w-12 h-12 text-red-600 mx-auto mb-4"
@@ -103,7 +103,7 @@ function Favorites() {
   if (isUnauthorized) {
     return (
       <div className="py-10">
-        <div className="container mx-auto px-4">
+        <div className="container">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center max-w-md mx-auto">
             <svg
               className="w-12 h-12 text-blue-500 mx-auto mb-4"
@@ -144,7 +144,7 @@ function Favorites() {
 
   return (
     <div className="py-10">
-      <div className="container mx-auto px-4">
+      <div className="container">
         <h1 className="mb-8 text-2xl font-semibold text-left text-gray-700">
           Избранное {items.length > 0 && `(${items.length})`}
         </h1>

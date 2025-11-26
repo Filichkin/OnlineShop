@@ -40,8 +40,8 @@ const CategoryManager = () => {
     } else if (statusFilter === 'all') {
       isActive = undefined; // все категории (не передаем параметр)
     }
-    
-    dispatch(fetchCategories({ isActive }));
+
+    dispatch(fetchCategories({ skip: 0, limit: 100, isActive }));
   }, [dispatch, statusFilter]);
 
   // Focus management for category form modal
@@ -96,7 +96,32 @@ const CategoryManager = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
+    // Валидация на фронтенде для создания новой категории
+    if (!editingCategory) {
+      if (!formData.image) {
+        dispatch(clearError());
+        // Устанавливаем ошибку через слайс
+        const errorMsg = 'Пожалуйста, выберите изображение категории';
+        dispatch({
+          type: 'categories/createCategory/rejected',
+          payload: errorMsg,
+          error: { message: errorMsg }
+        });
+        return;
+      }
+      if (!formData.icon) {
+        dispatch(clearError());
+        const errorMsg = 'Пожалуйста, выберите иконку категории';
+        dispatch({
+          type: 'categories/createCategory/rejected',
+          payload: errorMsg,
+          error: { message: errorMsg }
+        });
+        return;
+      }
+    }
+
     const formDataToSend = new FormData();
     formDataToSend.append('name', formData.name);
     formDataToSend.append('description', formData.description);
@@ -110,14 +135,14 @@ const CategoryManager = () => {
 
     try {
       if (editingCategory) {
-        await dispatch(updateCategory({ 
-          categoryId: editingCategory.id, 
-          formData: formDataToSend 
+        await dispatch(updateCategory({
+          categoryId: editingCategory.id,
+          formData: formDataToSend
         })).unwrap();
       } else {
         await dispatch(createCategory(formDataToSend)).unwrap();
       }
-      
+
       setShowModal(false);
       setEditingCategory(null);
       setFormData({ name: '', description: '', image: null, icon: null, is_active: true });
@@ -349,29 +374,53 @@ const CategoryManager = () => {
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Изображение
+                    Изображение {!editingCategory && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleFileChange}
+                    required={!editingCategory}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   />
+                  {!editingCategory && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Обязательное поле при создании категории
+                    </p>
+                  )}
+                  {editingCategory && formData.image && (
+                    <p className="mt-1 text-xs text-green-600">
+                      Новое изображение выбрано
+                    </p>
+                  )}
                 </div>
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Иконка
+                    Иконка {!editingCategory && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleIconChange}
+                    required={!editingCategory}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Небольшая иконка для отображения в карточке категории
-                  </p>
+                  {!editingCategory && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Обязательное поле. Небольшая иконка для отображения в карточке категории
+                    </p>
+                  )}
+                  {editingCategory && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Небольшая иконка для отображения в карточке категории (необязательно)
+                    </p>
+                  )}
+                  {editingCategory && formData.icon && (
+                    <p className="mt-1 text-xs text-green-600">
+                      Новая иконка выбрана
+                    </p>
+                  )}
                 </div>
 
                 <div className="mb-4">

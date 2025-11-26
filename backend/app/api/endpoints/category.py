@@ -638,7 +638,7 @@ async def create_category_product(
         le=Constants.PRICE_MAX_VALUE,
         description='Цена продукта'
     ),
-    brand_id: int = Form(..., description='ID бренда'),
+    brand_id: Optional[int] = Form(None, description='ID бренда'),
     description: str = Form(None, description='Описание продукта'),
     images: List[UploadFile] = File(
         ...,

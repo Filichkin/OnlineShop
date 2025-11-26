@@ -273,7 +273,7 @@ async def validate_category_update(
 async def validate_product_creation(
     name: str,
     category_id: int,
-    brand_id: int,
+    brand_id: Optional[int],
     images: List[UploadFile],
     session: AsyncSession
 ) -> None:
@@ -283,7 +283,7 @@ async def validate_product_creation(
     Args:
         name: Название продукта
         category_id: ID категории
-        brand_id: ID бренда
+        brand_id: ID бренда (опционально)
         images: Список изображений
         session: Сессия базы данных
 
@@ -293,8 +293,9 @@ async def validate_product_creation(
     # Проверяем существование и активность категории
     await validate_category_exists(category_id, session, must_be_active=True)
 
-    # Проверяем существование бренда
-    await validate_brand_exists(brand_id, session)
+    # Проверяем существование бренда, если он указан
+    if brand_id is not None:
+        await validate_brand_exists(brand_id, session)
 
     # Проверяем уникальность названия продукта
     await validate_product_name_unique(name, session)

@@ -63,7 +63,53 @@ export const categoriesAPI = {
       headers: getAuthHeaders(),
       body: formData,
     });
-    if (!response.ok) throw new Error('Failed to create category');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      let errorMessage = 'Не удалось создать категорию';
+
+      // Обработка ошибок валидации FastAPI (422)
+      if (response.status === 422 && errorData.detail) {
+        if (Array.isArray(errorData.detail)) {
+          // Извлекаем читаемые сообщения об ошибках
+          const messages = errorData.detail.map(err => {
+            if (err.loc && err.loc.includes('image')) {
+              return 'Изображение категории обязательно';
+            }
+            if (err.loc && err.loc.includes('icon')) {
+              return 'Иконка категории обязательна';
+            }
+            if (err.msg) {
+              return err.msg;
+            }
+            return String(err);
+          });
+          errorMessage = messages.join(', ');
+        } else {
+          errorMessage = errorData.detail;
+        }
+      } else if (errorData.detail) {
+        errorMessage = errorData.detail;
+      } else {
+        switch (response.status) {
+          case 400:
+            errorMessage = 'Некорректные данные категории';
+            break;
+          case 401:
+            errorMessage = 'Необходимо войти в систему';
+            break;
+          case 403:
+            errorMessage = 'Недостаточно прав для создания категории';
+            break;
+          case 500:
+            errorMessage = 'Ошибка сервера. Попробуйте позже';
+            break;
+        }
+      }
+
+      const error = new Error(errorMessage);
+      error.status = response.status;
+      throw error;
+    }
     return response.json();
   },
 

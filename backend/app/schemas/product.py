@@ -32,7 +32,10 @@ class ProductBase(BaseModel):
         )
     is_active: bool = Field(default=True)
     category_id: int = Field(..., gt=Constants.CATEGORY_ID_MIN_VALUE)
-    brand_id: int = Field(..., gt=Constants.BRAND_ID_MIN_VALUE)
+    brand_id: Optional[int] = Field(
+        None,
+        gt=Constants.BRAND_ID_MIN_VALUE
+    )
 
 
 class ProductCreate(BaseModel):
@@ -53,7 +56,7 @@ class ProductCreate(BaseModel):
     part_number: str = Field(..., description='Артикул продукта')
     price: float = Field(..., gt=0, description='Цена')
     category_id: int = Field(..., description='ID категории')
-    brand_id: int = Field(..., description='ID бренда')
+    brand_id: Optional[int] = Field(None, description='ID бренда')
     description: Optional[str] = Field(None, description='Описание')
     # images: List[UploadFile] - не указываем, т.к. Pydantic не поддерживает
 
@@ -112,7 +115,7 @@ class ProductDetailResponse(ProductResponse):
     images: List[MediaResponse] = []
     main_image: Optional[str] = None
     category: CategoryResponse
-    brand: BrandResponse
+    brand: Optional[BrandResponse] = None
 
     class Config:
         from_attributes = True
@@ -122,7 +125,7 @@ class ProductListResponse(ProductResponse):
     """Схема для списка продуктов (с главным изображением)"""
     main_image: Optional[str] = None
     category: CategoryResponse
-    brand: BrandResponse
+    brand: Optional[BrandResponse] = None
 
     class Config:
         from_attributes = True
