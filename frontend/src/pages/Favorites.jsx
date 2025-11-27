@@ -8,6 +8,7 @@ import {
   selectFavoritesError,
   selectFavoritesIsLoaded,
   selectFavoritesIsUnauthorized,
+  selectFavoritesIsGuest,
 } from '../store/slices/favoritesSlice';
 import { getImageUrl, formatPrice } from '../utils';
 import AddToCartButton from '../UI/AddToCartButton';
@@ -30,13 +31,15 @@ function Favorites() {
   const error = useSelector(selectFavoritesError);
   const isLoaded = useSelector(selectFavoritesIsLoaded);
   const isUnauthorized = useSelector(selectFavoritesIsUnauthorized);
+  const isGuest = useSelector(selectFavoritesIsGuest);
 
   // Загрузка избранного при первом монтировании (только если еще не загружено)
   useEffect(() => {
-    if (!isLoaded && !isLoading && !isUnauthorized) {
+    // Don't fetch from API if user is a guest (using localStorage)
+    if (!isLoaded && !isLoading && !isUnauthorized && !isGuest) {
       dispatch(fetchFavorites());
     }
-  }, [dispatch, isLoaded, isLoading, isUnauthorized]);
+  }, [dispatch, isLoaded, isLoading, isUnauthorized, isGuest]);
 
   // Состояние загрузки с skeleton screen
   if (isLoading && !isLoaded) {
@@ -100,7 +103,7 @@ function Favorites() {
     );
   }
 
-  if (isUnauthorized) {
+  if (isUnauthorized && !isGuest) {
     return (
       <div className="py-10">
         <div className="container">
@@ -194,7 +197,7 @@ function Favorites() {
                 {/* Изображение товара */}
                 <Link
                   to={`/product/${product.id}`}
-                  className="block w-full aspect-square overflow-hidden bg-gray-100"
+                  className="block aspect-square overflow-hidden mb-4 mt-14 mr-4 ml-4"
                 >
                   <img
                     src={getImageUrl(product.main_image)}

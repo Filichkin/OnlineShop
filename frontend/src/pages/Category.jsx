@@ -232,7 +232,7 @@ function Category() {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="relative flex flex-col bg-white rounded-3xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
+                className="relative flex flex-col bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
               >
                 {/* Кнопка избранного в правом верхнем углу */}
                 <div className="absolute top-2 right-2 z-10">
@@ -290,7 +290,7 @@ function Category() {
                     <AddToCartButton
                       product={product}
                       onAddToCart={handleAddToCart}
-                      className="px-3 py-2 text-xs"
+                      size="sm"
                     />
                   </div>
                 </div>

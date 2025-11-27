@@ -12,6 +12,7 @@ import {
   selectCartIsLoaded,
   selectUpdatingItems,
   selectCartIsUnauthorized,
+  selectCartIsGuest,
 } from '../store/slices/cartSlice';
 import { formatPrice } from '../utils/formatPrice';
 import CartItem from '../components/CartItem';
@@ -39,6 +40,7 @@ function Cart() {
   const isLoaded = useSelector(selectCartIsLoaded);
   const updatingItems = useSelector(selectUpdatingItems);
   const isUnauthorized = useSelector(selectCartIsUnauthorized);
+  const isGuest = useSelector(selectCartIsGuest);
 
   // Локальное состояние для toast-уведомлений об ошибках операций
   const [operationError, setOperationError] = useState(null);
@@ -46,10 +48,11 @@ function Cart() {
 
   // Загрузка корзины при первом монтировании и после ошибок (когда isLoaded сбрасывается)
   useEffect(() => {
-    if (!isLoaded && !isLoading && !error && !isUnauthorized) {
+    // Don't fetch from API if user is a guest (using localStorage)
+    if (!isLoaded && !isLoading && !error && !isUnauthorized && !isGuest) {
       dispatch(fetchCart());
     }
-  }, [dispatch, isLoaded, isLoading, error, isUnauthorized]);
+  }, [dispatch, isLoaded, isLoading, error, isUnauthorized, isGuest]);
 
   // Мемоизированный обработчик изменения количества
   // useCallback предотвращает ре-рендеры дочерних компонентов
@@ -150,7 +153,7 @@ function Cart() {
     );
   }
 
-  if (isUnauthorized) {
+  if (isUnauthorized && !isGuest) {
     return (
       <div className="max-w-4xl mx-auto p-5 py-16">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">

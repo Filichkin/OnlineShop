@@ -1,6 +1,34 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart, updateQuantity, removeFromCart, selectCartItems, selectUpdatingItems } from '../store/slices/cartSlice';
+
+// Size variants configuration for flexible button sizing
+const SIZE_VARIANTS = {
+  sm: {
+    button: "h-8 px-3 min-w-[120px]",
+    controls: "h-8 min-w-[120px]",
+    icon: "w-5 h-5",
+    spinner: "h-3 w-3",
+    text: 'text-sm',
+    fontWeight: 'font-medium',
+  },
+  default: {
+    button: 'h-8 px-4',
+    controls: 'h-8 px-2',
+    icon: 'w-4 h-4',
+    spinner: 'h-4 w-4',
+    text: 'text-sm',
+    fontWeight: 'font-medium',
+  },
+  lg: {
+    button: "h-12 px-6 min-w-[180px]",
+    controls: "h-12 min-w-[180px]",
+    icon: "w-7 h-7",
+    spinner: "h-5 w-5",
+    text: "text-base",
+    fontWeight: "font-normal"
+  },
+};
 
 /**
  * Кнопка добавления товара в корзину с переключением на контролы количества
@@ -16,14 +44,29 @@ import { addToCart, updateQuantity, removeFromCart, selectCartItems, selectUpdat
  * @param {Function} onAddToCart - Опциональный callback после добавления
  * @param {number} quantity - Количество для добавления (по умолчанию 1)
  * @param {string} className - Дополнительные CSS классы
+ * @param {string} size - Размер кнопки: 'sm', 'default', 'lg' (по умолчанию 'default')
+ * @param {Object} customSize - Кастомная конфигурация размеров (переопределяет size)
+ * @param {boolean} showIcon - Показывать ли иконку корзины (по умолчанию true)
+ * @param {boolean} fullWidth - Кнопка на всю ширину родителя (по умолчанию false)
+ * @param {string} textSize - Переопределение размера текста из варианта
+ * @param {string} fontWeight - Переопределение жирности шрифта из варианта
+ * @param {string} buttonText - Текст кнопки (по умолчанию "Добавить")
  */
-function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" }) {
+function AddToCartButton({
+  product,
+  onAddToCart,
+  quantity = 1,
+  className = "",
+  size = "default",
+  customSize = null,
+  showIcon = true,
+  fullWidth = false,
+  textSize = null,
+  fontWeight = null,
+  buttonText = "Добавить",
+}) {
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  // Ref для отслеживания таймеров, чтобы очистить их при размонтировании
-  const errorTimeoutRef = useRef(null);
 
   // Получаем список товаров в корзине и список обновляющихся товаров
   const cartItems = useSelector(selectCartItems);
@@ -35,25 +78,25 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
   const currentQuantity = cartItem ? cartItem.quantity : 0;
   const isUpdating = updatingItems.includes(product.id);
 
-  // Cleanup: очищаем таймер при размонтировании компонента
-  useEffect(() => {
-    return () => {
-      if (errorTimeoutRef.current) {
-        clearTimeout(errorTimeoutRef.current);
-      }
-    };
-  }, []);
+  // Получаем размеры из варианта или кастомной конфигурации
+  const sizeConfig = customSize || SIZE_VARIANTS[size] || SIZE_VARIANTS.default;
+  const finalTextSize = textSize || sizeConfig.text;
+  const finalFontWeight = fontWeight || sizeConfig.fontWeight;
 
   // Добавление товара в корзину
   const handleAddToCart = async () => {
     if (isLoading) return;
 
     setIsLoading(true);
-    setError(null);
 
     try {
       // Вызываем Redux action для добавления товара в корзину
-      await dispatch(addToCart({ productId: product.id, quantity })).unwrap();
+      // Передаем полные данные продукта для поддержки гостевых пользователей с localStorage
+      await dispatch(addToCart({
+        productId: product.id,
+        quantity,
+        productData: product  // Pass full product object for guest users
+      })).unwrap();
 
       // Вызываем callback функцию если она передана (для обновления UI)
       if (onAddToCart) {
@@ -62,16 +105,6 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
 
     } catch (err) {
       console.error('Ошибка при добавлении товара в корзину:', err);
-      setError(err || 'Не удалось добавить товар в корзину');
-
-      // Сбрасываем ошибку через 3 секунды с очисткой предыдущего таймера
-      if (errorTimeoutRef.current) {
-        clearTimeout(errorTimeoutRef.current);
-      }
-      errorTimeoutRef.current = setTimeout(() => {
-        setError(null);
-        errorTimeoutRef.current = null;
-      }, 3000);
     } finally {
       setIsLoading(false);
     }
@@ -87,16 +120,6 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
         await dispatch(removeFromCart(product.id)).unwrap();
       } catch (err) {
         console.error('Ошибка при удалении товара из корзины:', err);
-        setError(err || 'Не удалось удалить товар');
-
-        // Сбрасываем ошибку через 3 секунды с очисткой предыдущего таймера
-        if (errorTimeoutRef.current) {
-          clearTimeout(errorTimeoutRef.current);
-        }
-        errorTimeoutRef.current = setTimeout(() => {
-          setError(null);
-          errorTimeoutRef.current = null;
-        }, 3000);
       }
       return;
     }
@@ -105,117 +128,88 @@ function AddToCartButton({ product, onAddToCart, quantity = 1, className = "" })
       await dispatch(updateQuantity({ productId: product.id, quantity: newQuantity })).unwrap();
     } catch (err) {
       console.error('Ошибка при обновлении количества:', err);
-      setError(err || 'Не удалось обновить количество');
-
-      // Сбрасываем ошибку через 3 секунды с очисткой предыдущего таймера
-      if (errorTimeoutRef.current) {
-        clearTimeout(errorTimeoutRef.current);
-      }
-      errorTimeoutRef.current = setTimeout(() => {
-        setError(null);
-        errorTimeoutRef.current = null;
-      }, 3000);
     }
   };
 
   // Если товар уже в корзине, показываем контролы количества
   if (isInCart) {
     return (
-      <div className="relative">
-        <div className={`h-8 px-2 flex items-center border border-gray-300 rounded-md bg-white${className}`}>
-          {/* Кнопка уменьшения количества */}
-          <button
-            onClick={() => handleQuantityChange(currentQuantity - 1)}
-            disabled={isUpdating}
-            className="px-2 flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-l-md"
-            aria-label="Уменьшить количество"
-            title="Уменьшить количество"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+      <div className={`${sizeConfig.controls} grid grid-cols-3 items-center border border-gray-300 rounded-md bg-white ${fullWidth ? 'w-full' : ''} ${className}`}>
+        {/* Кнопка уменьшения количества */}
+        <button
+          onClick={() => handleQuantityChange(currentQuantity - 1)}
+          disabled={isUpdating}
+          className="flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-l-md"
+          aria-label="Уменьшить количество"
+          title="Уменьшить количество"
+        >
+          <svg className={sizeConfig.icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
 
-          {/* Отображение текущего количества */}
-          <span className="px-2 flex items-center justify-center min-w-[2rem] font-medium text-sm text-gray-900">
-            {currentQuantity}
-          </span>
+        {/* Отображение текущего количества */}
+        <span className={`flex items-center justify-center ${finalFontWeight} ${finalTextSize} text-gray-900`}>
+          {currentQuantity}
+        </span>
 
-          {/* Кнопка увеличения количества */}
-          <button
-            onClick={() => handleQuantityChange(currentQuantity + 1)}
-            disabled={isUpdating}
-            className="h-8 px-2 flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-r-md"
-            aria-label="Увеличить количество"
-            title="Увеличить количество"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Отображение ошибки, если есть */}
-        {error && (
-          <div className="absolute top-full left-0 right-0 mt-1 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1 z-10">
-            {error}
-          </div>
-        )}
+        {/* Кнопка увеличения количества */}
+        <button
+          onClick={() => handleQuantityChange(currentQuantity + 1)}
+          disabled={isUpdating}
+          className="flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-r-md"
+          aria-label="Увеличить количество"
+          title="Увеличить количество"
+        >
+          <svg className={sizeConfig.icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+          </svg>
+        </button>
       </div>
     );
   }
 
   // Если товар НЕ в корзине, показываем кнопку "Добавить"
   return (
-    <div className="relative">
-      <button
-        onClick={handleAddToCart}
-        disabled={isLoading}
-        className={`
-          px-4 h-8 rounded-md flex items-center justify-center gap-2
-          transition-all duration-200 font-medium text-sm
-          focus:outline-none focus:ring-2 focus:ring-offset-2
-          ${error
-            ? 'bg-red-700 text-white focus:ring-red-600 hover:bg-red-800'
-            : isLoading
-              ? 'bg-gray-500 text-white cursor-not-allowed'
-              : 'bg-gray-800 text-white hover:bg-gray-700 focus:ring-gray-600 hover:shadow-lg'
-          }
-          ${className}
-        `}
-        title={error ? error : isLoading ? 'Добавление...' : 'Добавить в корзину'}
-      >
-        {error ? (
-          <>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <span>Ошибка</span>
-          </>
-        ) : isLoading ? (
-          <>
-            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <button
+      onClick={handleAddToCart}
+      disabled={isLoading}
+      className={`
+        ${sizeConfig.button} rounded-md flex items-center justify-center gap-2
+        transition-all duration-200 ${finalFontWeight} ${finalTextSize}
+        focus:outline-none focus:ring-2 focus:ring-offset-2
+        ${fullWidth ? 'w-full' : ''}
+        ${isLoading
+          ? 'bg-gray-500 text-white cursor-not-allowed'
+          : 'bg-gray-800 text-white hover:bg-gray-700 focus:ring-gray-600 hover:shadow-lg'
+        }
+        ${className}
+      `}
+      title={isLoading ? 'Добавление...' : 'Добавить в корзину'}
+    >
+      {isLoading ? (
+        <>
+          {showIcon && (
+            <svg className={`animate-spin ${sizeConfig.spinner} text-white`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span>Добавление...</span>
-          </>
-        ) : (
-          <>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+          )}
+          <span>Добавление...</span>
+        </>
+      ) : (
+        <>
+          {showIcon && (
+            <svg className={sizeConfig.icon} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <path d="M4 7h16l-2 12H6L4 7z" />
+              <path d="M9 7l3-4 3 4" />
+              <path d="M9 12v4M12 12v4M15 12v4"/>
             </svg>
-            <span>Добавить</span>
-          </>
-        )}
-      </button>
-
-      {error && (
-        <div className="absolute top-full left-0 right-0 mt-1 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1 z-10">
-          {error}
-        </div>
+          )}
+          <span>{buttonText}</span>
+        </>
       )}
-    </div>
+    </button>
   );
 }
 

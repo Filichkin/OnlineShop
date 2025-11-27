@@ -208,9 +208,9 @@ function ProductDetails() {
                   <AddToCartButton
                     product={product}
                     onAddToCart={handleAddToCart}
-                    className="flex-grow"
+                    size="lg"
                   />
-                  <FavoriteButton product={product} />
+                  <FavoriteButton product={product} className="w-16 h-12" iconSize="w-7 h-7"/>
                 </div>
               </div>
             </div>

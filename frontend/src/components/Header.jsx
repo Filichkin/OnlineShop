@@ -5,7 +5,7 @@ import NavMenuLink from "../UI/NavLinkMenu";
 import logo from "../assets/images/logo.webp";
 import homeIcon from "../assets/images/home.webp";
 import cartIcon from "../assets/images/cart.webp";
-import favoriteIcon from "../assets/images/favorite.webp";
+import favoriteIcon from "../assets/images/favorite_heart.webp";
 import profileIcon from "../assets/images/profile.webp";
 import adminIcon from "../assets/images/admin.webp";
 import { selectCartTotalItems } from '../store/slices/cartSlice';
@@ -75,14 +75,14 @@ function Header({ onOpenLoginModal }) {
         </NavMenuLink>
         <nav>
           <ul className="flex gap-4 sm:gap-8 lg:gap-14">
-            <li>
+            {/* <li>
               <NavMenuLink to={"/"}>
                 <span className="flex flex-col items-center gap-1">
                   <img className="w-8 h-8 sm:w-10 sm:h-10 object-contain" src={homeIcon} alt="Главная" />
                   <span className="hidden sm:inline">Главная</span>
                 </span>
               </NavMenuLink>
-            </li>
+            </li> */}
             <li>
               <NavMenuLink to={"/cart"}>
                 <span className="flex flex-col items-center gap-1">
