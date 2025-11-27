@@ -191,7 +191,7 @@ function Favorites() {
               >
                 {/* Кнопка избранного в правом верхнем углу */}
                 <div className="absolute top-2 right-2 z-10">
-                  <FavoriteButton product={product} />
+                  <FavoriteButton product={product} className="w-12 h-9" iconSize="w-6 h-6"/>
                 </div>
 
                 {/* Изображение товара */}
@@ -241,7 +241,7 @@ function Favorites() {
                     </span>
                     <AddToCartButton
                       product={product}
-                      className="px-3 py-2 text-xs"
+                      size="sm"
                     />
                   </div>
                 </div>

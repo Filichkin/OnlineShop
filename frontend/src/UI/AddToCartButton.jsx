@@ -134,7 +134,7 @@ function AddToCartButton({
   // Если товар уже в корзине, показываем контролы количества
   if (isInCart) {
     return (
-      <div className={`${sizeConfig.controls} grid grid-cols-3 items-center border border-gray-300 rounded-md bg-white ${fullWidth ? 'w-full' : ''} ${className}`}>
+      <div className={`${sizeConfig.controls} grid grid-cols-3 items-center border border-gray-200 rounded-md bg-white ${fullWidth ? 'w-full' : ''} ${className}`}>
         {/* Кнопка уменьшения количества */}
         <button
           onClick={() => handleQuantityChange(currentQuantity - 1)}
