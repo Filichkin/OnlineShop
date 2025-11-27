@@ -168,7 +168,8 @@ export const removeFromFavorites = createAsyncThunk(
 
     try {
       await favoritesAPI.removeFromFavorites(productId);
-      return productId;
+      // Возвращаем объект с productId для консистентности с гостевым режимом
+      return { productId, isGuest: false };
     } catch (error) {
       return rejectWithValue({
         message: error.message || 'Не удалось удалить товар из избранного',
@@ -400,12 +401,15 @@ const favoritesSlice = createSlice({
         state.totalItems = state.items.length;
       })
       .addCase(removeFromFavorites.fulfilled, (state, action) => {
-        const productId = action.payload.productId || action.payload;
+        // Используем productId из payload объекта (теперь всегда возвращается объект)
+        // или из meta.arg как fallback для надежности
+        const productId = action.payload?.productId ?? action.meta.arg;
         state.updatingItems = state.updatingItems.filter(id => id !== productId);
         // Товар уже удален в pending, ничего делать не нужно
       })
       .addCase(removeFromFavorites.rejected, (state, action) => {
-        const { productId } = action.payload || {};
+        // Получаем productId из payload или из meta.arg как fallback
+        const productId = action.payload?.productId ?? action.meta.arg;
         if (productId) {
           state.updatingItems = state.updatingItems.filter(id => id !== productId);
         }

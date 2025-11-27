@@ -34,6 +34,9 @@ function FavoriteButton({ product, className = "", iconSize = "w-5 h-5" }) {
     e.preventDefault();
     e.stopPropagation();
 
+    // Убираем фокус с кнопки после клика, чтобы не оставался focus ring
+    e.currentTarget.blur();
+
     if (isUpdating) return;
 
     try {
@@ -54,7 +57,7 @@ function FavoriteButton({ product, className = "", iconSize = "w-5 h-5" }) {
       disabled={isUpdating}
       className={`
         group relative flex items-center justify-center
-        border rounded-md border-gray-300 bg-white
+        border rounded-md border-gray-200 bg-white
         transition-all duration-200
         hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
         disabled:opacity-50 disabled:cursor-not-allowed
