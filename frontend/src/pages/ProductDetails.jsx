@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { categoriesAPI } from "../api";
+import { categoriesAPI, productsAPI } from "../api";
 import AddToCartButton from "../UI/AddToCartButton";
 import FavoriteButton from "../UI/FavoriteButton";
 import ErrorBoundary from "../components/ErrorBoundary";
@@ -26,14 +26,18 @@ function ProductDetails() {
         setLoading(true);
         setError(null);
 
-        if (!categoryId) {
-          throw new Error('Не указан ID категории');
-        }
+        let productData;
 
-        // Передаем signal в API запрос для возможности отмены
-        const productData = await categoriesAPI.getCategoryProduct(categoryId, productId, {
-          signal: abortController.signal
-        });
+        // Если categoryId передан, используем метод категории, иначе используем прямой метод получения товара
+        if (categoryId) {
+          // Передаем signal в API запрос для возможности отмены
+          productData = await categoriesAPI.getCategoryProduct(categoryId, productId, {
+            signal: abortController.signal
+          });
+        } else {
+          // Получаем товар напрямую по ID без categoryId
+          productData = await productsAPI.getProduct(productId, true);
+        }
 
         // Проверяем, что компонент все еще смонтирован перед обновлением state
         if (!isComponentMounted) {

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   fetchFavorites,
@@ -24,6 +24,7 @@ import FavoriteButton from '../UI/FavoriteButton';
  */
 function Favorites() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   // Redux state
   const items = useSelector(selectFavoriteItems);
@@ -195,22 +196,28 @@ function Favorites() {
                 </div>
 
                 {/* Изображение товара */}
-                <Link
-                  to={`/product/${product.id}`}
-                  className="block aspect-square overflow-hidden mb-4 mt-14 mr-4 ml-4"
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/product/${product.id}`);
+                  }}
+                  className="block aspect-square overflow-hidden mb-4 mt-14 mr-4 ml-4 cursor-pointer"
                 >
                   <img
                     src={getImageUrl(product.main_image)}
                     alt={product.name}
                     className="object-contain w-full h-full transition-transform duration-300 hover:scale-105"
                   />
-                </Link>
+                </div>
 
                 {/* Информация о товаре */}
                 <div className="flex flex-col flex-grow p-3 border-t border-gray-200">
-                  <Link
-                    to={`/product/${product.id}`}
-                    className="hover:text-blue-600 transition-colors block"
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/product/${product.id}`);
+                    }}
+                    className="hover:text-blue-600 transition-colors block cursor-pointer"
                   >
                     <h3
                       className="text-[15px] font-[600] text-gray-900 mb-2"
@@ -226,7 +233,7 @@ function Favorites() {
                       }}>
                       {product.name}
                     </h3>
-                  </Link>
+                  </div>
 
                   {/* Артикул */}
                   {product.part_number && (

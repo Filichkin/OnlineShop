@@ -84,7 +84,11 @@ function AddToCartButton({
   const finalFontWeight = fontWeight || sizeConfig.fontWeight;
 
   // Добавление товара в корзину
-  const handleAddToCart = async () => {
+  const handleAddToCart = async (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (isLoading) return;
 
     setIsLoading(true);
@@ -111,7 +115,11 @@ function AddToCartButton({
   };
 
   // Изменение количества товара в корзине
-  const handleQuantityChange = async (newQuantity) => {
+  const handleQuantityChange = async (e, newQuantity) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (isUpdating) return;
 
     // Если количество меньше 1, удаляем товар из корзины
@@ -137,7 +145,7 @@ function AddToCartButton({
       <div className={`${sizeConfig.controls} grid grid-cols-3 items-center border border-gray-200 rounded-md bg-white ${fullWidth ? 'w-full' : ''} ${className}`}>
         {/* Кнопка уменьшения количества */}
         <button
-          onClick={() => handleQuantityChange(currentQuantity - 1)}
+          onClick={(e) => handleQuantityChange(e, currentQuantity - 1)}
           disabled={isUpdating}
           className="flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-l-md"
           aria-label="Уменьшить количество"
@@ -155,7 +163,7 @@ function AddToCartButton({
 
         {/* Кнопка увеличения количества */}
         <button
-          onClick={() => handleQuantityChange(currentQuantity + 1)}
+          onClick={(e) => handleQuantityChange(e, currentQuantity + 1)}
           disabled={isUpdating}
           className="flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-r-md"
           aria-label="Увеличить количество"
