@@ -7,16 +7,57 @@ import { favoritesAPI } from '../../api';
  * Этот slice обеспечивает централизованное управление состоянием избранного,
  * предотвращает повторные загрузки при переходах между страницами
  * и использует оптимистичные обновления для улучшения UX
+ *
+ * Поддерживает работу для гостей через localStorage с автоматической
+ * синхронизацией после входа в систему
  */
 
-// Initial state
+// LocalStorage keys
+const FAVORITES_STORAGE_KEY = 'guest_favorites';
+
+// Helper functions for localStorage
+const loadFavoritesFromStorage = () => {
+  try {
+    const savedFavorites = localStorage.getItem(FAVORITES_STORAGE_KEY);
+    if (savedFavorites) {
+      return JSON.parse(savedFavorites);
+    }
+  } catch (error) {
+    console.error('Error loading favorites from localStorage:', error);
+  }
+  return { items: [], favoriteIds: [], totalItems: 0 };
+};
+
+const saveFavoritesToStorage = (items) => {
+  try {
+    const favorites = {
+      items,
+      favoriteIds: items.map(item => item.id),
+      totalItems: items.length,
+    };
+    localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites));
+  } catch (error) {
+    console.error('Error saving favorites to localStorage:', error);
+  }
+};
+
+const clearFavoritesFromStorage = () => {
+  try {
+    localStorage.removeItem(FAVORITES_STORAGE_KEY);
+  } catch (error) {
+    console.error('Error clearing favorites from localStorage:', error);
+  }
+};
+
+// Initial state with guest favorites from localStorage
+const guestFavorites = loadFavoritesFromStorage();
 const initialState = {
   // Полный список избранных товаров (массив объектов товаров)
-  items: [],
+  items: guestFavorites.items,
   // Массив ID избранных товаров для быстрой проверки
-  favoriteIds: [],
+  favoriteIds: guestFavorites.favoriteIds,
   // Количество избранных товаров
-  totalItems: 0,
+  totalItems: guestFavorites.totalItems,
   isLoading: false,
   error: null,
   // Отслеживание товаров в процессе обновления (массив ID)
@@ -25,6 +66,10 @@ const initialState = {
   isLoaded: false,
   // Флаг отсутствия авторизации
   isUnauthorized: false,
+  // Флаг гостевого режима (работа с localStorage)
+  isGuest: guestFavorites.items.length > 0,
+  // Флаг синхронизации гостевого избранного
+  isSyncing: false,
 };
 
 // Async thunks
@@ -54,11 +99,41 @@ export const fetchFavorites = createAsyncThunk(
 
 /**
  * Добавление товара в избранное
- * @param {number} productId - ID товара
+ * Поддерживает работу для гостей через localStorage
+ * @param {number|object} payload - productId or { productId, productData }
  */
 export const addToFavorites = createAsyncThunk(
   'favorites/addToFavorites',
-  async (productId, { rejectWithValue }) => {
+  async (payload, { getState, rejectWithValue }) => {
+    const productId = typeof payload === 'object' ? payload.productId : payload;
+    const productData = typeof payload === 'object' ? payload.productData : null;
+
+    const state = getState();
+    const isGuest = state.favorites.isUnauthorized || state.favorites.isGuest;
+
+    if (isGuest) {
+      // Guest user - use localStorage
+      const currentItems = state.favorites.items;
+      const existingItem = currentItems.find(item => item.id === productId);
+
+      if (existingItem) {
+        // Item already in favorites
+        return { productId, isGuest: true, alreadyExists: true };
+      }
+
+      // Add new item
+      const newItem = productData || { id: productId };
+      const updatedItems = [...currentItems, newItem];
+
+      saveFavoritesToStorage(updatedItems);
+      return {
+        productId,
+        item: { product: newItem },
+        isGuest: true,
+        alreadyExists: false,
+      };
+    }
+
     try {
       const data = await favoritesAPI.addToFavorites(productId);
       return data;
@@ -73,14 +148,28 @@ export const addToFavorites = createAsyncThunk(
 
 /**
  * Удаление товара из избранного
+ * Поддерживает работу для гостей через localStorage
  * @param {number} productId - ID товара
  */
 export const removeFromFavorites = createAsyncThunk(
   'favorites/removeFromFavorites',
-  async (productId, { rejectWithValue }) => {
+  async (productId, { getState, rejectWithValue }) => {
+    const state = getState();
+    const isGuest = state.favorites.isUnauthorized || state.favorites.isGuest;
+
+    if (isGuest) {
+      // Guest user - use localStorage
+      const currentItems = state.favorites.items;
+      const updatedItems = currentItems.filter(item => item.id !== productId);
+
+      saveFavoritesToStorage(updatedItems);
+      return { productId, isGuest: true };
+    }
+
     try {
       await favoritesAPI.removeFromFavorites(productId);
-      return productId;
+      // Возвращаем объект с productId для консистентности с гостевым режимом
+      return { productId, isGuest: false };
     } catch (error) {
       return rejectWithValue({
         message: error.message || 'Не удалось удалить товар из избранного',
@@ -92,13 +181,16 @@ export const removeFromFavorites = createAsyncThunk(
 
 /**
  * Переключение состояния избранного (добавить или удалить)
- * @param {number} productId - ID товара
+ * Поддерживает работу для гостей через localStorage
+ * @param {number|object} payload - productId or { productId, productData }
  */
 export const toggleFavorite = createAsyncThunk(
   'favorites/toggleFavorite',
-  async (productId, { getState, dispatch, rejectWithValue }) => {
+  async (payload, { getState, dispatch, rejectWithValue }) => {
     try {
       const state = getState();
+      const productId = typeof payload === 'object' ? payload.productId : payload;
+      const productData = typeof payload === 'object' ? payload.productData : null;
 
       // Предотвращаем множественные запросы для одного товара
       if (state.favorites.updatingItems.includes(productId)) {
@@ -114,14 +206,51 @@ export const toggleFavorite = createAsyncThunk(
         await dispatch(removeFromFavorites(productId)).unwrap();
         return { productId, action: 'removed' };
       } else {
-        await dispatch(addToFavorites(productId)).unwrap();
+        const addPayload = productData ? { productId, productData } : productId;
+        await dispatch(addToFavorites(addPayload)).unwrap();
         return { productId, action: 'added' };
       }
     } catch (error) {
+      const productId = typeof payload === 'object' ? payload.productId : payload;
       return rejectWithValue({
         message: error.message || 'Не удалось переключить избранное',
         productId,
       });
+    }
+  }
+);
+
+/**
+ * Синхронизация гостевого избранного с сервером после входа
+ * Вызывается автоматически после успешной авторизации
+ */
+export const syncGuestFavorites = createAsyncThunk(
+  'favorites/syncGuestFavorites',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const guestItems = state.favorites.items;
+
+      if (guestItems.length === 0) {
+        return { items: [], total_items: 0 };
+      }
+
+      // Send guest favorite items to backend for merging
+      // We need to add each item individually to merge with existing server favorites
+      const promises = guestItems.map(item =>
+        favoritesAPI.addToFavorites(item.id)
+      );
+
+      await Promise.all(promises);
+
+      // Clear localStorage after successful sync
+      clearFavoritesFromStorage();
+
+      // Fetch updated favorites from server
+      const data = await favoritesAPI.getFavorites();
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Не удалось синхронизировать избранное');
     }
   }
 );
@@ -148,7 +277,20 @@ const favoritesSlice = createSlice({
       state.error = null;
       state.updatingItems = [];
       state.isLoaded = false;
-       state.isUnauthorized = false;
+      state.isUnauthorized = false;
+      state.isGuest = false;
+      state.isSyncing = false;
+      clearFavoritesFromStorage();
+    },
+    // Переключение в гостевой режим (при logout)
+    setGuestMode: (state) => {
+      state.isGuest = true;
+      state.isUnauthorized = true;
+      // Load guest favorites from storage if exists
+      const guestFavorites = loadFavoritesFromStorage();
+      state.items = guestFavorites.items;
+      state.favoriteIds = guestFavorites.favoriteIds;
+      state.totalItems = guestFavorites.totalItems;
     },
   },
   extraReducers: (builder) => {
@@ -169,15 +311,21 @@ const favoritesSlice = createSlice({
         state.totalItems = action.payload?.total_items || state.items.length;
         state.isLoaded = true;
         state.isUnauthorized = false;
+        state.isGuest = false; // User is authenticated
+        // Clear guest favorites from storage after successful fetch
+        clearFavoritesFromStorage();
       })
       .addCase(fetchFavorites.rejected, (state, action) => {
         state.isLoading = false;
         if (action.payload?.type === 'unauthorized') {
-          state.items = [];
-          state.favoriteIds = [];
-          state.totalItems = 0;
+          // Load guest favorites from localStorage for unauthorized users
+          const guestFavorites = loadFavoritesFromStorage();
+          state.items = guestFavorites.items;
+          state.favoriteIds = guestFavorites.favoriteIds;
+          state.totalItems = guestFavorites.totalItems;
           state.isLoaded = true;
           state.isUnauthorized = true;
+          state.isGuest = true;
           state.error = null;
           return;
         }
@@ -188,22 +336,36 @@ const favoritesSlice = createSlice({
     // Add to favorites
     builder
       .addCase(addToFavorites.pending, (state, action) => {
-        const productId = action.meta.arg;
+        const productId = typeof action.meta.arg === 'object' ? action.meta.arg.productId : action.meta.arg;
         if (!state.updatingItems.includes(productId)) {
           state.updatingItems.push(productId);
         }
         state.error = null;
       })
       .addCase(addToFavorites.fulfilled, (state, action) => {
-        const productId = action.meta.arg;
+        const productId = typeof action.meta.arg === 'object' ? action.meta.arg.productId : action.meta.arg;
         state.updatingItems = state.updatingItems.filter(id => id !== productId);
 
-        // API возвращает {message, product_id, item: {product: {...}}}
-        const product = action.payload?.item?.product;
-        if (product && !state.favoriteIds.includes(product.id)) {
-          state.items.push(product);
-          state.favoriteIds.push(product.id);
-          state.totalItems = state.items.length;
+        if (action.payload.isGuest) {
+          // Guest user update
+          if (!action.payload.alreadyExists) {
+            const product = action.payload.item.product;
+            if (!state.favoriteIds.includes(product.id)) {
+              state.items.push(product);
+              state.favoriteIds.push(product.id);
+              state.totalItems = state.items.length;
+            }
+          }
+          state.isGuest = true;
+        } else {
+          // API возвращает {message, product_id, item: {product: {...}}}
+          const product = action.payload?.item?.product;
+          if (product && !state.favoriteIds.includes(product.id)) {
+            state.items.push(product);
+            state.favoriteIds.push(product.id);
+            state.totalItems = state.items.length;
+          }
+          state.isGuest = false;
         }
       })
       .addCase(addToFavorites.rejected, (state, action) => {
@@ -239,12 +401,15 @@ const favoritesSlice = createSlice({
         state.totalItems = state.items.length;
       })
       .addCase(removeFromFavorites.fulfilled, (state, action) => {
-        const productId = action.payload;
+        // Используем productId из payload объекта (теперь всегда возвращается объект)
+        // или из meta.arg как fallback для надежности
+        const productId = action.payload?.productId ?? action.meta.arg;
         state.updatingItems = state.updatingItems.filter(id => id !== productId);
         // Товар уже удален в pending, ничего делать не нужно
       })
       .addCase(removeFromFavorites.rejected, (state, action) => {
-        const { productId } = action.payload || {};
+        // Получаем productId из payload или из meta.arg как fallback
+        const productId = action.payload?.productId ?? action.meta.arg;
         if (productId) {
           state.updatingItems = state.updatingItems.filter(id => id !== productId);
         }
@@ -268,11 +433,37 @@ const favoritesSlice = createSlice({
       .addCase(toggleFavorite.rejected, (state, action) => {
         state.error = action.payload?.message;
       });
+
+    // Sync guest favorites
+    builder
+      .addCase(syncGuestFavorites.pending, (state) => {
+        state.isSyncing = true;
+        state.error = null;
+      })
+      .addCase(syncGuestFavorites.fulfilled, (state, action) => {
+        state.isSyncing = false;
+        state.isGuest = false;
+        state.isUnauthorized = false;
+
+        // Update with merged favorites from server
+        const items = action.payload?.items || [];
+        state.items = items.map(item => item.product);
+        state.favoriteIds = state.items.map(product => product.id);
+        state.totalItems = action.payload?.total_items || state.items.length;
+
+        // Clear localStorage after successful sync
+        clearFavoritesFromStorage();
+      })
+      .addCase(syncGuestFavorites.rejected, (state, action) => {
+        state.isSyncing = false;
+        state.error = action.payload || 'Не удалось синхронизировать избранное';
+        // Keep guest data on error
+      });
   },
 });
 
 // Actions
-export const { clearError, resetLoaded, resetFavorites } = favoritesSlice.actions;
+export const { clearError, resetLoaded, resetFavorites, setGuestMode } = favoritesSlice.actions;
 
 // Selectors
 export const selectFavorites = (state) => state.favorites;
@@ -284,6 +475,8 @@ export const selectFavoritesError = (state) => state.favorites.error;
 export const selectFavoritesIsLoaded = (state) => state.favorites.isLoaded;
 export const selectFavoritesUpdatingItems = (state) => state.favorites.updatingItems;
 export const selectFavoritesIsUnauthorized = (state) => state.favorites.isUnauthorized;
+export const selectFavoritesIsGuest = (state) => state.favorites.isGuest;
+export const selectFavoritesIsSyncing = (state) => state.favorites.isSyncing;
 
 // Helper selectors
 export const selectIsFavorite = (productId) => (state) =>

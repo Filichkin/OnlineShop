@@ -1,4 +1,3 @@
-import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   toggleFavorite,
@@ -13,33 +12,21 @@ import {
  * состояния избранного во всем приложении (Header badge, Favorites page)
  *
  * ПОВЕДЕНИЕ:
- * - Если товар НЕ в избранном: показывает контур закладки (серый)
- * - Если товар В избранном: показывает заполненную закладку (светло-черный)
+ * - Если товар НЕ в избранном: показывает контур сердца (серый)
+ * - Если товар В избранном: показывает заполненное сердце (светло-черный)
  * - Анимация при наведении и клике
  * - Показывает loading состояние
  *
  * @param {Object} product - Объект товара с id
  * @param {string} className - Дополнительные CSS классы
+ * @param {string} iconSize - Размер иконки (по умолчанию 'w-5 h-5')
  */
-function FavoriteButton({ product, className = "" }) {
+function FavoriteButton({ product, className = "", iconSize = "w-5 h-5" }) {
   const dispatch = useDispatch();
-  const [error, setError] = useState(null);
-
-  // Ref для отслеживания таймера, чтобы очистить его при размонтировании
-  const errorTimeoutRef = useRef(null);
 
   // Получаем состояние избранного из Redux
   const isFavorite = useSelector(selectIsFavorite(product.id));
   const isUpdating = useSelector(selectIsUpdatingFavorite(product.id));
-
-  // Cleanup: очищаем таймер при размонтировании компонента
-  useEffect(() => {
-    return () => {
-      if (errorTimeoutRef.current) {
-        clearTimeout(errorTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // Переключение состояния избранного
   const handleToggleFavorite = async (e) => {
@@ -47,112 +34,84 @@ function FavoriteButton({ product, className = "" }) {
     e.preventDefault();
     e.stopPropagation();
 
-    if (isUpdating) return;
+    // Убираем фокус с кнопки после клика, чтобы не оставался focus ring
+    e.currentTarget.blur();
 
-    setError(null);
+    if (isUpdating) return;
 
     try {
       // Вызываем Redux action для переключения избранного
-      await dispatch(toggleFavorite(product.id)).unwrap();
+      // Передаем полные данные продукта для поддержки гостевых пользователей с localStorage
+      await dispatch(toggleFavorite({
+        productId: product.id,
+        productData: product  // Pass full product object for guest users
+      })).unwrap();
     } catch (err) {
       console.error('Ошибка при переключении избранного:', err);
-      setError(err?.message || 'Не удалось обновить избранное');
-
-      // Сбрасываем ошибку через 3 секунды с очисткой предыдущего таймера
-      if (errorTimeoutRef.current) {
-        clearTimeout(errorTimeoutRef.current);
-      }
-      errorTimeoutRef.current = setTimeout(() => {
-        setError(null);
-        errorTimeoutRef.current = null;
-      }, 3000);
     }
   };
 
   return (
-    <div className="relative">
-      <button
-        onClick={handleToggleFavorite}
-        disabled={isUpdating}
-        className={`
-          group relative p-1.5 rounded-full transition-all duration-200
-          hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
-          disabled:opacity-50 disabled:cursor-not-allowed
-          ${error ? 'bg-red-50' : ''}
-          ${className}
-        `}
-        aria-label={isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}
-        title={error ? error : isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}
-      >
-        {isUpdating ? (
-          // Loading spinner
-          <svg
-            className="w-5 h-5 text-gray-400 animate-spin"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-        ) : error ? (
-          // Error icon
-          <svg
-            className="w-5 h-5 text-red-600"
-            fill="none"
+    <button
+      onClick={handleToggleFavorite}
+      disabled={isUpdating}
+      className={`
+        group relative flex items-center justify-center
+        border rounded-md border-gray-200 bg-white
+        transition-all duration-200
+        hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
+        disabled:opacity-50 disabled:cursor-not-allowed
+        ${className || 'w-10 h-7'}
+      `}
+      aria-label={isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}
+      title={isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}
+    >
+      {isUpdating ? (
+        // Loading spinner
+        <svg
+          className={`${iconSize} text-gray-400 animate-spin`}
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
             stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        ) : isFavorite ? (
-          // Filled bookmark (в избранном) - светло-черный цвет
-          <svg
-            className="w-5 h-5 text-gray-700 transition-transform duration-200 group-hover:scale-110"
+            strokeWidth="4"
+          ></circle>
+          <path
+            className="opacity-75"
             fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
-          </svg>
-        ) : (
-          // Outline bookmark (не в избранном) - серый контур
-          <svg
-            className="w-5 h-5 text-gray-400 transition-all duration-200 group-hover:text-gray-600 group-hover:scale-110"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            viewBox="0 0 24 24"
-          >
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-          </svg>
-        )}
-      </button>
-
-      {/* Tooltip с ошибкой */}
-      {error && (
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 text-xs text-white bg-red-600 rounded whitespace-nowrap z-10 animate-fade-in">
-          {error}
-        </div>
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+      ) : isFavorite ? (
+        // Filled heart (в избранном) - светло-черный цвет
+        <svg
+          className={`${iconSize} transition-transform duration-200 group-hover:scale-110`}
+          fill="rgb(55 65 81)"
+          viewBox="0 0 24 24"
+        >
+          <path d="M12 21s-6-4.6-9-8.9C1.1 9 2.4 5.5 5.2 4.2c2-.9 4.4-.3 5.8 1.3L12 7l1-1.5c1.4-1.6 3.8-2.2 5.8-1.3 2.8 1.3 4.1 4.8 1.8 7.9C18 16.4 12 21 12 21z" />
+        </svg>
+      ) : (
+        // Outline heart (не в избранном) - серый контур
+        <svg
+          className={`${iconSize} text-gray-500 transition-all duration-200 group-hover:text-gray-700 group-hover:scale-110`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          viewBox="0 0 24 24"
+        >
+          <path d="M12 21s-6-4.6-9-8.9C1.1 9 2.4 5.5 5.2 4.2c2-.9 4.4-.3 5.8 1.3L12 7l1-1.5c1.4-1.6 3.8-2.2 5.8-1.3 2.8 1.3 4.1 4.8 1.8 7.9C18 16.4 12 21 12 21z" />
+        </svg>
       )}
-    </div>
+    </button>
   );
 }
 

@@ -122,7 +122,7 @@ function Category() {
       newParams.search = debouncedNameSearch;
     }
     newParams.sort_by = value;
-    setSearchParams(newParams);
+    setSearchParams(newParams, { replace: true });
   }
 
   // Синхронизируем URL с debounced значением цены
@@ -141,7 +141,7 @@ function Category() {
     if (sortBy && sortBy !== "price_asc") {
       newParams.sort_by = sortBy;
     }
-    setSearchParams(newParams);
+    setSearchParams(newParams, { replace: true });
   }, [debouncedInputValue, debouncedPartNumber, debouncedNameSearch, setSearchParams, sortBy]);
 
   function handleAddToCart(product) {
@@ -236,14 +236,14 @@ function Category() {
               >
                 {/* Кнопка избранного в правом верхнем углу */}
                 <div className="absolute top-2 right-2 z-10">
-                  <FavoriteButton product={product} />
+                  <FavoriteButton product={product} className="w-12 h-9" iconSize="w-6 h-6"/>
                 </div>
 
                 {/* Изображение товара */}
                 <Link
                   to={`/product/${product.id}`}
                   state={{ categoryId }}
-                  className="block w-full aspect-square overflow-hidden bg-white-100"
+                  className="block aspect-square overflow-hidden mb-4 mt-14 mr-4 ml-4"
                 >
                   <img
                     src={getImageUrl(product.main_image)}
@@ -268,7 +268,8 @@ function Category() {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         lineHeight: '1.25rem',
-                        maxHeight: '2.5rem'
+                        maxHeight: '2.5rem',
+                        textTransform: 'uppercase'
                       }}>
                       {product.name}
                     </h3>
@@ -289,7 +290,7 @@ function Category() {
                     <AddToCartButton
                       product={product}
                       onAddToCart={handleAddToCart}
-                      className="px-3 py-2 text-xs"
+                      size="sm"
                     />
                   </div>
                 </div>
