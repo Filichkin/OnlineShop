@@ -64,11 +64,11 @@ const ProductManager = () => {
     const isActive = statusFilter === 'inactive' ? false : true;
 
     // Проверяем, изменились ли фильтры - если да, используем страницу 1
-    const filtersChanged = 
+    const filtersChanged =
       prevFiltersForPageRef.current.searchTerm !== searchTerm ||
       prevFiltersForPageRef.current.selectedCategory !== selectedCategory ||
       prevFiltersForPageRef.current.statusFilter !== statusFilter;
-    
+
     // Если фильтры изменились, используем страницу 1, иначе текущую страницу
     const pageToUse = filtersChanged ? 1 : currentPage;
     const skip = (pageToUse - 1) * ITEMS_PER_PAGE;
@@ -81,7 +81,8 @@ const ProductManager = () => {
       limit: ITEMS_PER_PAGE,
       isActive
     }));
-    dispatch(fetchCategories());
+    // Загружаем все категории (увеличиваем лимит до 1000 для получения всех категорий)
+    dispatch(fetchCategories({ skip: 0, limit: 1000, isActive: true }));
 
     // Загружаем бренды
     const loadBrands = async () => {
@@ -161,7 +162,10 @@ const ProductManager = () => {
     formDataToSend.append('part_number', formData.part_number);
     formDataToSend.append('description', formData.description);
     formDataToSend.append('price', formData.price);
-    formDataToSend.append('brand_id', formData.brand_id);
+    // Добавляем brand_id только если он выбран (не пустая строка)
+    if (formData.brand_id) {
+      formDataToSend.append('brand_id', formData.brand_id);
+    }
     formDataToSend.append('is_active', formData.is_active.toString());
     
     // НЕ добавляем изображения в FormData для редактирования
@@ -661,16 +665,15 @@ const ProductManager = () => {
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Бренд
+                    Бренд <span className="text-gray-500 font-normal">(необязательно)</span>
                   </label>
                   <select
                     name="brand_id"
                     value={formData.brand_id}
                     onChange={handleInputChange}
-                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   >
-                    <option value="">Выберите бренд</option>
+                    <option value="">Не выбран</option>
                     {brands.map((brand) => (
                       <option key={brand.id} value={brand.id}>
                         {brand.name}

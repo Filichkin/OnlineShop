@@ -122,7 +122,7 @@ function Category() {
       newParams.search = debouncedNameSearch;
     }
     newParams.sort_by = value;
-    setSearchParams(newParams);
+    setSearchParams(newParams, { replace: true });
   }
 
   // Синхронизируем URL с debounced значением цены
@@ -141,7 +141,7 @@ function Category() {
     if (sortBy && sortBy !== "price_asc") {
       newParams.sort_by = sortBy;
     }
-    setSearchParams(newParams);
+    setSearchParams(newParams, { replace: true });
   }, [debouncedInputValue, debouncedPartNumber, debouncedNameSearch, setSearchParams, sortBy]);
 
   function handleAddToCart(product) {
@@ -232,7 +232,7 @@ function Category() {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="relative flex flex-col bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
+                className="relative flex flex-col bg-white rounded-3xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
               >
                 {/* Кнопка избранного в правом верхнем углу */}
                 <div className="absolute top-2 right-2 z-10">
@@ -243,7 +243,7 @@ function Category() {
                 <Link
                   to={`/product/${product.id}`}
                   state={{ categoryId }}
-                  className="block w-full aspect-square overflow-hidden bg-white-100"
+                  className="block aspect-square overflow-hidden mb-4 mt-14 mr-4 ml-4"
                 >
                   <img
                     src={getImageUrl(product.main_image)}
@@ -268,7 +268,8 @@ function Category() {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         lineHeight: '1.25rem',
-                        maxHeight: '2.5rem'
+                        maxHeight: '2.5rem',
+                        textTransform: 'uppercase'
                       }}>
                       {product.name}
                     </h3>
