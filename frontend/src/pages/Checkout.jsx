@@ -40,6 +40,8 @@ function Checkout() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [rateLimitTimer, setRateLimitTimer] = useState(null);
+  const [isRateLimited, setIsRateLimited] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -97,6 +99,19 @@ function Checkout() {
   const totalQuantity = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + item.quantity, 0);
   }, [cartItems]);
+
+  // Rate limit timer countdown
+  useEffect(() => {
+    if (rateLimitTimer > 0) {
+      const timer = setTimeout(() => {
+        setRateLimitTimer(rateLimitTimer - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (rateLimitTimer === 0) {
+      setIsRateLimited(false);
+      setRateLimitTimer(null);
+    }
+  }, [rateLimitTimer]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -237,6 +252,16 @@ function Checkout() {
       });
     } catch (error) {
       console.error('Order submission error:', error);
+
+      // Handle rate limiting (429 error)
+      if (error.status === 429 || error.message?.includes('Слишком много заказов')) {
+        setIsRateLimited(true);
+        // Extract retry-after from error or default to 60 seconds
+        const retryAfterMatch = error.message?.match(/через (\d+)/);
+        const retryAfter = retryAfterMatch ? parseInt(retryAfterMatch[1], 10) : 60;
+        setRateLimitTimer(retryAfter);
+      }
+
       setSubmitError(error.message || 'Произошла ошибка при оформлении заказа. Попробуйте снова.');
       // Scroll to top to show error
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -544,8 +569,9 @@ function Checkout() {
                 {/* Submit button for mobile - hidden on desktop */}
                 <button
                   type="submit"
-                  disabled={isSubmitting || cartItems.length === 0}
+                  disabled={isSubmitting || isRateLimited || cartItems.length === 0}
                   className="lg:hidden w-full px-6 py-3 text-base font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  aria-label={isRateLimited ? `Подождите ${rateLimitTimer} секунд` : undefined}
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center">
@@ -566,6 +592,13 @@ function Checkout() {
                         />
                       </svg>
                       Оформление...
+                    </span>
+                  ) : isRateLimited && rateLimitTimer ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Подождите {rateLimitTimer} сек
                     </span>
                   ) : (
                     'Оформить заказ'
@@ -623,8 +656,9 @@ function Checkout() {
               <button
                 type="submit"
                 onClick={handleSubmit}
-                disabled={isSubmitting || cartItems.length === 0}
+                disabled={isSubmitting || isRateLimited || cartItems.length === 0}
                 className="hidden lg:block w-full mt-6 px-6 py-3 text-base font-semibold text-white bg-gray-800 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-offset-2 transition-all duration-200 hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+                aria-label={isRateLimited ? `Подождите ${rateLimitTimer} секунд` : undefined}
               >
                 {isSubmitting ? (
                   <span className="flex items-center justify-center">
@@ -645,6 +679,13 @@ function Checkout() {
                       />
                     </svg>
                     Оформление...
+                  </span>
+                ) : isRateLimited && rateLimitTimer ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Подождите {rateLimitTimer} сек
                   </span>
                 ) : (
                   'Оформить заказ'

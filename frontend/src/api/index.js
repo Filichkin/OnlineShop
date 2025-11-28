@@ -363,9 +363,22 @@ export const authAPI = {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const error = new Error(errorData.detail || 'Ошибка регистрации');
+        let errorMessage = errorData.detail || 'Ошибка регистрации';
+
+        // Handle rate limiting (429)
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          if (retryAfter) {
+            errorMessage = `Слишком много попыток регистрации. Попробуйте через ${retryAfter} секунд`;
+          } else {
+            errorMessage = 'Слишком много попыток регистрации. Попробуйте позже';
+          }
+        }
+
+        const error = new Error(errorMessage);
         error.status = response.status;
         error.details = errorData;
+        error.retryAfter = response.headers.get('Retry-After');
         throw error;
       }
 
@@ -397,7 +410,15 @@ export const authAPI = {
         const errorData = await response.json().catch(() => ({}));
         let errorMessage = 'Неверный логин или пароль';
 
-        if (response.status === 400) {
+        if (response.status === 429) {
+          // Handle rate limiting
+          const retryAfter = response.headers.get('Retry-After');
+          if (retryAfter) {
+            errorMessage = `Слишком много попыток входа. Попробуйте через ${retryAfter} секунд`;
+          } else {
+            errorMessage = 'Слишком много попыток входа. Попробуйте позже';
+          }
+        } else if (response.status === 400) {
           errorMessage = errorData.detail || 'Неверные данные для входа';
         } else if (response.status === 401) {
           errorMessage = 'Неверный логин или пароль';
@@ -408,6 +429,7 @@ export const authAPI = {
         const error = new Error(errorMessage);
         error.status = response.status;
         error.details = errorData;
+        error.retryAfter = response.headers.get('Retry-After');
         throw error;
       }
 
@@ -435,9 +457,22 @@ export const authAPI = {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const error = new Error(errorData.detail || 'Ошибка при восстановлении пароля');
+        let errorMessage = errorData.detail || 'Ошибка при восстановлении пароля';
+
+        // Handle rate limiting
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          if (retryAfter) {
+            errorMessage = `Слишком много попыток. Попробуйте через ${retryAfter} секунд`;
+          } else {
+            errorMessage = 'Слишком много попыток. Попробуйте позже';
+          }
+        }
+
+        const error = new Error(errorMessage);
         error.status = response.status;
         error.details = errorData;
+        error.retryAfter = response.headers.get('Retry-After');
         throw error;
       }
 
@@ -836,6 +871,15 @@ const handleOrderError = async (response) => {
       case 422:
         errorMessage = 'Ошибка валидации данных запроса';
         break;
+      case 429:
+        // Handle rate limiting
+        const retryAfter = response.headers.get('Retry-After');
+        if (retryAfter) {
+          errorMessage = `Слишком много заказов. Попробуйте через ${retryAfter} секунд`;
+        } else {
+          errorMessage = 'Слишком много заказов. Попробуйте позже';
+        }
+        break;
       case 500:
         errorMessage = 'Ошибка сервера. Попробуйте позже';
         break;
@@ -847,6 +891,7 @@ const handleOrderError = async (response) => {
   const error = new Error(errorMessage);
   error.status = response.status;
   error.response = response;
+  error.retryAfter = response.headers.get('Retry-After');
   throw error;
 };
 

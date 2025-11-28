@@ -1,7 +1,7 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Date, String
+from sqlalchemy import Date, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
 
@@ -61,6 +61,18 @@ class User(SQLAlchemyBaseUserTable[int], Base):
 
     address: Mapped[Optional[str]] = mapped_column(
         String(Constants.ADDRESS_MAX_LEN),
+        nullable=True
+    )
+
+    # Password reset token fields
+    reset_token: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+        index=True
+    )
+
+    reset_token_expiry: Mapped[Optional[datetime]] = mapped_column(
+        DateTime,
         nullable=True
     )
 
