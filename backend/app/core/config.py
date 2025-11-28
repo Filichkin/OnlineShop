@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     cookie_httponly: bool = True  # Prevent JavaScript access
     cookie_samesite: str = 'lax'  # CSRF protection
 
+    # JWT Cookie Settings
+    secure_cookies: bool = False  # Set to True in production (HTTPS only)
+    access_token_expire_minutes: int = 60  # JWT token expiration in minutes
+
     postgres_port: int
     postgres_password: str
     postgres_user: str

@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.constants import Constants
+from app.core.csrf import verify_csrf_token
 from app.core.db import get_async_session
 from app.core.user import current_user_optional
 from app.crud.cart import cart_crud
@@ -274,7 +275,8 @@ async def add_item_to_cart(
     response: Response,
     user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    _: None = Depends(verify_csrf_token)
 ):
     """
     Add product to cart or update quantity if already exists.
@@ -375,7 +377,8 @@ async def update_cart_item(
     item_data: CartItemUpdate,
     user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    _: None = Depends(verify_csrf_token)
 ):
     """
     Update cart item quantity.
@@ -482,7 +485,8 @@ async def remove_cart_item(
     product_id: int,
     user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    _: None = Depends(verify_csrf_token)
 ):
     """
     Remove product from cart.
@@ -563,7 +567,8 @@ async def remove_cart_item(
 async def clear_cart(
     user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    _: None = Depends(verify_csrf_token)
 ):
     """
     Clear all items from cart.

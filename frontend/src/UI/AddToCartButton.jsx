@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart, updateQuantity, removeFromCart, selectCartItems, selectUpdatingItems } from '../store/slices/cartSlice';
+import { logger } from '../utils/logger';
 
 // Size variants configuration for flexible button sizing
 const SIZE_VARIANTS = {
@@ -108,7 +109,7 @@ function AddToCartButton({
       }
 
     } catch (err) {
-      console.error('Ошибка при добавлении товара в корзину:', err);
+      logger.error('Ошибка при добавлении товара в корзину:', err);
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +128,7 @@ function AddToCartButton({
       try {
         await dispatch(removeFromCart(product.id)).unwrap();
       } catch (err) {
-        console.error('Ошибка при удалении товара из корзины:', err);
+        logger.error('Ошибка при удалении товара из корзины:', err);
       }
       return;
     }
@@ -135,7 +136,7 @@ function AddToCartButton({
     try {
       await dispatch(updateQuantity({ productId: product.id, quantity: newQuantity })).unwrap();
     } catch (err) {
-      console.error('Ошибка при обновлении количества:', err);
+      logger.error('Ошибка при обновлении количества:', err);
     }
   };
 

@@ -1,15 +1,12 @@
 // Use proxy to avoid CORS issues with cookies
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
-// Функция для получения токена из localStorage
-const getToken = () => localStorage.getItem('token');
+// Import CSRF utility
+import { getCsrfTokenFromCookie } from '../utils/csrf';
 
-// Функция для создания заголовков с авторизацией
-const getAuthHeaders = () => {
-  const token = getToken();
-  return {
-    'Authorization': `Bearer ${token}`,
-  };
+// Функция для получения CSRF токена
+const getCsrfToken = () => {
+  return getCsrfTokenFromCookie();
 };
 
 // API для категорий
@@ -58,9 +55,16 @@ export const categoriesAPI = {
 
   // Создать категорию
   createCategory: async (formData) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/categories/`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers,
+      credentials: 'include',
       body: formData,
     });
     if (!response.ok) {
@@ -115,9 +119,16 @@ export const categoriesAPI = {
 
   // Обновить категорию
   updateCategory: async (categoryId, formData) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/categories/${categoryId}`, {
       method: 'PATCH',
-      headers: getAuthHeaders(),
+      headers,
+      credentials: 'include',
       body: formData,
     });
     if (!response.ok) throw new Error('Failed to update category');
@@ -126,9 +137,16 @@ export const categoriesAPI = {
 
   // Удалить категорию
   deleteCategory: async (categoryId) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/categories/${categoryId}`, {
       method: 'DELETE',
-      headers: getAuthHeaders(),
+      headers,
+      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to delete category');
     return response.json();
@@ -136,9 +154,16 @@ export const categoriesAPI = {
 
   // Восстановить категорию
   restoreCategory: async (categoryId) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/restore`, {
       method: 'PATCH',
-      headers: getAuthHeaders(),
+      headers,
+      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to restore category');
     return response.json();
@@ -179,6 +204,87 @@ export const categoriesAPI = {
   getCategoryProduct: async (categoryId, productId) => {
     const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/products/${productId}`);
     if (!response.ok) throw new Error('Failed to fetch category product');
+    return response.json();
+  },
+};
+
+// API для изображений продуктов
+export const productsImageAPI = {
+  // Получить все изображения продукта
+  getImages: async (productId) => {
+    const response = await fetch(`${API_BASE_URL}/products/${productId}/images`, {
+      credentials: 'include',
+    });
+    if (!response.ok) throw new Error('Failed to fetch images');
+    return response.json();
+  },
+
+  // Добавить изображения к продукту
+  addImages: async (productId, formData) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/products/${productId}/images`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: formData,
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to add images');
+    }
+    return response.json();
+  },
+
+  // Установить главное изображение
+  updateMainImage: async (productId, imageId) => {
+    const csrfToken = getCsrfToken();
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/products/${productId}/images/${imageId}/main`,
+      {
+        method: 'PATCH',
+        headers,
+        credentials: 'include',
+      }
+    );
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to update main image');
+    }
+    return response.json();
+  },
+
+  // Удалить изображение
+  deleteImage: async (productId, imageId) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/products/${productId}/images/${imageId}`,
+      {
+        method: 'DELETE',
+        headers,
+        credentials: 'include',
+      }
+    );
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to delete image');
+    }
     return response.json();
   },
 };
@@ -226,9 +332,16 @@ export const productsAPI = {
 
   // Создать продукт в категории
   createProduct: async (categoryId, formData) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/products/`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers,
+      credentials: 'include',
       body: formData,
     });
     if (!response.ok) {
@@ -242,9 +355,16 @@ export const productsAPI = {
 
   // Обновить продукт
   updateProduct: async (categoryId, productId, formData) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/products/${productId}`, {
       method: 'PATCH',
-      headers: getAuthHeaders(),
+      headers,
+      credentials: 'include',
       body: formData,
     });
     if (!response.ok) throw new Error('Failed to update product');
@@ -253,9 +373,16 @@ export const productsAPI = {
 
   // Удалить продукт
   deleteProduct: async (categoryId, productId) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/products/${productId}`, {
       method: 'DELETE',
-      headers: getAuthHeaders(),
+      headers,
+      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to delete product');
     return response.json();
@@ -263,9 +390,16 @@ export const productsAPI = {
 
   // Восстановить продукт
   restoreProduct: async (categoryId, productId) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/products/${productId}/restore`, {
       method: 'PATCH',
-      headers: getAuthHeaders(),
+      headers,
+      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to restore product');
     return response.json();
@@ -300,12 +434,18 @@ export const brandsAPI = {
 
   // Создать бренд
   createBrand: async (brandData) => {
+    const csrfToken = getCsrfToken();
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/brands/`, {
       method: 'POST',
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
+      headers,
+      credentials: 'include',
       body: JSON.stringify(brandData),
     });
     if (!response.ok) throw new Error('Failed to create brand');
@@ -314,12 +454,18 @@ export const brandsAPI = {
 
   // Обновить бренд
   updateBrand: async (brandId, brandData) => {
+    const csrfToken = getCsrfToken();
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/brands/${brandId}`, {
       method: 'PATCH',
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
+      headers,
+      credentials: 'include',
       body: JSON.stringify(brandData),
     });
     if (!response.ok) throw new Error('Failed to update brand');
@@ -328,9 +474,16 @@ export const brandsAPI = {
 
   // Удалить бренд
   deleteBrand: async (brandId) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/brands/${brandId}`, {
       method: 'DELETE',
-      headers: getAuthHeaders(),
+      headers,
+      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to delete brand');
     return response.json();
@@ -338,9 +491,16 @@ export const brandsAPI = {
 
   // Восстановить бренд
   restoreBrand: async (brandId) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/brands/${brandId}/restore`, {
       method: 'PATCH',
-      headers: getAuthHeaders(),
+      headers,
+      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to restore brand');
     return response.json();
@@ -488,21 +648,13 @@ export const authAPI = {
   // Получить текущего пользователя
   getCurrentUser: async () => {
     try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('Токен не найден');
-      }
-
       const response = await fetch(`${API_BASE_URL}/users/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include', // Send httpOnly cookies
       });
 
       if (!response.ok) {
         if (response.status === 401) {
-          // Token expired or invalid
-          localStorage.removeItem('token');
+          // Session expired or invalid
           throw new Error('Сессия истекла. Войдите снова');
         }
         throw new Error('Не удалось получить данные пользователя');
@@ -520,17 +672,18 @@ export const authAPI = {
   // Обновить профиль пользователя
   updateProfile: async (userData) => {
     try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('Токен не найден');
+      const csrfToken = getCsrfToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
       }
 
       const response = await fetch(`${API_BASE_URL}/users/me`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
+        credentials: 'include', // Send httpOnly cookies
         body: JSON.stringify(userData),
       });
 
@@ -538,7 +691,6 @@ export const authAPI = {
         const errorData = await response.json().catch(() => ({}));
 
         if (response.status === 401) {
-          localStorage.removeItem('token');
           throw new Error('Сессия истекла. Войдите снова');
         }
 
@@ -558,18 +710,11 @@ export const authAPI = {
   },
 };
 
-// Helper function to get headers for cart/favorites (with auth if logged in)
+// Helper function to get headers for cart/favorites
 const getCartFavoritesHeaders = () => {
-  const token = getToken();
-  const headers = {
+  return {
     'Content-Type': 'application/json',
   };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  return headers;
 };
 
 // Helper function for handling cart API errors
@@ -645,9 +790,15 @@ export const cartAPI = {
   // Добавить товар в корзину
   addItem: async (product_id, quantity = 1) => {
     try {
+      const csrfToken = getCsrfToken();
+      const headers = getCartFavoritesHeaders();
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const response = await fetch(`${API_BASE_URL}/cart/items`, {
         method: 'POST',
-        headers: getCartFavoritesHeaders(),
+        headers,
         credentials: 'include',
         body: JSON.stringify({
           product_id,
@@ -669,9 +820,15 @@ export const cartAPI = {
   // Обновить количество товара в корзине
   updateItem: async (product_id, quantity) => {
     try {
+      const csrfToken = getCsrfToken();
+      const headers = getCartFavoritesHeaders();
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const response = await fetch(`${API_BASE_URL}/cart/items/${product_id}`, {
         method: 'PATCH',
-        headers: getCartFavoritesHeaders(),
+        headers,
         credentials: 'include',
         body: JSON.stringify({
           quantity,
@@ -692,9 +849,15 @@ export const cartAPI = {
   // Удалить товар из корзины
   removeItem: async (product_id) => {
     try {
+      const csrfToken = getCsrfToken();
+      const headers = getCartFavoritesHeaders();
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const response = await fetch(`${API_BASE_URL}/cart/items/${product_id}`, {
         method: 'DELETE',
-        headers: getCartFavoritesHeaders(),
+        headers,
         credentials: 'include',
       });
       if (!response.ok) {
@@ -712,9 +875,15 @@ export const cartAPI = {
   // Очистить корзину
   clearCart: async () => {
     try {
+      const csrfToken = getCsrfToken();
+      const headers = getCartFavoritesHeaders();
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const response = await fetch(`${API_BASE_URL}/cart/`, {
         method: 'DELETE',
-        headers: getCartFavoritesHeaders(),
+        headers,
         credentials: 'include',
       });
       if (!response.ok) {
@@ -787,9 +956,15 @@ export const favoritesAPI = {
   // Добавить товар в избранное
   addToFavorites: async (productId) => {
     try {
+      const csrfToken = getCsrfToken();
+      const headers = getCartFavoritesHeaders();
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const response = await fetch(`${API_BASE_URL}/favorites/${productId}`, {
         method: 'POST',
-        headers: getCartFavoritesHeaders(),
+        headers,
         credentials: 'include',
       });
       if (!response.ok) {
@@ -815,9 +990,15 @@ export const favoritesAPI = {
   // Удалить товар из избранного
   removeFromFavorites: async (productId) => {
     try {
+      const csrfToken = getCsrfToken();
+      const headers = getCartFavoritesHeaders();
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const response = await fetch(`${API_BASE_URL}/favorites/${productId}`, {
         method: 'DELETE',
-        headers: getCartFavoritesHeaders(),
+        headers,
         credentials: 'include',
       });
       if (!response.ok) {
@@ -900,17 +1081,18 @@ export const ordersAPI = {
   // Создать новый заказ
   createOrder: async (orderData) => {
     try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('Необходимо войти в систему для оформления заказа');
+      const csrfToken = getCsrfToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
       }
 
       const response = await fetch(`${API_BASE_URL}/orders/`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
+        credentials: 'include',
         body: JSON.stringify(orderData),
       });
 
@@ -930,20 +1112,13 @@ export const ordersAPI = {
   // Получить список заказов пользователя
   getOrders: async (skip = 0, limit = 10) => {
     try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('Необходимо войти в систему');
-      }
-
       const params = new URLSearchParams({
         skip: skip.toString(),
         limit: limit.toString(),
       });
 
       const response = await fetch(`${API_BASE_URL}/orders/?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -962,15 +1137,8 @@ export const ordersAPI = {
   // Получить заказ по ID
   getOrder: async (orderId) => {
     try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('Необходимо войти в систему');
-      }
-
       const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -989,16 +1157,16 @@ export const ordersAPI = {
   // Отменить заказ
   cancelOrder: async (orderId) => {
     try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('Необходимо войти в систему');
+      const csrfToken = getCsrfToken();
+      const headers = {};
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
       }
 
       const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers,
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -1020,11 +1188,6 @@ export const adminOrdersAPI = {
   // Получить все заказы (только для администратора)
   getAllOrders: async (skip = 0, limit = 20, status = null) => {
     try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('Необходимо войти в систему');
-      }
-
       const params = new URLSearchParams({
         skip: skip.toString(),
         limit: limit.toString(),
@@ -1035,9 +1198,7 @@ export const adminOrdersAPI = {
       }
 
       const response = await fetch(`${API_BASE_URL}/orders/admin/all?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -1056,15 +1217,8 @@ export const adminOrdersAPI = {
   // Получить заказ по ID (только для администратора)
   getOrderById: async (orderId) => {
     try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('Необходимо войти в систему');
-      }
-
       const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -1083,17 +1237,18 @@ export const adminOrdersAPI = {
   // Обновить статус заказа (только для администратора)
   updateOrderStatus: async (orderId, newStatus) => {
     try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('Необходимо войти в систему');
+      const csrfToken = getCsrfToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
       }
 
       const response = await fetch(`${API_BASE_URL}/orders/admin/${orderId}/status`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({ status: newStatus }),
       });
 
@@ -1116,20 +1271,13 @@ export const adminUsersAPI = {
   // Получить всех пользователей (с пагинацией)
   getAllUsers: async (skip = 0, limit = 20) => {
     try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('Необходимо войти в систему');
-      }
-
       const params = new URLSearchParams({
         skip: skip.toString(),
         limit: limit.toString(),
       });
 
       const response = await fetch(`${API_BASE_URL}/admin/users?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -1149,15 +1297,8 @@ export const adminUsersAPI = {
   // Получить пользователя по ID
   getUserById: async (userId) => {
     try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('Необходимо войти в систему');
-      }
-
       const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -1177,17 +1318,18 @@ export const adminUsersAPI = {
   // Обновить пользователя
   updateUser: async (userId, userData) => {
     try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('Необходимо войти в систему');
+      const csrfToken = getCsrfToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
       }
 
       const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
+        credentials: 'include',
         body: JSON.stringify(userData),
       });
 

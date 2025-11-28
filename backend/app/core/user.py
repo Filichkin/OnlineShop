@@ -9,7 +9,6 @@ from fastapi_users import (
 )
 from fastapi_users.authentication import (
     AuthenticationBackend,
-    BearerTransport,
 )
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from loguru import logger
@@ -17,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.constants import Constants
+from app.core.cookie_transport import CookieTransport
 from app.core.db import get_async_session
 from app.core.jwt_strategy import CustomJWTStrategy
 from app.core.messages import Messages
@@ -30,9 +30,8 @@ async def get_user_db(
     yield SQLAlchemyUserDatabase(session, User)
 
 
-bearer_transport = BearerTransport(
-    tokenUrl=Constants.JWT_TOKEN_URL
-)
+# Use cookie transport instead of bearer transport
+cookie_transport = CookieTransport(cookie_name='access_token')
 
 
 def get_jwt_strategy() -> CustomJWTStrategy:
@@ -44,7 +43,7 @@ def get_jwt_strategy() -> CustomJWTStrategy:
 
 auth_backend = AuthenticationBackend(
     name=Constants.JWT_AUTH_BACKEND_NAME,
-    transport=bearer_transport,
+    transport=cookie_transport,
     get_strategy=get_jwt_strategy,
 )
 

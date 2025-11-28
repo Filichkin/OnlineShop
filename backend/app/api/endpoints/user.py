@@ -18,13 +18,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.utils import email_service, generate_password_by_pattern
 from app.core.auth import login_user, merge_session_data
-from app.core.config import Constants
+from app.core.constants import Constants
+from app.core.csrf import verify_csrf_token
 from app.core.db import get_async_session
 from app.core.messages import Messages
 from app.core.user import (
     auth_backend,
     current_superuser,
     current_user,
+    current_user_optional,
     fastapi_users
 )
 from app.core.limiter import limiter
@@ -153,6 +155,25 @@ async def custom_register(
     strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
 
+    # Import CSRF utilities
+    from app.core.csrf import generate_csrf_token, set_csrf_cookie
+    from app.core.config import settings
+
+    # Set JWT token in httpOnly cookie
+    response.set_cookie(
+        key='access_token',
+        value=token,
+        httponly=True,  # JavaScript cannot read - prevents XSS
+        secure=settings.secure_cookies,  # True in production (HTTPS only)
+        samesite='lax',  # CSRF protection
+        max_age=settings.access_token_expire_minutes * 60,  # in seconds
+        path='/',
+    )
+
+    # Generate and set CSRF token
+    csrf_token = generate_csrf_token()
+    set_csrf_cookie(response, csrf_token)
+
     # SECURITY: Delete session cookie to prevent session fixation attacks
     # User is now authenticated via JWT, no longer needs anonymous session
     # This ensures old session cannot be hijacked after authentication
@@ -161,9 +182,8 @@ async def custom_register(
         path='/'
     )
 
+    # Return user data only (no token in response body)
     return {
-        'access_token': token,
-        'token_type': 'bearer',
         'user': {
             'id': user.id,
             'email': user.email,
@@ -179,7 +199,8 @@ async def custom_register(
             'is_active': user.is_active,
             'is_superuser': user.is_superuser,
             'is_verified': user.is_verified
-        }
+        },
+        'csrf_token': csrf_token  # For backward compatibility
     }
 
 
@@ -307,6 +328,93 @@ async def forgot_password(
     }
 
 
+# Get CSRF token endpoint
+@router.get(
+    '/csrf-token',
+    response_model=dict,
+    tags=Constants.AUTH_TAGS,
+    summary='Get CSRF token',
+    description='Get CSRF token for authenticated user'
+)
+async def get_csrf_token(
+    response: Response,
+    user: User = Depends(current_user)
+):
+    """
+    Get CSRF token for authenticated user.
+
+    Generates and returns a new CSRF token, setting it in both
+    cookie and response body.
+
+    Returns:
+        CSRF token in response body and cookie
+    """
+    from app.core.csrf import generate_csrf_token, set_csrf_cookie
+
+    logger.bind(user_id=user.id).debug(
+        'Запрос CSRF токена пользователем'
+    )
+
+    csrf_token = generate_csrf_token()
+    set_csrf_cookie(response, csrf_token)
+
+    logger.bind(user_id=user.id).info(
+        'CSRF токен успешно сгенерирован'
+    )
+
+    return {
+        'csrf_token': csrf_token
+    }
+
+
+# Logout endpoint
+@router.post(
+    '/auth/logout',
+    response_model=dict,
+    tags=Constants.AUTH_TAGS,
+    summary='Logout user',
+    description='Logout user and clear authentication cookies'
+)
+async def logout(
+    response: Response,
+    user: Optional[User] = Depends(current_user_optional)
+):
+    """
+    Logout user and clear all authentication cookies.
+
+    Removes JWT access token and CSRF token cookies.
+    Available for both authenticated and anonymous users
+    to allow client-side cleanup.
+
+    Returns:
+        Success message
+    """
+    if user:
+        logger.bind(user_id=user.id).info(
+            f'Пользователь выходит из системы: {user.email}'
+        )
+    else:
+        logger.info('Анонимный пользователь выполняет logout')
+
+    # Delete JWT cookie
+    response.delete_cookie(
+        key='access_token',
+        path='/'
+    )
+
+    # Delete CSRF cookie
+    response.delete_cookie(
+        key='csrf_token',
+        path='/'
+    )
+
+    logger.debug('Cookies аутентификации удалены')
+
+    return {
+        'message': 'Successfully logged out'
+    }
+
+
 # Get current user profile
 @router.get(
     '/users/me',
@@ -343,7 +451,8 @@ async def get_current_user_profile(
 async def update_current_user_profile(
     user_update: UserUpdate,
     user: User = Depends(current_user),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    _: None = Depends(verify_csrf_token)
 ):
     """
     Update current authenticated user profile.
@@ -571,7 +680,8 @@ async def update_user_by_admin(
     user_id: int,
     user_update: UserUpdateAdmin,
     current_user: User = Depends(current_superuser),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    _: None = Depends(verify_csrf_token)
 ):
     """
     Update user by admin (superuser only).

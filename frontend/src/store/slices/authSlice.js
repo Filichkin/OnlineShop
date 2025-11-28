@@ -2,7 +2,6 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authAPI } from '../../api';
 import { resetCart } from './cartSlice';
 import { resetFavorites } from './favoritesSlice';
-import { isTokenValid } from '../../utils/tokenUtils';
 
 // Асинхронные действия
 
@@ -87,8 +86,16 @@ export const updateProfile = createAsyncThunk(
 export const logout = createAsyncThunk(
   'auth/logout',
   async (_, { dispatch }) => {
-    // Clear token from localStorage
-    localStorage.removeItem('token');
+    // Call backend logout endpoint to clear httpOnly cookies
+    try {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/user/auth/logout`, {
+        method: 'POST',
+        credentials: 'include', // Important for sending cookies
+      });
+    } catch (err) {
+      // Ignore logout errors - still clear local state
+      console.error('Logout API error:', err);
+    }
 
     // Reset cart and favorites
     dispatch(resetCart());
@@ -100,8 +107,8 @@ export const logout = createAsyncThunk(
 
 const initialState = {
   user: null, // User object with: first_name, last_name, email, phone, date_of_birth, city, telegram_id, address
-  token: localStorage.getItem('token'),
-  isAuthenticated: isTokenValid(), // Check both existence and validity
+  csrfToken: null, // CSRF token for protected operations
+  isAuthenticated: false, // Check user existence instead of token
   loading: false,
   error: null,
   successMessage: null,
@@ -124,14 +131,8 @@ const authSlice = createSlice({
     clearSessionExpired: (state) => {
       state.sessionExpired = false;
     },
-    checkTokenValidity: (state) => {
-      const token = localStorage.getItem('token');
-      if (!token || !isTokenValid()) {
-        state.isAuthenticated = false;
-        state.token = null;
-        state.user = null;
-        localStorage.removeItem('token');
-      }
+    setCsrfToken: (state, action) => {
+      state.csrfToken = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -144,12 +145,11 @@ const authSlice = createSlice({
       })
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
-        state.token = action.payload.access_token;
         state.user = action.payload.user; // Save user data from response
+        state.csrfToken = action.payload.csrf_token; // Save CSRF token
         state.isAuthenticated = true;
         state.successMessage = 'Регистрация прошла успешно!';
         state.sessionExpired = false; // Clear session expired flag on successful registration
-        localStorage.setItem('token', action.payload.access_token);
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
@@ -165,12 +165,11 @@ const authSlice = createSlice({
       })
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
-        state.token = action.payload.access_token;
         state.user = action.payload.user; // Save user data from response
+        state.csrfToken = action.payload.csrf_token; // Save CSRF token
         state.isAuthenticated = true;
         state.successMessage = 'Вход выполнен успешно!';
         state.sessionExpired = false; // Clear session expired flag on successful login
-        localStorage.setItem('token', action.payload.access_token);
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
@@ -209,11 +208,10 @@ const authSlice = createSlice({
         if (action.payload?.includes('Сессия истекла') || action.payload?.includes('Токен не найден')) {
           // Clear authentication state
           state.isAuthenticated = false;
-          state.token = null;
+          state.csrfToken = null;
           state.user = null;
           state.error = null; // Don't show error message, just redirect
           state.sessionExpired = true; // Mark as session expired
-          localStorage.removeItem('token');
         } else {
           state.error = action.payload || 'Не удалось загрузить данные пользователя';
         }
@@ -236,11 +234,10 @@ const authSlice = createSlice({
         if (action.payload?.includes('Сессия истекла') || action.payload?.includes('Токен не найден')) {
           // Clear authentication state
           state.isAuthenticated = false;
-          state.token = null;
+          state.csrfToken = null;
           state.user = null;
           state.error = null;
           state.sessionExpired = true; // Mark as session expired
-          localStorage.removeItem('token');
         } else {
           state.error = action.payload || 'Ошибка при обновлении профиля';
         }
@@ -249,7 +246,7 @@ const authSlice = createSlice({
       // Выход
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
-        state.token = null;
+        state.csrfToken = null;
         state.isAuthenticated = false;
         state.error = null;
         state.successMessage = null;
@@ -258,5 +255,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, clearSuccessMessage, setUser, clearSessionExpired, checkTokenValidity } = authSlice.actions;
+export const { clearError, clearSuccessMessage, setUser, clearSessionExpired, setCsrfToken } = authSlice.actions;
 export default authSlice.reducer;

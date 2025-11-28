@@ -4,6 +4,7 @@ import {
   selectIsFavorite,
   selectIsUpdatingFavorite,
 } from '../store/slices/favoritesSlice';
+import { logger } from '../utils/logger';
 
 /**
  * Кнопка добавления/удаления товара из избранного
@@ -47,7 +48,7 @@ function FavoriteButton({ product, className = "", iconSize = "w-5 h-5" }) {
         productData: product  // Pass full product object for guest users
       })).unwrap();
     } catch (err) {
-      console.error('Ошибка при переключении избранного:', err);
+      logger.error('Ошибка при переключении избранного:', err);
     }
   };
 

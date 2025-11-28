@@ -239,6 +239,25 @@ async def login_user(
     strategy: Strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
 
+    # Import CSRF utilities
+    from app.core.csrf import generate_csrf_token, set_csrf_cookie
+    from app.core.config import settings
+
+    # Set JWT token in httpOnly cookie
+    response.set_cookie(
+        key='access_token',
+        value=token,
+        httponly=True,  # JavaScript cannot read - prevents XSS
+        secure=settings.secure_cookies,  # True in production (HTTPS only)
+        samesite='lax',  # CSRF protection
+        max_age=settings.access_token_expire_minutes * 60,  # in seconds
+        path='/',
+    )
+
+    # Generate and set CSRF token
+    csrf_token = generate_csrf_token()
+    set_csrf_cookie(response, csrf_token)
+
     logger.bind(user_id=user.id).info(
         f'Успешный вход пользователя: {user.email}'
     )
@@ -251,9 +270,8 @@ async def login_user(
         path='/'
     )
 
+    # Return user data only (no token in response body)
     return {
-        'access_token': token,
-        'token_type': 'bearer',
         'user': {
             'id': user.id,
             'email': user.email,
@@ -269,5 +287,6 @@ async def login_user(
             'is_active': user.is_active,
             'is_superuser': user.is_superuser,
             'is_verified': user.is_verified
-        }
+        },
+        'csrf_token': csrf_token  # For backward compatibility
     }

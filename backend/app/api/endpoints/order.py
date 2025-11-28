@@ -5,6 +5,7 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import Constants
+from app.core.csrf import verify_csrf_token
 from app.core.db import get_async_session
 from app.core.limiter import limiter
 from app.core.user import current_superuser, current_user
@@ -40,7 +41,8 @@ async def create_order(
     order_data: OrderCreate,
     request: Request,
     user: User = Depends(current_user),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    _: None = Depends(verify_csrf_token)
 ):
     """
     Create order from user's cart.
@@ -285,7 +287,8 @@ async def get_order_details(
 async def cancel_order(
     order_id: int,
     user: User = Depends(current_user),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    _: None = Depends(verify_csrf_token)
 ):
     """
     Cancel order.
@@ -436,7 +439,8 @@ async def update_order_status(
     order_id: int,
     status_update: OrderStatusUpdate,
     user: User = Depends(current_superuser),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    _: None = Depends(verify_csrf_token)
 ):
     """
     Update order status (superuser only).
