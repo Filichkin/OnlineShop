@@ -68,6 +68,27 @@ const ProductImageManager = ({ productId, onClose }) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
+    // Client-side validation
+    const validFormats = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const maxFileSize = 10 * 1024 * 1024; // 10MB
+
+    const invalidFiles = files.filter(file => {
+      if (!validFormats.includes(file.type)) {
+        return true;
+      }
+      if (file.size > maxFileSize) {
+        return true;
+      }
+      return false;
+    });
+
+    if (invalidFiles.length > 0) {
+      const invalidNames = invalidFiles.map(f => f.name).join(', ');
+      setError(`Неверный формат или размер файлов: ${invalidNames}. Поддерживаются JPEG, PNG, GIF, WebP (макс. 10MB)`);
+      e.target.value = '';
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -85,7 +106,20 @@ const ProductImageManager = ({ productId, onClose }) => {
       );
 
       if (!response.ok) {
-        throw new Error('Ошибка добавления изображений');
+        const errorData = await response.json().catch(() => ({}));
+        let errorMessage = 'Ошибка добавления изображений';
+
+        if (response.status === 400) {
+          errorMessage = errorData.detail || 'Неверный формат изображения';
+        } else if (response.status === 413) {
+          errorMessage = 'Файл слишком большой. Максимальный размер: 10MB';
+        } else if (response.status === 422) {
+          errorMessage = errorData.detail || 'Ошибка валидации изображения';
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        }
+
+        throw new Error(errorMessage);
       }
 
       await loadImages();
@@ -274,28 +308,41 @@ const ProductImageManager = ({ productId, onClose }) => {
 
         {/* Toolbar */}
         <div className='p-4 border-b bg-gray-50'>
-          <div className='flex gap-2'>
-            <label className='px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer'>
-              <input
-                type='file'
-                multiple
-                accept='image/*'
-                onChange={handleAddImages}
-                className='hidden'
-                disabled={loading}
-              />
-              Добавить изображения
-            </label>
+          <div className='flex flex-col gap-3'>
+            <div className='flex gap-2'>
+              <label className='px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer transition-colors flex items-center gap-2'>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <input
+                  type='file'
+                  multiple
+                  accept='image/jpeg,image/jpg,image/png,image/gif,image/webp'
+                  onChange={handleAddImages}
+                  className='hidden'
+                  disabled={loading}
+                />
+                Добавить изображения
+              </label>
 
-            {selectedImages.size > 0 && (
-              <button
-                onClick={handleDeleteSelected}
-                disabled={loading}
-                className='px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-300'
-              >
-                Удалить выбранные ({selectedImages.size})
-              </button>
-            )}
+              {selectedImages.size > 0 && (
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={loading}
+                  className='px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-300 transition-colors flex items-center gap-2'
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Удалить выбранные ({selectedImages.size})
+                </button>
+              )}
+            </div>
+
+            <div className='text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded p-2'>
+              <p className="font-medium mb-1">Форматы: JPEG, PNG, GIF, WebP</p>
+              <p>Максимальный размер: 10 MB на файл</p>
+            </div>
           </div>
         </div>
 

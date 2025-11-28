@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { login, clearError } from '../store/slices/authSlice';
@@ -6,9 +6,24 @@ import { login, clearError } from '../store/slices/authSlice';
 const AdminLogin = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [rateLimitTimer, setRateLimitTimer] = useState(null);
+  const [isRateLimited, setIsRateLimited] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.auth);
+
+  // Rate limit timer countdown
+  useEffect(() => {
+    if (rateLimitTimer > 0) {
+      const timer = setTimeout(() => {
+        setRateLimitTimer(rateLimitTimer - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (rateLimitTimer === 0) {
+      setIsRateLimited(false);
+      setRateLimitTimer(null);
+    }
+  }, [rateLimitTimer]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,6 +31,14 @@ const AdminLogin = () => {
       await dispatch(login({ identifier: username, password })).unwrap();
       navigate('/admin/panel');
     } catch (err) {
+      // Handle rate limiting (429 error)
+      if (err.status === 429 || err.message?.includes('Слишком много попыток')) {
+        setIsRateLimited(true);
+        // Extract retry-after from error or default to 60 seconds
+        const retryAfterMatch = err.message?.match(/через (\d+)/);
+        const retryAfter = retryAfterMatch ? parseInt(retryAfterMatch[1], 10) : 60;
+        setRateLimitTimer(retryAfter);
+      }
       // Ошибка уже обработана в slice
     }
   };
@@ -89,10 +112,22 @@ const AdminLogin = () => {
           <div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isRateLimited}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label={isRateLimited ? `Подождите ${rateLimitTimer} секунд` : undefined}
             >
-              {loading ? 'Вход...' : 'Войти'}
+              {loading ? (
+                'Вход...'
+              ) : isRateLimited && rateLimitTimer ? (
+                <span className="flex items-center">
+                  <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Подождите {rateLimitTimer} сек
+                </span>
+              ) : (
+                'Войти'
+              )}
             </button>
           </div>
         </form>

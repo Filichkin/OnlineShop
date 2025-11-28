@@ -334,7 +334,7 @@ async def add_product_images(
 
     # Сохраняем изображения на диск
     try:
-        logger.debug(f'Сохранение файлов изображений на диск')
+        logger.debug('Сохранение файлов изображений на диск')
         image_urls = await save_images(
             images,
             Constants.PRODUCTS_DIR,

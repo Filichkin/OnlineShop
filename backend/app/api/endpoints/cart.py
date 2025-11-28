@@ -41,15 +41,29 @@ def get_or_create_session_id(
     """
     Get existing session_id from cookie or create new one.
 
+    Validates that session_id is a valid UUID format to prevent
+    injection attacks and ensure data integrity.
+
     Args:
         session_id: Session ID from cookie
 
     Returns:
         Session ID (existing or newly generated)
     """
-    if not session_id:
-        session_id = str(uuid.uuid4())
-    return session_id
+    if session_id:
+        try:
+            # Validate that session_id is a valid UUID
+            uuid.UUID(session_id)
+            return session_id
+        except ValueError:
+            logger.warning(
+                f'Invalid session_id format received: {session_id[:20]}...'
+            )
+            # Generate new session_id if invalid format
+            return str(uuid.uuid4())
+
+    # No session_id provided, generate new one
+    return str(uuid.uuid4())
 
 
 def set_session_cookie(response: Response, session_id: str) -> None:

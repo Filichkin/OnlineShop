@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from loguru import logger
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -363,6 +363,32 @@ class CRUDOrder:
             .where(Order.id == order_id, Order.user_id == user_id)
         )
         return result.scalar() is not None
+
+    async def get_orders_count(
+        self,
+        session: AsyncSession,
+        status: Optional[OrderStatus] = None
+    ) -> int:
+        """
+        Get total count of orders with optional status filter.
+
+        This is an efficient COUNT query that doesn't load all order data.
+        Use this instead of get_all_orders() when you only need the count.
+
+        Args:
+            session: Database session
+            status: Optional status filter
+
+        Returns:
+            int: Total count of orders matching the criteria
+        """
+        query = select(func.count(Order.id))
+
+        if status:
+            query = query.where(Order.status == status)
+
+        result = await session.execute(query)
+        return result.scalar() or 0
 
 
 order_crud = CRUDOrder()

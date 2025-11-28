@@ -1,8 +1,10 @@
 from typing import Optional
 
 from sqlalchemy import (
+    Boolean,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String
 )
@@ -50,18 +52,25 @@ class Product(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     part_number: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String)
-    price: Mapped[float] = mapped_column(Float, nullable=False)
+    price: Mapped[float] = mapped_column(Float, nullable=False, index=True)
     category_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey('categories.id'),
         nullable=False,
-        index=True  # Add index for foreign key queries
+        index=True
     )
     brand_id: Mapped[Optional[int]] = mapped_column(
         Integer,
         ForeignKey('brands.id'),
         nullable=True,
-        index=True  # Add index for foreign key queries
+        index=True
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default='true',
+        index=True
     )
 
     category = relationship(
@@ -76,6 +85,13 @@ class Product(Base):
         'Media',
         back_populates='product',
         cascade='all, delete-orphan'
+    )
+
+    # Composite indexes for common query patterns
+    __table_args__ = (
+        Index('ix_product_category_price', 'category_id', 'price'),
+        Index('ix_product_brand_price', 'brand_id', 'price'),
+        Index('ix_product_category_active', 'category_id', 'is_active'),
     )
 
     def __repr__(self):

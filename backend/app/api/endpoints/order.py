@@ -1,11 +1,12 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import Constants
 from app.core.db import get_async_session
+from app.core.limiter import limiter
 from app.core.user import current_superuser, current_user
 from app.crud.cart import cart_crud
 from app.crud.order import order_crud
@@ -34,8 +35,10 @@ router = APIRouter()
     summary='Create order from cart',
     description='Create new order from current user cart'
 )
+@limiter.limit('10/hour')
 async def create_order(
     order_data: OrderCreate,
+    request: Request,
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
@@ -59,8 +62,9 @@ async def create_order(
         'Попытка создания заказа пользователем'
     )
 
-    # Get user's cart
-    cart = await cart_crud.get_by_user(user.id, session)
+    # Get user's cart with row-level lock to prevent race conditions
+    # This ensures no concurrent order creation from the same cart
+    cart = await cart_crud.get_by_user_locked(user.id, session)
 
     if not cart or not cart.items:
         logger.bind(user_id=user.id).warning(
@@ -395,14 +399,11 @@ async def get_all_orders(
         status=status
     )
 
-    # Get total count
-    total_orders = await order_crud.get_all_orders(
+    # Get total count using efficient COUNT query
+    total = await order_crud.get_orders_count(
         session=session,
-        skip=0,
-        limit=10000,
         status=status
     )
-    total = len(total_orders)
 
     logger.bind(user_id=user.id).info(
         f'Возвращено заказов: {len(orders)} из {total}'

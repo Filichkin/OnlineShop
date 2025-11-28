@@ -125,8 +125,12 @@ class EmailService:
 
             msg.attach(MIMEText(body, 'plain', 'utf-8'))
 
-            # Подключаемся к серверу и отправляем
-            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+            # Подключаемся к серверу и отправляем с timeout защитой
+            with smtplib.SMTP(
+                self.smtp_host,
+                self.smtp_port,
+                timeout=10
+            ) as server:
                 server.starttls()
                 server.login(self.email, self.password)
                 server.send_message(msg)
@@ -164,7 +168,11 @@ class EmailService:
 
             msg.attach(MIMEText(body, 'plain', 'utf-8'))
 
-            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+            with smtplib.SMTP(
+                self.smtp_host,
+                self.smtp_port,
+                timeout=10
+            ) as server:
                 server.starttls()
                 server.login(self.email, self.password)
                 server.send_message(msg)

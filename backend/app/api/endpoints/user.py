@@ -25,6 +25,7 @@ from app.core.user import (
     current_user,
     fastapi_users
 )
+from app.core.limiter import limiter
 from app.crud.user import user_crud
 from app.models.user import User
 from app.schemas.user import (
@@ -73,6 +74,7 @@ router.include_router(
         'Returns JWT token for immediate authentication.'
     )
 )
+@limiter.limit('3/hour')
 async def custom_register(
     user_create: UserCreate,
     request: Request,
@@ -191,6 +193,7 @@ async def custom_register(
         'Merges anonymous cart and favorites into user account.'
     )
 )
+@limiter.limit('5/minute')
 async def custom_login(
     credentials: UserLogin,
     request: Request,
@@ -222,6 +225,7 @@ async def custom_login(
     summary='Request password reset',
     description='Send password reset email to user'
 )
+@limiter.limit('3/hour')
 async def forgot_password(
     request_data: PasswordResetRequest,
     request: Request,

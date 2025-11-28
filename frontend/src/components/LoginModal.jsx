@@ -39,6 +39,8 @@ function LoginModal({ isOpen, onClose }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [rateLimitTimer, setRateLimitTimer] = useState(null);
+  const [isRateLimited, setIsRateLimited] = useState(false);
 
   // Сброс формы при закрытии модального окна
   useEffect(() => {
@@ -56,6 +58,8 @@ function LoginModal({ isOpen, onClose }) {
       setShowPassword(false);
       setShowConfirmPassword(false);
       setPasswordStrength(0);
+      setRateLimitTimer(null);
+      setIsRateLimited(false);
       dispatch(clearError());
       dispatch(clearSuccessMessage());
     }
@@ -105,6 +109,19 @@ function LoginModal({ isOpen, onClose }) {
       setPasswordStrength(getPasswordStrength(formData.password));
     }
   }, [formData.password, mode]);
+
+  // Rate limit timer countdown
+  useEffect(() => {
+    if (rateLimitTimer > 0) {
+      const timer = setTimeout(() => {
+        setRateLimitTimer(rateLimitTimer - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (rateLimitTimer === 0) {
+      setIsRateLimited(false);
+      setRateLimitTimer(null);
+    }
+  }, [rateLimitTimer]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -221,6 +238,14 @@ function LoginModal({ isOpen, onClose }) {
         await dispatch(forgotPassword(formData.identifier)).unwrap();
       }
     } catch (err) {
+      // Handle rate limiting (429 error)
+      if (err.status === 429 || err.message?.includes('Слишком много попыток')) {
+        setIsRateLimited(true);
+        // Extract retry-after from error or default to 60 seconds
+        const retryAfterMatch = err.message?.match(/через (\d+)/);
+        const retryAfter = retryAfterMatch ? parseInt(retryAfterMatch[1], 10) : 60;
+        setRateLimitTimer(retryAfter);
+      }
       // Error is handled by Redux
       console.error('Form submission error:', err);
     }
@@ -591,8 +616,9 @@ function LoginModal({ isOpen, onClose }) {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-medium disabled:bg-blue-400 disabled:cursor-not-allowed"
+              disabled={loading || isRateLimited}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+              aria-label={isRateLimited ? `Подождите ${rateLimitTimer} секунд` : undefined}
             >
               {loading ? (
                 <span className="flex items-center justify-center">
@@ -601,6 +627,13 @@ function LoginModal({ isOpen, onClose }) {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
                   Загрузка...
+                </span>
+              ) : isRateLimited && rateLimitTimer ? (
+                <span className="flex items-center justify-center">
+                  <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Подождите {rateLimitTimer} сек
                 </span>
               ) : (
                 <>

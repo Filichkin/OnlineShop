@@ -318,6 +318,39 @@ class CRUDCart:
         )
         return result.scalars().first()
 
+    async def get_by_user_locked(
+        self,
+        user_id: int,
+        session: AsyncSession
+    ) -> Optional[Cart]:
+        """
+        Get cart by user_id with row-level lock to prevent race conditions.
+
+        This method uses SELECT FOR UPDATE to acquire an exclusive lock on
+        the cart row, preventing concurrent order creation from the same cart.
+
+        Should be used in transaction when creating orders to ensure
+        cart is not modified by concurrent requests.
+
+        Args:
+            user_id: User identifier
+            session: Database session
+
+        Returns:
+            Cart object with exclusive lock or None if not found
+        """
+        result = await session.execute(
+            select(Cart)
+            .where(Cart.user_id == user_id)
+            .with_for_update()
+            .options(
+                selectinload(Cart.items)
+                .selectinload(CartItem.product)
+                .selectinload(Product.images)
+            )
+        )
+        return result.scalars().first()
+
     async def get_or_create_for_user(
         self,
         user_id: int,
