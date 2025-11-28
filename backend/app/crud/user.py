@@ -113,5 +113,55 @@ class CRUDUser(CRUDBase):
         )
         return result.scalars().first()
 
+    async def get_user_by_telegram_id(
+        self,
+        telegram_id: str,
+        session: AsyncSession
+    ) -> Optional[User]:
+        """
+        Get user by Telegram ID.
+
+        Args:
+            telegram_id: User Telegram ID
+            session: Database session
+
+        Returns:
+            User object or None if not found
+        """
+        result = await session.execute(
+            select(User).where(User.telegram_id == telegram_id)
+        )
+        return result.scalars().first()
+
+    async def update_user_fields(
+        self,
+        user: User,
+        update_data: dict,
+        session: AsyncSession
+    ) -> User:
+        """
+        Update user fields with provided data.
+
+        Updates only the fields present in update_data dictionary.
+        Handles commit and refresh operations.
+
+        Args:
+            user: User object to update
+            update_data: Dictionary with field names and new values
+            session: Database session
+
+        Returns:
+            Updated user object
+
+        Raises:
+            Exception: If database commit fails
+        """
+        for field, value in update_data.items():
+            setattr(user, field, value)
+
+        await session.commit()
+        await session.refresh(user)
+        return user
+
 
 user_crud = CRUDUser(User)

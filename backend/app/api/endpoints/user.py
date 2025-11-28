@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 
 from fastapi import (
@@ -10,8 +11,9 @@ from fastapi import (
     Response,
     status
 )
+from fastapi_users.exceptions import UserAlreadyExists
+from fastapi_users.password import PasswordHelper
 from loguru import logger
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.utils import email_service, generate_password_by_pattern
@@ -26,6 +28,7 @@ from app.core.user import (
     fastapi_users
 )
 from app.core.limiter import limiter
+from app.core.user import get_user_db, get_user_manager, get_jwt_strategy
 from app.crud.user import user_crud
 from app.models.user import User
 from app.schemas.user import (
@@ -39,6 +42,7 @@ from app.schemas.user import (
     UserUpdate,
     UserUpdateAdmin
 )
+
 
 router = APIRouter()
 
@@ -103,9 +107,6 @@ async def custom_register(
     Raises:
         HTTPException: If registration fails (e.g., email/phone exists)
     """
-    from app.core.user import get_user_db, get_user_manager, get_jwt_strategy
-    from fastapi_users.exceptions import UserAlreadyExists
-
     logger.info(
         f'Попытка регистрации: email={user_create.email}, '
         f'phone={user_create.phone}, ip={request.client.host}'
@@ -240,7 +241,6 @@ async def forgot_password(
     through timing attacks. Always returns success message regardless
     of whether email exists.
     """
-    import asyncio
 
     logger.info(
         f'Запрос сброса пароля: email={request_data.email}, '
@@ -248,17 +248,16 @@ async def forgot_password(
     )
 
     # Find user by email
-    result = await session.execute(
-        select(User).where(User.email == request_data.email)
+    user = await user_crud.get_user_by_email(
+        email=request_data.email,
+        session=session
     )
-    user = result.scalars().first()
 
     if user:
         # Generate new password
         new_password = generate_password_by_pattern()
 
         # Hash new password
-        from fastapi_users.password import PasswordHelper
         password_helper = PasswordHelper()
         user.hashed_password = password_helper.hash(new_password)
 
@@ -296,8 +295,6 @@ async def forgot_password(
         # Perform dummy operations to match timing of real reset
         # This prevents timing attacks that could enumerate valid emails
         generate_password_by_pattern()  # Generate password (not used)
-
-        from fastapi_users.password import PasswordHelper
         password_helper = PasswordHelper()
         password_helper.hash('dummy_password_for_timing')  # Hash operation
 
@@ -360,13 +357,29 @@ async def update_current_user_profile(
     # Update user fields
     update_data = user_update.model_dump(exclude_unset=True)
 
+    # Filter out fields that should not be updated by regular users
+    # Email and password handled separately by fastapi-users
+    update_data = {
+        k: v for k, v in update_data.items()
+        if k not in ['password', 'email']
+    }
+
+    if not update_data:
+        logger.bind(user_id=user.id).warning(
+            'Попытка обновления профиля без данных'
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='No fields to update'
+        )
+
     try:
         # Check for phone uniqueness if updating phone
         if 'phone' in update_data and update_data['phone'] != user.phone:
-            result = await session.execute(
-                select(User).where(User.phone == update_data['phone'])
+            existing_user = await user_crud.get_user_by_phone(
+                phone=update_data['phone'],
+                session=session
             )
-            existing_user = result.scalars().first()
             if existing_user:
                 logger.warning(
                     f'User {user.id} attempted to use existing phone number'
@@ -380,12 +393,10 @@ async def update_current_user_profile(
         if ('telegram_id' in update_data and
                 update_data['telegram_id'] and
                 update_data['telegram_id'] != user.telegram_id):
-            result = await session.execute(
-                select(User).where(
-                    User.telegram_id == update_data['telegram_id']
-                )
+            existing_user = await user_crud.get_user_by_telegram_id(
+                telegram_id=update_data['telegram_id'],
+                session=session
             )
-            existing_user = result.scalars().first()
             if existing_user:
                 logger.warning(
                     f'User {user.id} attempted to use existing Telegram ID'
@@ -395,13 +406,13 @@ async def update_current_user_profile(
                     detail=Messages.TELEGRAM_ALREADY_EXISTS
                 )
 
-        # Update user attributes
-        for field, value in update_data.items():
-            if field not in ['password', 'email']:  # Email handled by fastapi-users  # noqa: E501
-                setattr(user, field, value)
+        # Update user fields using CRUD method
+        user = await user_crud.update_user_fields(
+            user=user,
+            update_data=update_data,
+            session=session
+        )
 
-        await session.commit()
-        await session.refresh(user)
         logger.bind(user_id=user.id).info(
             f'Профиль пользователя успешно обновлен: {user.email}'
         )
@@ -654,12 +665,32 @@ async def update_user_by_admin(
                     detail=Messages.PHONE_ALREADY_EXISTS
                 )
 
-        # Update user attributes
-        for field, value in update_data.items():
-            setattr(user, field, value)
+        # Check for telegram_id uniqueness if updating telegram_id
+        if (
+            'telegram_id' in update_data and
+            update_data['telegram_id'] is not None and
+            update_data['telegram_id'] != user.telegram_id
+        ):
+            existing_user = await user_crud.get_user_by_telegram_id(
+                telegram_id=update_data['telegram_id'],
+                session=session
+            )
+            if existing_user:
+                logger.bind(user_id=current_user_id).warning(
+                    f'Попытка использовать существующий Telegram ID: '
+                    f'{update_data["telegram_id"]}'
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=Messages.TELEGRAM_ALREADY_EXISTS
+                )
 
-        await session.commit()
-        await session.refresh(user)
+        # Update user fields using CRUD method
+        user = await user_crud.update_user_fields(
+            user=user,
+            update_data=update_data,
+            session=session
+        )
 
         logger.bind(user_id=current_user_id).info(
             f'Пользователь успешно обновлен: user_id={user_id}'
