@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { getImageUrl } from "../utils";
+import { typography, effects } from "../styles/designSystem";
 
 function CategoryCard({ category }) {
   return (
@@ -7,7 +8,7 @@ function CategoryCard({ category }) {
       to={`/category/${category.slug}`}
       className="group block"
     >
-      <div className="relative bg-white rounded-3xl shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden flex flex-col">
+      <div className={`relative bg-white ${effects.rounded['3xl']} ${effects.shadow.sm} hover:shadow-lg ${effects.transition.shadow} overflow-hidden flex flex-col`}>
         {/* Иконка категории */}
         {category.icon_url && category.icon_url.trim() !== '' && (
           <div className="flex justify-start px-4">
@@ -23,14 +24,14 @@ function CategoryCard({ category }) {
 
         {/* Название категории */}
         <div className="px-4 min-h-[4rem] flex items-center">
-          <h3 className="font-roboto font-[450] text-[18px] text-gray-800 group-hover:text-blue-600 transition-colors duration-300 leading-tight">
+          <h3 className={`${typography.fontFamily} ${typography.fontWeight.medium} ${typography.fontSize.md} ${typography.textColor.primary} group-hover:text-blue-600 ${effects.transition.colors} ${typography.lineHeight.tight}`}>
             {category.name}
           </h3>
         </div>
 
         {/* Изображение категории */}
         <div className="px-4">
-          <div className="w-full aspect-[4/3] rounded-md overflow-hidden">
+          <div className={`w-full aspect-[4/3] ${effects.rounded.DEFAULT} overflow-hidden`}>
             <img
               className="w-full h-full object-cover"
               src={getImageUrl(category.image_url)}

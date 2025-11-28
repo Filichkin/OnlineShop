@@ -5,6 +5,7 @@ import {
   selectIsUpdatingFavorite,
 } from '../store/slices/favoritesSlice';
 import { logger } from '../utils/logger';
+import { effects } from '../styles/designSystem';
 
 /**
  * Кнопка добавления/удаления товара из избранного
@@ -58,9 +59,9 @@ function FavoriteButton({ product, className = "", iconSize = "w-5 h-5" }) {
       disabled={isUpdating}
       className={`
         group relative flex items-center justify-center
-        border rounded-md border-gray-200 bg-white
-        transition-all duration-200
-        hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
+        border ${effects.rounded.DEFAULT} border-gray-200 bg-white
+        ${effects.transition.DEFAULT}
+        hover:bg-gray-100 ${effects.focus.gray}
         disabled:opacity-50 disabled:cursor-not-allowed
         ${className || 'w-10 h-7'}
       `}
@@ -92,7 +93,7 @@ function FavoriteButton({ product, className = "", iconSize = "w-5 h-5" }) {
       ) : isFavorite ? (
         // Filled heart (в избранном) - светло-черный цвет
         <svg
-          className={`${iconSize} transition-transform duration-200 group-hover:scale-110`}
+          className={`${iconSize} ${effects.transition.transform} group-hover:scale-110`}
           fill="rgb(55 65 81)"
           viewBox="0 0 24 24"
         >
@@ -101,7 +102,7 @@ function FavoriteButton({ product, className = "", iconSize = "w-5 h-5" }) {
       ) : (
         // Outline heart (не в избранном) - серый контур
         <svg
-          className={`${iconSize} text-gray-500 transition-all duration-200 group-hover:text-gray-700 group-hover:scale-110`}
+          className={`${iconSize} text-gray-500 ${effects.transition.DEFAULT} group-hover:text-gray-700 group-hover:scale-110`}
           fill="none"
           stroke="currentColor"
           strokeWidth="2"

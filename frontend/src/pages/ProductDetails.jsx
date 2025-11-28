@@ -5,6 +5,7 @@ import AddToCartButton from "../UI/AddToCartButton";
 import FavoriteButton from "../UI/FavoriteButton";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { getImageUrl, formatPrice } from "../utils";
+import { typography, effects, cardStyles } from "../styles/designSystem";
 
 function ProductDetails() {
   const { productId } = useParams();
@@ -100,7 +101,7 @@ function ProductDetails() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-xl font-semibold text-gray-600">Загрузка...</p>
+        <p className={`${typography.fontSize.xl} ${typography.fontWeight.semibold} ${typography.fontFamily} ${typography.textColor.secondary}`}>Загрузка...</p>
       </div>
     );
   }
@@ -112,7 +113,7 @@ function ProductDetails() {
   if (!product) {
     return (
       <div className="px-6 py-10">
-        <p className="text-xl font-bold text-center text-red-500">Продукт не найден</p>
+        <p className={`${typography.fontSize.xl} ${typography.fontWeight.semibold} ${typography.fontFamily} text-center ${typography.textColor.error}`}>Продукт не найден</p>
       </div>
     );
   }
@@ -133,17 +134,17 @@ function ProductDetails() {
 
   return (
     <div className="px-6 py-10 max-w-7xl mx-auto">
-      <h1 className="mb-8 text-3xl font-bold text-gray-800">{product.name}</h1>
-      
+      <h1 className={`mb-8 ${typography.fontSize['4xl']} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary}`}>{product.name}</h1>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Левая колонка - Изображения */}
         <div className="lg:col-span-1">
           {/* Основное изображение */}
-          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+          <div className={`bg-white ${effects.rounded.lg} ${effects.shadow.DEFAULT} p-4 mb-4`}>
             <img
               src={getImageUrl(selectedImage || product.main_image)}
               alt={product.name}
-              className="w-full h-auto object-contain rounded-md"
+              className={`w-full h-auto object-contain ${effects.rounded.DEFAULT}`}
             />
           </div>
 
@@ -154,7 +155,7 @@ function ProductDetails() {
                 <button
                   key={index}
                   onClick={() => setSelectedImage(imageUrl)}
-                  className={`bg-white rounded-md p-2 border-2 transition-all hover:border-blue-500 ${
+                  className={`bg-white ${effects.rounded.DEFAULT} p-2 border-2 ${effects.transition.DEFAULT} hover:border-blue-500 ${
                     selectedImage === imageUrl ? 'border-blue-500' : 'border-gray-200'
                   }`}
                 >
@@ -172,37 +173,37 @@ function ProductDetails() {
         {/* Правая колонка - Информация */}
         <div className="lg:col-span-2 space-y-6">
           {/* Блок с ценой и кнопкой */}
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className={cardStyles.base}>
             <div className="flex items-start justify-between gap-6">
               <div className="flex-grow">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                <h2 className={`${typography.fontSize['xl']} ${typography.fontWeight.semibold} ${typography.fontFamily} ${typography.textColor.primary} mb-4`}>
                   {product.name}
                 </h2>
-                
+
                 {product.part_number && (
-                  <p className="text-sm text-gray-600 mb-2">
-                    Артикул: <span className="font-medium">{product.part_number}</span>
+                  <p className={`${typography.fontSize.sm} ${typography.fontFamily} ${typography.textColor.secondary} mb-2`}>
+                    Артикул: <span className={typography.fontWeight.medium}>{product.part_number}</span>
                   </p>
                 )}
-                
+
                 {product.brand && (
-                  <p className="text-sm text-gray-600 mb-2">
-                    Бренд: <span className="font-medium">{product.brand.name}</span>
+                  <p className={`${typography.fontSize.sm} ${typography.fontFamily} ${typography.textColor.secondary} mb-2`}>
+                    Бренд: <span className={typography.fontWeight.medium}>{product.brand.name}</span>
                   </p>
                 )}
-                
+
                 {product.category && (
-                  <p className="text-sm text-gray-600 mb-2">
-                    Категория: <span className="font-medium">{product.category.name}</span>
+                  <p className={`${typography.fontSize.sm} ${typography.fontFamily} ${typography.textColor.secondary} mb-2`}>
+                    Категория: <span className={typography.fontWeight.medium}>{product.category.name}</span>
                   </p>
                 )}
               </div>
-              
+
               {/* Блок цены и кнопок справа */}
               <div className="flex flex-col items-end gap-4 min-w-[250px]">
                 <div className="text-right">
-                  <p className="text-sm text-gray-500 mb-1">Цена:</p>
-                  <p className="text-3xl font-bold text-gray-900">
+                  <p className={`${typography.fontSize.sm} ${typography.fontFamily} ${typography.textColor.tertiary} mb-1`}>Цена:</p>
+                  <p className={`${typography.fontSize['4xl']} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary}`}>
                     {formatPrice(product.price)}
                   </p>
                 </div>
@@ -222,36 +223,36 @@ function ProductDetails() {
 
           {/* Описание */}
           {product.description && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-3">Описание</h3>
-              <p className="text-gray-700 leading-relaxed">{product.description}</p>
+            <div className={cardStyles.base}>
+              <h3 className={`${typography.fontSize.md} ${typography.fontWeight.medium} ${typography.fontFamily} ${typography.textColor.primary} mb-3`}>Описание</h3>
+              <p className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.normal} ${typography.textColor.dark} ${typography.lineHeight.relaxed}`}>{product.description}</p>
             </div>
           )}
 
           {/* Характеристики */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Основные характеристики</h3>
+          <div className={cardStyles.base}>
+            <h3 className={`${typography.fontSize.xl} ${typography.fontWeight.semibold} ${typography.fontFamily} ${typography.textColor.primary} mb-4`}>Основные характеристики</h3>
             <div className="space-y-2">
               {product.part_number && (
                 <div className="flex justify-between py-2 border-b border-gray-200">
-                  <span className="text-gray-600">Артикул</span>
-                  <span className="font-semibold text-gray-900">{product.part_number}</span>
+                  <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.medium} ${typography.textColor.secondary}`}>Артикул</span>
+                  <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.semibold} ${typography.textColor.primary}`}>{product.part_number}</span>
                 </div>
               )}
               {product.brand && (
                 <div className="flex justify-between py-2 border-b border-gray-200">
-                  <span className="text-gray-600">Бренд</span>
-                  <span className="font-semibold text-gray-900">{product.brand.name}</span>
+                  <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.medium} ${typography.textColor.secondary}`}>Бренд</span>
+                  <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.semibold} ${typography.textColor.primary}`}>{product.brand.name}</span>
                 </div>
               )}
               <div className="flex justify-between py-2 border-b border-gray-200">
-                <span className="text-gray-600">Цена</span>
-                <span className="font-semibold text-gray-900">{formatPrice(product.price)}</span>
+                <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.medium} ${typography.textColor.secondary}`}>Цена</span>
+                <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.semibold} ${typography.textColor.primary}`}>{formatPrice(product.price)}</span>
               </div>
               {product.category && (
                 <div className="flex justify-between py-2 border-b border-gray-200">
-                  <span className="text-gray-600">Категория</span>
-                  <span className="font-semibold text-gray-900">{product.category.name}</span>
+                  <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.medium} ${typography.textColor.secondary}`}>Категория</span>
+                  <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.semibold} ${typography.textColor.primary}`}>{product.category.name}</span>
                 </div>
               )}
             </div>

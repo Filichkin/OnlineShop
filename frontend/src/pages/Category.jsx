@@ -4,6 +4,7 @@ import AddToCartButton from "../UI/AddToCartButton";
 import FavoriteButton from "../UI/FavoriteButton";
 import { getImageUrl, formatPrice } from "../utils";
 import useDebounce from "../hooks/useDebounce";
+import { typography, effects, inputStyles, labelStyles } from "../styles/designSystem";
 
 function Category() {
   const loaderData = useLoaderData();
@@ -152,17 +153,17 @@ function Category() {
   return (
     <div className="py-10">
       <div className="container">
-        <h1 className="mb-3 text-2xl font-semibold text-left text-gray-700">{categoryName}</h1>
+        <h1 className={`mb-3 ${typography.fontSize['2xl']} ${typography.fontWeight.semibold} ${typography.fontFamily} text-left ${typography.textColor.dark}`}>{categoryName}</h1>
 
         {/* Контейнер для фильтров и сортировки */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Фильтр по артикулу */}
           <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700" htmlFor="partNumber">
+            <label className={labelStyles.base} htmlFor="partNumber">
               Фильтр по артикулу
             </label>
             <input
-              className="block w-full px-3 py-2 placeholder-gray-400 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className={`${inputStyles.base} ${typography.fontFamily}`}
               type="text"
               id="partNumber"
               placeholder="Введите артикул"
@@ -174,11 +175,11 @@ function Category() {
 
           {/* Поиск по названию */}
           <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700" htmlFor="searchByName">
+            <label className={labelStyles.base} htmlFor="searchByName">
               Поиск по названию
             </label>
             <input
-              className="block w-full px-3 py-2 placeholder-gray-400 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className={`${inputStyles.base} ${typography.fontFamily}`}
               type="text"
               id="searchByName"
               placeholder="Введите часть названия"
@@ -190,11 +191,11 @@ function Category() {
 
           {/* Фильтр по цене */}
           <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700" htmlFor="maxPrice">
+            <label className={labelStyles.base} htmlFor="maxPrice">
               Фильтр по цене
             </label>
             <input
-              className="block w-full px-3 py-2 placeholder-gray-400 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className={`${inputStyles.base} ${typography.fontFamily}`}
               type="number"
               id="maxPrice"
               placeholder="Введите максимальную стоимость"
@@ -207,11 +208,11 @@ function Category() {
 
           {/* Сортировка */}
           <div className="md:col-span-1 lg:col-span-1">
-            <label className="block mb-2 text-sm font-medium text-gray-700" htmlFor="sortBy">
+            <label className={labelStyles.base} htmlFor="sortBy">
               Сортировка
             </label>
             <select
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white cursor-pointer"
+              className={`${inputStyles.select} ${typography.fontFamily}`}
               id="sortBy"
               value={sortBy}
               onChange={handleSortChange}
@@ -224,7 +225,7 @@ function Category() {
           </div>
         </div>
         {filteredProducts.length === 0 ? (
-          <p className="text-xl font-semibold text-center text-gray-500">
+          <p className={`${typography.fontSize.xl} ${typography.fontWeight.semibold} ${typography.fontFamily} text-center ${typography.textColor.tertiary}`}>
             Продукты не найдены
           </p>
         ) : (
@@ -232,7 +233,7 @@ function Category() {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="relative flex flex-col bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
+                className={`relative flex flex-col bg-white ${effects.rounded.lg} ${effects.shadow.DEFAULT} hover:shadow-xl ${effects.transition.shadow} overflow-hidden`}
               >
                 {/* Кнопка избранного в правом верхнем углу */}
                 <div className="absolute top-2 right-2 z-10">
@@ -248,7 +249,7 @@ function Category() {
                   <img
                     src={getImageUrl(product.main_image)}
                     alt={product.name}
-                    className="object-contain w-full h-full transition-transform duration-300 hover:scale-105"
+                    className={`object-contain w-full h-full ${effects.transition.transform} hover:scale-105`}
                   />
                 </Link>
 
@@ -257,10 +258,10 @@ function Category() {
                   <Link
                     to={`/product/${product.id}`}
                     state={{ categoryId }}
-                    className="hover:text-blue-600 transition-colors block"
+                    className={`hover:text-blue-600 ${effects.transition.colors} block`}
                   >
                     <h3
-                      className="text-[15px] font-[600] text-gray-900 mb-2"
+                      className={`${typography.fontSize.base} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary} mb-2`}
                       style={{
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
@@ -277,14 +278,14 @@ function Category() {
 
                   {/* Артикул */}
                   {product.part_number && (
-                    <p className="text-[13px] font-[400] text-gray-500 mb-3">
+                    <p className={`${typography.fontSize.sm} ${typography.fontWeight.normal} ${typography.fontFamily} ${typography.textColor.tertiary} mb-3`}>
                       Артикул: {product.part_number}
                     </p>
                   )}
 
                   {/* Цена и кнопка */}
                   <div className="mt-auto flex items-center justify-between gap-3">
-                    <span className="text-[18px] font-[600] text-gray-800 whitespace-nowrap">
+                    <span className={`${typography.fontSize.md} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary} whitespace-nowrap`}>
                       {formatPrice(product.price)}
                     </span>
                     <AddToCartButton

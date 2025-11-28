@@ -36,6 +36,15 @@ export default {
       fontFamily: {
         roboto: ['Roboto', 'sans-serif'],
       },
+      fontWeight: {
+        300: '300',
+        400: '400',
+        450: '450',
+        500: '500',
+        550: '550',
+        600: '600',
+        700: '700',
+      },
       keyframes: {
         wiggle: {
           "0%, 100%": { transform: "rotate(-3deg)" },
