@@ -15,6 +15,8 @@ import {
   formatPhoneNumber,
 } from '../utils/validation';
 import LoginModal from '../components/LoginModal';
+import { sanitizeText } from '../utils/sanitize';
+import { logger } from '../utils/logger';
 
 /**
  * Checkout page component
@@ -251,7 +253,7 @@ function Checkout() {
         replace: true, // Don't allow going back to checkout
       });
     } catch (error) {
-      console.error('Order submission error:', error);
+      logger.error('Order submission error:', error);
 
       // Handle rate limiting (429 error)
       if (error.status === 429 || error.message?.includes('Слишком много заказов')) {
@@ -335,7 +337,7 @@ function Checkout() {
               </svg>
               <div className="flex-1">
                 <h3 className="text-sm font-semibold text-red-800 mb-1">Ошибка оформления заказа</h3>
-                <p className="text-sm text-red-700">{submitError}</p>
+                <p className="text-sm text-red-700">{sanitizeText(submitError)}</p>
               </div>
               <button
                 onClick={() => setSubmitError(null)}

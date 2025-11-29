@@ -14,12 +14,39 @@ export const isValidPhone = (phone) => {
 
 /**
  * Validates email format
+ * RFC 5322 compliant validation
  * @param {string} email - Email to validate
  * @returns {boolean} True if valid
  */
 export const isValidEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  // RFC 5322 compliant regex (simplified)
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+  if (!emailRegex.test(email)) {
+    return false;
+  }
+
+  // Additional checks
+  const [localPart, domain] = email.split('@');
+
+  if (!localPart || !domain) {
+    return false;
+  }
+
+  if (localPart.length > 64 || domain.length > 255) {
+    return false;
+  }
+
+  const domainParts = domain.split('.');
+  if (domainParts.length < 2) {
+    return false;
+  }
+
+  if (domainParts.some(part => part.length > 63)) {
+    return false;
+  }
+
+  return true;
 };
 
 /**

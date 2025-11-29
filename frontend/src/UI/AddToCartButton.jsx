@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart, updateQuantity, removeFromCart, selectCartItems, selectUpdatingItems } from '../store/slices/cartSlice';
+import { logger } from '../utils/logger';
+import { typography, effects } from '../styles/designSystem';
 
 // Size variants configuration for flexible button sizing
 const SIZE_VARIANTS = {
@@ -9,24 +11,24 @@ const SIZE_VARIANTS = {
     controls: "h-8 min-w-[120px]",
     icon: "w-5 h-5",
     spinner: "h-3 w-3",
-    text: 'text-sm',
-    fontWeight: 'font-medium',
+    text: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
   },
   default: {
     button: 'h-8 px-4',
     controls: 'h-8 px-2',
     icon: 'w-4 h-4',
     spinner: 'h-4 w-4',
-    text: 'text-sm',
-    fontWeight: 'font-medium',
+    text: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
   },
   lg: {
     button: "h-12 px-6 min-w-[180px]",
     controls: "h-12 min-w-[180px]",
     icon: "w-7 h-7",
     spinner: "h-5 w-5",
-    text: "text-base",
-    fontWeight: "font-normal"
+    text: typography.fontSize.base,
+    fontWeight: typography.fontWeight.normal
   },
 };
 
@@ -108,7 +110,7 @@ function AddToCartButton({
       }
 
     } catch (err) {
-      console.error('Ошибка при добавлении товара в корзину:', err);
+      logger.error('Ошибка при добавлении товара в корзину:', err);
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +129,7 @@ function AddToCartButton({
       try {
         await dispatch(removeFromCart(product.id)).unwrap();
       } catch (err) {
-        console.error('Ошибка при удалении товара из корзины:', err);
+        logger.error('Ошибка при удалении товара из корзины:', err);
       }
       return;
     }
@@ -135,19 +137,19 @@ function AddToCartButton({
     try {
       await dispatch(updateQuantity({ productId: product.id, quantity: newQuantity })).unwrap();
     } catch (err) {
-      console.error('Ошибка при обновлении количества:', err);
+      logger.error('Ошибка при обновлении количества:', err);
     }
   };
 
   // Если товар уже в корзине, показываем контролы количества
   if (isInCart) {
     return (
-      <div className={`${sizeConfig.controls} grid grid-cols-3 items-center border border-gray-200 rounded-md bg-white ${fullWidth ? 'w-full' : ''} ${className}`}>
+      <div className={`${sizeConfig.controls} ${typography.fontFamily} grid grid-cols-3 items-center border border-gray-200 ${effects.rounded.DEFAULT} bg-white ${fullWidth ? 'w-full' : ''} ${className}`}>
         {/* Кнопка уменьшения количества */}
         <button
           onClick={(e) => handleQuantityChange(e, currentQuantity - 1)}
           disabled={isUpdating}
-          className="flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-l-md"
+          className={`flex items-center justify-center hover:bg-gray-100 ${effects.transition.colors} disabled:opacity-50 disabled:cursor-not-allowed rounded-l-md`}
           aria-label="Уменьшить количество"
           title="Уменьшить количество"
         >
@@ -157,7 +159,7 @@ function AddToCartButton({
         </button>
 
         {/* Отображение текущего количества */}
-        <span className={`flex items-center justify-center ${finalFontWeight} ${finalTextSize} text-gray-900`}>
+        <span className={`flex items-center justify-center ${finalFontWeight} ${finalTextSize} ${typography.textColor.primary}`}>
           {currentQuantity}
         </span>
 
@@ -165,7 +167,7 @@ function AddToCartButton({
         <button
           onClick={(e) => handleQuantityChange(e, currentQuantity + 1)}
           disabled={isUpdating}
-          className="flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-r-md"
+          className={`flex items-center justify-center hover:bg-gray-100 ${effects.transition.colors} disabled:opacity-50 disabled:cursor-not-allowed rounded-r-md`}
           aria-label="Увеличить количество"
           title="Увеличить количество"
         >
@@ -183,13 +185,13 @@ function AddToCartButton({
       onClick={handleAddToCart}
       disabled={isLoading}
       className={`
-        ${sizeConfig.button} rounded-md flex items-center justify-center gap-2
-        transition-all duration-200 ${finalFontWeight} ${finalTextSize}
-        focus:outline-none focus:ring-2 focus:ring-offset-2
+        ${sizeConfig.button} ${typography.fontFamily} ${effects.rounded.DEFAULT} flex items-center justify-center gap-2
+        ${effects.transition.DEFAULT} ${finalFontWeight} ${finalTextSize}
+        ${effects.focus.DEFAULT}
         ${fullWidth ? 'w-full' : ''}
         ${isLoading
           ? 'bg-gray-500 text-white cursor-not-allowed'
-          : 'bg-gray-800 text-white hover:bg-gray-700 focus:ring-gray-600 hover:shadow-lg'
+          : 'bg-gray-800 text-white hover:bg-gray-900 hover:shadow-lg'
         }
         ${className}
       `}

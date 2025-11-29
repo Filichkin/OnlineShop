@@ -409,7 +409,7 @@ async def delete_image_file(url: str) -> None:
         # Parse URL to get file path
         # URL format: 'media/products/filename.jpg'
         # or 'media/categories/filename.jpg'
-        url_path = Path(url)
+        file_path = Path(url)
 
         # Validate that the URL starts with our upload directory
         if not url.startswith(str(Constants.UPLOAD_DIR)):
@@ -417,10 +417,6 @@ async def delete_image_file(url: str) -> None:
                 f'Попытка удаления файла вне директории загрузки: {url}'
             )
             return
-
-        # Construct absolute file path
-        file_path = Path(url)
-
         # Check if file path exists
         if not file_path.exists():
             logger.info(f'Файл уже удален или не существует: {url}')

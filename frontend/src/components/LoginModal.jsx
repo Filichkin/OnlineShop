@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { register, login, forgotPassword, getCurrentUser, clearError, clearSuccessMessage } from '../store/slices/authSlice';
 import { fetchCart } from '../store/slices/cartSlice';
@@ -13,6 +13,9 @@ import {
   detectInputType,
   validateFirstName,
 } from '../utils/validation';
+import { sanitizeText } from '../utils/sanitize';
+import { logger } from '../utils/logger';
+import { useDebounceCallback } from '../hooks/useDebounceCallback';
 
 /**
  * LoginModal компонент для входа/регистрации пользователя
@@ -65,31 +68,49 @@ function LoginModal({ isOpen, onClose }) {
     }
   }, [isOpen, dispatch]);
 
+  // Use refs to avoid memory leaks
+  const onCloseRef = useRef(onClose);
+  const dispatchRef = useRef(dispatch);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    dispatchRef.current = dispatch;
+  }, [dispatch]);
+
   // Закрытие после успешного действия
   useEffect(() => {
     if (successMessage && (mode === 'login' || mode === 'register')) {
       // User data already returned from backend
       // Reload cart and favorites with new user data
-      dispatch(fetchCart());
-      dispatch(fetchFavorites());
+      dispatchRef.current(fetchCart());
+      dispatchRef.current(fetchFavorites());
 
       // Close modal after short delay
       setTimeout(() => {
-        onClose();
+        onCloseRef.current();
       }, 1500);
     }
-  }, [successMessage, mode, onClose, dispatch]);
+  }, [successMessage, mode]);
 
   // Закрытие модального окна при нажатии Escape
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape' && isOpen) {
-        onClose();
+        onCloseRef.current();
       }
     };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
 
   // Предотвращение скролла body
   useEffect(() => {
@@ -247,9 +268,12 @@ function LoginModal({ isOpen, onClose }) {
         setRateLimitTimer(retryAfter);
       }
       // Error is handled by Redux
-      console.error('Form submission error:', err);
+      logger.error('Form submission error:', err);
     }
   };
+
+  // Debounced submit handler to prevent multiple clicks
+  const handleSubmitDebounced = useDebounceCallback(handleSubmit, 1000);
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
@@ -341,7 +365,7 @@ function LoginModal({ isOpen, onClose }) {
               {/* Error Message - don't show "Токен не найден" error */}
               {error && error !== 'Токен не найден' && !error.includes('Сессия истекла') && (
                 <div className="mb-4 p-3 bg-red-100 text-red-800 rounded-md text-sm">
-                  {error}
+                  {sanitizeText(error)}
                 </div>
               )}
 

@@ -10,7 +10,6 @@ from typing import Optional
 from fastapi import Cookie, Depends, HTTPException, Response, status
 from fastapi_users.authentication import Strategy
 from loguru import logger
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import Constants
@@ -19,6 +18,7 @@ from app.core.messages import Messages
 from app.core.user import get_jwt_strategy
 from app.crud.cart import cart_crud
 from app.crud.favorite import favorite_crud
+from app.crud.user import user_crud
 from app.models.user import User
 from app.schemas.user import UserLogin
 
@@ -42,14 +42,17 @@ async def authenticate_user(
     # Determine if input is email or phone
     is_phone = re.match(Constants.PHONE_PATTERN, email_or_phone)
 
-    # Query user by email or phone
+    # Query user by email or phone using CRUD methods
     if is_phone:
-        stmt = select(User).where(User.phone == email_or_phone)
+        user = await user_crud.get_user_by_phone(
+            phone=email_or_phone,
+            session=session
+        )
     else:
-        stmt = select(User).where(User.email == email_or_phone)
-
-    result = await session.execute(stmt)
-    user = result.scalars().first()
+        user = await user_crud.get_user_by_email(
+            email=email_or_phone,
+            session=session
+        )
 
     if not user:
         logger.warning(
@@ -236,6 +239,25 @@ async def login_user(
     strategy: Strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
 
+    # Import CSRF utilities
+    from app.core.csrf import generate_csrf_token, set_csrf_cookie
+    from app.core.config import settings
+
+    # Set JWT token in httpOnly cookie
+    response.set_cookie(
+        key='access_token',
+        value=token,
+        httponly=True,  # JavaScript cannot read - prevents XSS
+        secure=settings.secure_cookies,  # True in production (HTTPS only)
+        samesite='lax',  # CSRF protection
+        max_age=settings.access_token_expire_minutes * 60,  # in seconds
+        path='/',
+    )
+
+    # Generate and set CSRF token
+    csrf_token = generate_csrf_token()
+    set_csrf_cookie(response, csrf_token)
+
     logger.bind(user_id=user.id).info(
         f'Успешный вход пользователя: {user.email}'
     )
@@ -248,9 +270,8 @@ async def login_user(
         path='/'
     )
 
+    # Return user data only (no token in response body)
     return {
-        'access_token': token,
-        'token_type': 'bearer',
         'user': {
             'id': user.id,
             'email': user.email,
@@ -266,5 +287,6 @@ async def login_user(
             'is_active': user.is_active,
             'is_superuser': user.is_superuser,
             'is_verified': user.is_verified
-        }
+        },
+        'csrf_token': csrf_token  # For backward compatibility
     }

@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 
 from fastapi import (
@@ -10,22 +11,26 @@ from fastapi import (
     Response,
     status
 )
+from fastapi_users.exceptions import UserAlreadyExists
+from fastapi_users.password import PasswordHelper
 from loguru import logger
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.utils import email_service, generate_password_by_pattern
 from app.core.auth import login_user, merge_session_data
-from app.core.config import Constants
+from app.core.constants import Constants
+from app.core.csrf import verify_csrf_token
 from app.core.db import get_async_session
 from app.core.messages import Messages
 from app.core.user import (
     auth_backend,
     current_superuser,
     current_user,
+    current_user_optional,
     fastapi_users
 )
 from app.core.limiter import limiter
+from app.core.user import get_user_db, get_user_manager, get_jwt_strategy
 from app.crud.user import user_crud
 from app.models.user import User
 from app.schemas.user import (
@@ -39,6 +44,7 @@ from app.schemas.user import (
     UserUpdate,
     UserUpdateAdmin
 )
+
 
 router = APIRouter()
 
@@ -103,9 +109,6 @@ async def custom_register(
     Raises:
         HTTPException: If registration fails (e.g., email/phone exists)
     """
-    from app.core.user import get_user_db, get_user_manager, get_jwt_strategy
-    from fastapi_users.exceptions import UserAlreadyExists
-
     logger.info(
         f'Попытка регистрации: email={user_create.email}, '
         f'phone={user_create.phone}, ip={request.client.host}'
@@ -152,6 +155,25 @@ async def custom_register(
     strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
 
+    # Import CSRF utilities
+    from app.core.csrf import generate_csrf_token, set_csrf_cookie
+    from app.core.config import settings
+
+    # Set JWT token in httpOnly cookie
+    response.set_cookie(
+        key='access_token',
+        value=token,
+        httponly=True,  # JavaScript cannot read - prevents XSS
+        secure=settings.secure_cookies,  # True in production (HTTPS only)
+        samesite='lax',  # CSRF protection
+        max_age=settings.access_token_expire_minutes * 60,  # in seconds
+        path='/',
+    )
+
+    # Generate and set CSRF token
+    csrf_token = generate_csrf_token()
+    set_csrf_cookie(response, csrf_token)
+
     # SECURITY: Delete session cookie to prevent session fixation attacks
     # User is now authenticated via JWT, no longer needs anonymous session
     # This ensures old session cannot be hijacked after authentication
@@ -160,9 +182,8 @@ async def custom_register(
         path='/'
     )
 
+    # Return user data only (no token in response body)
     return {
-        'access_token': token,
-        'token_type': 'bearer',
         'user': {
             'id': user.id,
             'email': user.email,
@@ -178,7 +199,8 @@ async def custom_register(
             'is_active': user.is_active,
             'is_superuser': user.is_superuser,
             'is_verified': user.is_verified
-        }
+        },
+        'csrf_token': csrf_token  # For backward compatibility
     }
 
 
@@ -240,7 +262,6 @@ async def forgot_password(
     through timing attacks. Always returns success message regardless
     of whether email exists.
     """
-    import asyncio
 
     logger.info(
         f'Запрос сброса пароля: email={request_data.email}, '
@@ -248,17 +269,16 @@ async def forgot_password(
     )
 
     # Find user by email
-    result = await session.execute(
-        select(User).where(User.email == request_data.email)
+    user = await user_crud.get_user_by_email(
+        email=request_data.email,
+        session=session
     )
-    user = result.scalars().first()
 
     if user:
         # Generate new password
         new_password = generate_password_by_pattern()
 
         # Hash new password
-        from fastapi_users.password import PasswordHelper
         password_helper = PasswordHelper()
         user.hashed_password = password_helper.hash(new_password)
 
@@ -296,8 +316,6 @@ async def forgot_password(
         # Perform dummy operations to match timing of real reset
         # This prevents timing attacks that could enumerate valid emails
         generate_password_by_pattern()  # Generate password (not used)
-
-        from fastapi_users.password import PasswordHelper
         password_helper = PasswordHelper()
         password_helper.hash('dummy_password_for_timing')  # Hash operation
 
@@ -307,6 +325,93 @@ async def forgot_password(
     # Always return success - don't reveal if email exists
     return {
         'message': Messages.PASSWORD_RESET_EMAIL_SENT
+    }
+
+
+# Get CSRF token endpoint
+@router.get(
+    '/csrf-token',
+    response_model=dict,
+    tags=Constants.AUTH_TAGS,
+    summary='Get CSRF token',
+    description='Get CSRF token for authenticated user'
+)
+async def get_csrf_token(
+    response: Response,
+    user: User = Depends(current_user)
+):
+    """
+    Get CSRF token for authenticated user.
+
+    Generates and returns a new CSRF token, setting it in both
+    cookie and response body.
+
+    Returns:
+        CSRF token in response body and cookie
+    """
+    from app.core.csrf import generate_csrf_token, set_csrf_cookie
+
+    logger.bind(user_id=user.id).debug(
+        'Запрос CSRF токена пользователем'
+    )
+
+    csrf_token = generate_csrf_token()
+    set_csrf_cookie(response, csrf_token)
+
+    logger.bind(user_id=user.id).info(
+        'CSRF токен успешно сгенерирован'
+    )
+
+    return {
+        'csrf_token': csrf_token
+    }
+
+
+# Logout endpoint
+@router.post(
+    '/auth/logout',
+    response_model=dict,
+    tags=Constants.AUTH_TAGS,
+    summary='Logout user',
+    description='Logout user and clear authentication cookies'
+)
+async def logout(
+    response: Response,
+    user: Optional[User] = Depends(current_user_optional)
+):
+    """
+    Logout user and clear all authentication cookies.
+
+    Removes JWT access token and CSRF token cookies.
+    Available for both authenticated and anonymous users
+    to allow client-side cleanup.
+
+    Returns:
+        Success message
+    """
+    if user:
+        logger.bind(user_id=user.id).info(
+            f'Пользователь выходит из системы: {user.email}'
+        )
+    else:
+        logger.info('Анонимный пользователь выполняет logout')
+
+    # Delete JWT cookie
+    response.delete_cookie(
+        key='access_token',
+        path='/'
+    )
+
+    # Delete CSRF cookie
+    response.delete_cookie(
+        key='csrf_token',
+        path='/'
+    )
+
+    logger.debug('Cookies аутентификации удалены')
+
+    return {
+        'message': 'Successfully logged out'
     }
 
 
@@ -346,7 +451,8 @@ async def get_current_user_profile(
 async def update_current_user_profile(
     user_update: UserUpdate,
     user: User = Depends(current_user),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    _: None = Depends(verify_csrf_token)
 ):
     """
     Update current authenticated user profile.
@@ -360,13 +466,29 @@ async def update_current_user_profile(
     # Update user fields
     update_data = user_update.model_dump(exclude_unset=True)
 
+    # Filter out fields that should not be updated by regular users
+    # Email and password handled separately by fastapi-users
+    update_data = {
+        k: v for k, v in update_data.items()
+        if k not in ['password', 'email']
+    }
+
+    if not update_data:
+        logger.bind(user_id=user.id).warning(
+            'Попытка обновления профиля без данных'
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='No fields to update'
+        )
+
     try:
         # Check for phone uniqueness if updating phone
         if 'phone' in update_data and update_data['phone'] != user.phone:
-            result = await session.execute(
-                select(User).where(User.phone == update_data['phone'])
+            existing_user = await user_crud.get_user_by_phone(
+                phone=update_data['phone'],
+                session=session
             )
-            existing_user = result.scalars().first()
             if existing_user:
                 logger.warning(
                     f'User {user.id} attempted to use existing phone number'
@@ -380,12 +502,10 @@ async def update_current_user_profile(
         if ('telegram_id' in update_data and
                 update_data['telegram_id'] and
                 update_data['telegram_id'] != user.telegram_id):
-            result = await session.execute(
-                select(User).where(
-                    User.telegram_id == update_data['telegram_id']
-                )
+            existing_user = await user_crud.get_user_by_telegram_id(
+                telegram_id=update_data['telegram_id'],
+                session=session
             )
-            existing_user = result.scalars().first()
             if existing_user:
                 logger.warning(
                     f'User {user.id} attempted to use existing Telegram ID'
@@ -395,13 +515,13 @@ async def update_current_user_profile(
                     detail=Messages.TELEGRAM_ALREADY_EXISTS
                 )
 
-        # Update user attributes
-        for field, value in update_data.items():
-            if field not in ['password', 'email']:  # Email handled by fastapi-users  # noqa: E501
-                setattr(user, field, value)
+        # Update user fields using CRUD method
+        user = await user_crud.update_user_fields(
+            user=user,
+            update_data=update_data,
+            session=session
+        )
 
-        await session.commit()
-        await session.refresh(user)
         logger.bind(user_id=user.id).info(
             f'Профиль пользователя успешно обновлен: {user.email}'
         )
@@ -560,7 +680,8 @@ async def update_user_by_admin(
     user_id: int,
     user_update: UserUpdateAdmin,
     current_user: User = Depends(current_superuser),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    _: None = Depends(verify_csrf_token)
 ):
     """
     Update user by admin (superuser only).
@@ -654,12 +775,32 @@ async def update_user_by_admin(
                     detail=Messages.PHONE_ALREADY_EXISTS
                 )
 
-        # Update user attributes
-        for field, value in update_data.items():
-            setattr(user, field, value)
+        # Check for telegram_id uniqueness if updating telegram_id
+        if (
+            'telegram_id' in update_data and
+            update_data['telegram_id'] is not None and
+            update_data['telegram_id'] != user.telegram_id
+        ):
+            existing_user = await user_crud.get_user_by_telegram_id(
+                telegram_id=update_data['telegram_id'],
+                session=session
+            )
+            if existing_user:
+                logger.bind(user_id=current_user_id).warning(
+                    f'Попытка использовать существующий Telegram ID: '
+                    f'{update_data["telegram_id"]}'
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=Messages.TELEGRAM_ALREADY_EXISTS
+                )
 
-        await session.commit()
-        await session.refresh(user)
+        # Update user fields using CRUD method
+        user = await user_crud.update_user_fields(
+            user=user,
+            update_data=update_data,
+            session=session
+        )
 
         logger.bind(user_id=current_user_id).info(
             f'Пользователь успешно обновлен: user_id={user_id}'

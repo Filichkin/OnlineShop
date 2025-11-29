@@ -18,6 +18,7 @@ import { formatPrice } from '../utils/formatPrice';
 import CartItem from '../components/CartItem';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import CartSkeleton from '../components/CartSkeleton';
+import { typography, buttonVariants, cardStyles } from '../styles/designSystem';
 
 /**
  * Оптимизированная страница корзины
@@ -234,7 +235,7 @@ function Cart() {
         </div>
       )}
 
-      <h1 className="mb-8 text-2xl font-semibold text-left text-gray-700">Корзина покупок</h1>
+      <h1 className={`mb-8 ${typography.fontSize['2xl']} ${typography.fontWeight.semibold} ${typography.fontFamily} text-left ${typography.textColor.dark}`}>Корзина покупок</h1>
 
       {items.length === 0 ? (
         // Пустая корзина
@@ -325,7 +326,7 @@ function Cart() {
                 {/* Кнопка оформления заказа */}
                 <button
                   onClick={handleSubmit}
-                  className="w-full px-6 py-3 text-base font-semibold text-white bg-gray-800 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-offset-2 transition-all duration-200 hover:shadow-lg"
+                  className={`w-full ${buttonVariants.primary} ${typography.fontFamily}`}
                 >
                   Оформить заказ
                 </button>
