@@ -24,7 +24,7 @@ function Home() {
 
   return (
     <div className="py-10 bg-[radial-gradient(circle,rgba(255,255,255,1)_0%,rgba(219,234,254,0.25)_50%,rgba(219,234,254,0.4)_100%)]">
-      <div className="container">
+      <div className="container px-14">
         {sortedCategories.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-xl text-gray-600">Категории не найдены</p>

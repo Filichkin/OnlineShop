@@ -8,7 +8,7 @@ function CategoryCard({ category }) {
       to={`/category/${category.slug}`}
       className="group block"
     >
-      <div className={`relative bg-white ${effects.rounded['3xl']} ${effects.shadow.sm} hover:shadow-xl ${effects.transition.shadow} overflow-hidden flex flex-col h-full`}>
+      <div className={`relative bg-white ${effects.rounded['3xl']} ${effects.shadow.sm} hover:shadow-lg hover:shadow-blue-300/60 hover:-translate-y-0.5 ${effects.transition.shadow} transition-transform duration-300 overflow-hidden flex flex-col h-full`}>
         {/* Иконка категории */}
         {category.icon_url && category.icon_url.trim() !== '' && (
           <div className="flex justify-start">
@@ -24,7 +24,7 @@ function CategoryCard({ category }) {
 
         {/* Название категории */}
         <div className="px-4 min-h-[2.5rem] flex items-start ml-1 mb-2">
-          <h3 className={`${typography.fontFamily} ${typography.fontWeight.medium} ${typography.fontSize.md} ${typography.textColor.primary} group-hover:text-blue-600 ${effects.transition.colors} ${typography.lineHeight.tight}`}>
+          <h3 className={`${typography.fontFamily} ${typography.fontWeight.medium} ${typography.fontSize.md} ${typography.textColor.primary} ${typography.lineHeight.tight}`}>
             {category.name}
           </h3>
         </div>
