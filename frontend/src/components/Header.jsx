@@ -2,7 +2,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import NavMenuLink from "../UI/NavLinkMenu";
-import logo from "../assets/images/logo.webp";
+import logo from "../assets/images/logo_new.webp";
 import homeIcon from "../assets/images/home.webp";
 import cartIcon from "../assets/images/cart.webp";
 import favoriteIcon from "../assets/images/favorite_heart.webp";
