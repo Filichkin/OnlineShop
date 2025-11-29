@@ -8,22 +8,22 @@ function CategoryCard({ category }) {
       to={`/category/${category.slug}`}
       className="group block"
     >
-      <div className={`relative bg-white ${effects.rounded['3xl']} ${effects.shadow.sm} hover:shadow-lg ${effects.transition.shadow} overflow-hidden flex flex-col`}>
+      <div className={`relative bg-white ${effects.rounded['3xl']} ${effects.shadow.sm} hover:shadow-xl ${effects.transition.shadow} overflow-hidden flex flex-col h-full`}>
         {/* Иконка категории */}
         {category.icon_url && category.icon_url.trim() !== '' && (
-          <div className="flex justify-start px-4">
-            <div className="h-20 w-20 flex items-center justify-center bg-white overflow-hidden">
+          <div className="flex justify-start">
+            <div className="h-[84px] w-[84px] flex items-center justify-center bg-white overflow-hidden">
               <img
                 src={getImageUrl(category.icon_url)}
                 alt="icon"
-                className="h-22 w-22 object-contain"
+                className="h-[72px] w-[72px] object-contain"
               />
             </div>
           </div>
         )}
 
         {/* Название категории */}
-        <div className="px-4 min-h-[4rem] flex items-center">
+        <div className="px-4 min-h-[2.5rem] flex items-start ml-1 mb-2">
           <h3 className={`${typography.fontFamily} ${typography.fontWeight.medium} ${typography.fontSize.md} ${typography.textColor.primary} group-hover:text-blue-600 ${effects.transition.colors} ${typography.lineHeight.tight}`}>
             {category.name}
           </h3>
