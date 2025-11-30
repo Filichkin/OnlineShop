@@ -152,7 +152,7 @@ function Category() {
 
   return (
     <div className="py-10">
-      <div className="container">
+      <div className="container px-3 sm:px-3 md:px-6 lg:px-12 xl:px-16 2xl:px-64">
         <h1 className={`mb-3 ${typography.fontSize['2xl']} ${typography.fontWeight.semibold} ${typography.fontFamily} text-left ${typography.textColor.dark}`}>{categoryName}</h1>
 
         {/* Контейнер для фильтров и сортировки */}
@@ -284,15 +284,17 @@ function Category() {
                   )}
 
                   {/* Цена и кнопка */}
-                  <div className="mt-auto flex items-center justify-between gap-3">
-                    <span className={`${typography.fontSize.md} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary} whitespace-nowrap`}>
+                  <div className="mt-auto flex items-center justify-between gap-2">
+                    <span className={`${typography.fontSize.md} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary} whitespace-nowrap flex-shrink`}>
                       {formatPrice(product.price)}
                     </span>
-                    <AddToCartButton
-                      product={product}
-                      onAddToCart={handleAddToCart}
-                      size="sm"
-                    />
+                    <div className="flex-shrink-0">
+                      <AddToCartButton
+                        product={product}
+                        onAddToCart={handleAddToCart}
+                        size="sm"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

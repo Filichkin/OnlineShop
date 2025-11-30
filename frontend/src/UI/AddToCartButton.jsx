@@ -7,9 +7,9 @@ import { typography, effects } from '../styles/designSystem';
 // Size variants configuration for flexible button sizing
 const SIZE_VARIANTS = {
   sm: {
-    button: "h-8 px-3 min-w-[120px]",
-    controls: "h-8 min-w-[120px]",
-    icon: "w-5 h-5",
+    button: "h-8 px-2 md:px-3 min-w-[100px]",
+    controls: "h-8 min-w-[100px]",
+    icon: "w-4 h-4 xl:w-5 xl:h-5",
     spinner: "h-3 w-3",
     text: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
