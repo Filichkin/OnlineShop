@@ -26,6 +26,11 @@ export default {
       },
     },
     extend: {
+      gridTemplateColumns: {
+        'auto-fit-cards': 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
+        'auto-fit-cards-sm': 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))',
+        'auto-fit-cards-lg': 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
+      },
       backgroundImage: {
         "custom-gradient": "linear-gradient(to right, #ff7e5f, #feb47b)",
       },
