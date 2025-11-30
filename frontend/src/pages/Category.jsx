@@ -158,12 +158,12 @@ function Category() {
         {/* Контейнер для фильтров и сортировки */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Фильтр по артикулу */}
-          <div>
+          <div className="max-w-xs">
             <label className={labelStyles.base} htmlFor="partNumber">
-              Фильтр по артикулу
+              Поиск по артикулу
             </label>
             <input
-              className={`${inputStyles.base} ${typography.fontFamily}`}
+              className={`${inputStyles.base} ${typography.fontFamily} w-full`}
               type="text"
               id="partNumber"
               placeholder="Введите артикул"
@@ -174,12 +174,12 @@ function Category() {
           </div>
 
           {/* Поиск по названию */}
-          <div>
+          <div className="max-w-xs">
             <label className={labelStyles.base} htmlFor="searchByName">
               Поиск по названию
             </label>
             <input
-              className={`${inputStyles.base} ${typography.fontFamily}`}
+              className={`${inputStyles.base} ${typography.fontFamily} w-full`}
               type="text"
               id="searchByName"
               placeholder="Введите часть названия"
@@ -190,12 +190,12 @@ function Category() {
           </div>
 
           {/* Фильтр по цене */}
-          <div>
+          <div className="max-w-xs">
             <label className={labelStyles.base} htmlFor="maxPrice">
               Фильтр по цене
             </label>
             <input
-              className={`${inputStyles.base} ${typography.fontFamily}`}
+              className={`${inputStyles.base} ${typography.fontFamily} w-full`}
               type="number"
               id="maxPrice"
               placeholder="Введите максимальную стоимость"
@@ -207,12 +207,12 @@ function Category() {
           </div>
 
           {/* Сортировка */}
-          <div className="md:col-span-1 lg:col-span-1">
+          <div className="md:col-span-1 lg:col-span-1 max-w-xs">
             <label className={labelStyles.base} htmlFor="sortBy">
               Сортировка
             </label>
             <select
-              className={`${inputStyles.select} ${typography.fontFamily}`}
+              className={`${inputStyles.select} ${typography.fontFamily} w-full`}
               id="sortBy"
               value={sortBy}
               onChange={handleSortChange}

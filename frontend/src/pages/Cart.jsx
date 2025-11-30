@@ -326,9 +326,9 @@ function Cart() {
                 {/* Кнопка оформления заказа */}
                 <button
                   onClick={handleSubmit}
-                  className={`w-full ${buttonVariants.primary} ${typography.fontFamily}`}
+                  className={`w-full h-12 ${buttonVariants.primary} ${typography.fontFamily}`}
                 >
-                  Оформить заказ
+                  Перейти к оформлению
                 </button>
               </div>
             </div>

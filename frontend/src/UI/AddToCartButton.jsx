@@ -8,7 +8,7 @@ import { typography, effects } from '../styles/designSystem';
 const SIZE_VARIANTS = {
   sm: {
     button: "h-8 px-2 md:px-3 min-w-[100px]",
-    controls: "h-8 min-w-[100px]",
+    controls: "h-8 min-w-[104px] md:min-w-[116px]",
     icon: "w-4 h-4 xl:w-5 xl:h-5",
     spinner: "h-3 w-3",
     text: typography.fontSize.sm,
@@ -23,11 +23,11 @@ const SIZE_VARIANTS = {
     fontWeight: typography.fontWeight.medium,
   },
   lg: {
-    button: "h-12 px-6 min-w-[180px]",
-    controls: "h-12 min-w-[180px]",
-    icon: "w-7 h-7",
+    button: "h-10 px-6 min-w-[180px]",
+    controls: "h-10 min-w-[180px]",
+    icon: "w-6 h-6",
     spinner: "h-5 w-5",
-    text: typography.fontSize.base,
+    text: typography.fontSize.md,
     fontWeight: typography.fontWeight.normal
   },
 };

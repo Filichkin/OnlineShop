@@ -134,7 +134,7 @@ function ProductDetails() {
 
   return (
     <div className="px-6 py-10 max-w-7xl mx-auto">
-      <h1 className={`mb-8 ${typography.fontSize['4xl']} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary}`}>{product.name}</h1>
+      <h1 className={`mb-8 ${typography.fontSize['2xl']} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary}`}>{product.name}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Левая колонка - Изображения */}
@@ -176,7 +176,7 @@ function ProductDetails() {
           <div className={cardStyles.base}>
             <div className="flex items-start justify-between gap-6">
               <div className="flex-grow">
-                <h2 className={`${typography.fontSize['xl']} ${typography.fontWeight.semibold} ${typography.fontFamily} ${typography.textColor.primary} mb-4`}>
+                <h2 className={`${typography.fontSize['lg']} ${typography.fontWeight.semibold} ${typography.fontFamily} ${typography.textColor.primary} mb-4`}>
                   {product.name}
                 </h2>
 
@@ -201,21 +201,21 @@ function ProductDetails() {
 
               {/* Блок цены и кнопок справа */}
               <div className="flex flex-col items-end gap-4 min-w-[250px]">
-                <div className="text-right">
-                  <p className={`${typography.fontSize.sm} ${typography.fontFamily} ${typography.textColor.tertiary} mb-1`}>Цена:</p>
-                  <p className={`${typography.fontSize['4xl']} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary}`}>
+                <div className="text-left">
+                  <p className={`${typography.fontSize.sm} ${typography.fontFamily} ${typography.textColor.tertiary} mb-2`}>Цена:</p>
+                  <p className={`${typography.fontSize['2xl']} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary}`}>
                     {formatPrice(product.price)}
                   </p>
                 </div>
 
                 {/* Кнопки добавления в корзину и избранное */}
-                <div className="w-full flex gap-2">
+                <div className="w-full flex gap-6">
                   <AddToCartButton
                     product={product}
                     onAddToCart={handleAddToCart}
                     size="lg"
                   />
-                  <FavoriteButton product={product} className="w-16 h-12" iconSize="w-7 h-7"/>
+                  <FavoriteButton product={product} className="w-16 h-10" iconSize="w-7 h-7"/>
                 </div>
               </div>
             </div>
@@ -225,18 +225,18 @@ function ProductDetails() {
           {product.description && (
             <div className={cardStyles.base}>
               <h3 className={`${typography.fontSize.md} ${typography.fontWeight.medium} ${typography.fontFamily} ${typography.textColor.primary} mb-3`}>Описание</h3>
-              <p className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.normal} ${typography.textColor.dark} ${typography.lineHeight.relaxed}`}>{product.description}</p>
+              <p className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.normal} text-gray-500 ${typography.lineHeight.relaxed}`}>{product.description}</p>
             </div>
           )}
 
           {/* Характеристики */}
           <div className={cardStyles.base}>
-            <h3 className={`${typography.fontSize.xl} ${typography.fontWeight.semibold} ${typography.fontFamily} ${typography.textColor.primary} mb-4`}>Основные характеристики</h3>
+            <h3 className={`${typography.fontSize.lg} ${typography.fontWeight.semibold} ${typography.fontFamily} ${typography.textColor.primary} mb-4`}>Основные характеристики</h3>
             <div className="space-y-2">
               {product.part_number && (
                 <div className="flex justify-between py-2 border-b border-gray-200">
                   <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.medium} ${typography.textColor.secondary}`}>Артикул</span>
-                  <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.semibold} ${typography.textColor.primary}`}>{product.part_number}</span>
+                  <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.semibold} text-gray-600`}>{product.part_number}</span>
                 </div>
               )}
               {product.brand && (
@@ -247,12 +247,12 @@ function ProductDetails() {
               )}
               <div className="flex justify-between py-2 border-b border-gray-200">
                 <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.medium} ${typography.textColor.secondary}`}>Цена</span>
-                <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.semibold} ${typography.textColor.primary}`}>{formatPrice(product.price)}</span>
+                <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.semibold} text-gray-600`}>{formatPrice(product.price)}</span>
               </div>
               {product.category && (
                 <div className="flex justify-between py-2 border-b border-gray-200">
                   <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.medium} ${typography.textColor.secondary}`}>Категория</span>
-                  <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.semibold} ${typography.textColor.primary}`}>{product.category.name}</span>
+                  <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.semibold} text-gray-600`}>{product.category.name}</span>
                 </div>
               )}
             </div>

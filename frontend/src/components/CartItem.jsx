@@ -41,11 +41,11 @@ const CartItem = memo(({ item, onQuantityChange, onRemove, isUpdating }) => {
         <div className="flex-grow min-w-0">
           {/* Название и управление количеством на одной линии */}
           <div className="flex items-center justify-between gap-4 mb-2">
-            <h3 className="text-lg font-medium text-gray-900 truncate">
+            <h3 className="text-lg font-medium text-gray-900 truncate flex-shrink min-w-0">
               {item.product.name}
             </h3>
             {/* Управление количеством */}
-            <div className="flex items-center border border-gray-300 rounded-md flex-shrink-0">
+            <div className="flex items-center border border-gray-300 rounded-md flex-shrink-0 ml-auto">
               <button
                 onClick={() => onQuantityChange(item.product.id, item.quantity - 1)}
                 disabled={item.quantity <= 1 || isUpdating}
@@ -82,10 +82,10 @@ const CartItem = memo(({ item, onQuantityChange, onRemove, isUpdating }) => {
         </div>
 
         {/* Итого и удаление */}
-        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2">
-          <div className="text-right">
+        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 sm:min-w-[105px]">
+          <div className="text-right sm:w-full">
             <p className="text-sm text-gray-500 mb-1">Итого:</p>
-            <p className="text-lg font-bold text-gray-900">
+            <p className="text-lg font-bold text-gray-900 whitespace-nowrap">
               {formatPrice(subtotal)}
             </p>
           </div>
