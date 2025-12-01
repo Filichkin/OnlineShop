@@ -152,7 +152,7 @@ function Category() {
 
   return (
     <div className="py-10">
-      <div className="container px-3 sm:px-3 md:px-6 lg:px-12 xl:px-16 2xl:px-64">
+      <div className="container px-3 sm:px-3 md:px-6 lg:px-12 xl:px-[75px] 2xl:px-[150px]">
         <h1 className={`mb-3 ${typography.fontSize['2xl']} ${typography.fontWeight.semibold} ${typography.fontFamily} text-left ${typography.textColor.dark}`}>{categoryName}</h1>
 
         {/* Контейнер для фильтров и сортировки */}
@@ -229,11 +229,11 @@ function Category() {
             Продукты не найдены
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+          <div className="grid grid-cols-1 gap-[12px] sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-6">
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className={`relative flex flex-col bg-white ${effects.rounded.lg} ${effects.shadow.DEFAULT} hover:shadow-xl ${effects.transition.shadow} overflow-hidden`}
+                className={`relative w-[220px] h-[400px] bg-white ${effects.rounded.lg} ${effects.shadow.DEFAULT} hover:shadow-xl ${effects.transition.shadow} overflow-hidden`}
               >
                 {/* Кнопка избранного в правом верхнем углу */}
                 <div className="absolute top-2 right-2 z-10">

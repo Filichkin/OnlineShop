@@ -24,13 +24,13 @@ function Home() {
 
   return (
     <div className="py-10 bg-[radial-gradient(circle,rgba(255,255,255,1)_0%,rgba(219,234,254,0.25)_50%,rgba(219,234,254,0.4)_100%)]">
-      <div className="container px-3 sm:px-3 md:px-6 lg:px-12 xl:px-16 2xl:px-64">
+      <div className="container px-3 sm:px-3 md:px-6 lg:px-12 xl:px-[75px] 2xl:px-[150px]">
         {sortedCategories.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-xl text-gray-600">Категории не найдены</p>
           </div>
         ) : (
-          <div className="grid grid-cols-auto-fit-cards auto-rows-fr gap-2.5">
+          <div className="grid grid-cols-auto-fit-cards auto-rows-fr gap-[12px]">
             {sortedCategories.map((category) => (
               <CategoryCard key={category.id} category={category} />
             ))}
