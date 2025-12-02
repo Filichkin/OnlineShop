@@ -8,7 +8,6 @@ from .cart import ( # noqa
     CartResponse,
     CartSummary,
 )
-from .category import CategoryCreate, CategoryResponse, CategoryUpdate # noqa
 from .favorite import ( # noqa
     FavoriteItemAddResponse,
     FavoriteItemDeleteResponse,

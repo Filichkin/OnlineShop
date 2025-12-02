@@ -5,8 +5,8 @@ import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import Thanks from "./pages/Thanks";
 import ProtectedRoute from "./components/ProtectedRoute";
-import fetchCategoryLoader from "./loaders/categoryLoader";
-import fetchProductLoader from "./loaders/productsLoader";
+import fetchBrandLoader from "./loaders/brandLoader";
+import fetchBrandProductsLoader from "./loaders/brandProductsLoader";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 const Home = lazy(() => import("./pages/Home"));
@@ -17,7 +17,7 @@ const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
 const OrderDetails = lazy(() => import("./pages/OrderDetails"));
 const Favorites = lazy(() => import("./pages/Favorites"));
 const Profile = lazy(() => import("./pages/Profile"));
-const Category = lazy(() => import("./pages/Category"));
+const Brand = lazy(() => import("./pages/Brand"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
 const router = createBrowserRouter([
@@ -29,7 +29,7 @@ const router = createBrowserRouter([
       {
         index: true,
         element: <Home />,
-        loader: fetchCategoryLoader,
+        loader: fetchBrandLoader,
         errorElement: <ErrorBoundary />,
       },
       { path: "old-home", element: <Navigate to="/" /> },
@@ -43,9 +43,9 @@ const router = createBrowserRouter([
       { path: "profile", element: <Profile /> },
       { path: "thanks", element: <Thanks /> },
       {
-        path: "category/:slug",
-        element: <Category />,
-        loader: fetchProductLoader,
+        path: "brand/:slug",
+        element: <Brand />,
+        loader: fetchBrandProductsLoader,
         errorElement: <ErrorBoundary />,
       },
       { path: "product/:productId", element: <ProductDetails /> },

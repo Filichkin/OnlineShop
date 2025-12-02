@@ -414,30 +414,46 @@ export const brandsAPI = {
       skip: skip.toString(),
       limit: limit.toString(),
     });
-    
+
     // Добавляем is_active только если он не undefined
     if (isActive !== undefined) {
       params.append('is_active', isActive.toString());
     }
-    
+
     const response = await fetch(`${API_BASE_URL}/brands/?${params}`);
     if (!response.ok) throw new Error('Failed to fetch brands');
     return response.json();
   },
 
   // Получить бренд по ID
-  getBrand: async (brandId) => {
-    const response = await fetch(`${API_BASE_URL}/brands/${brandId}`);
+  getBrand: async (brandId, isActive = true) => {
+    const params = new URLSearchParams();
+
+    // Добавляем is_active только если он не undefined
+    if (isActive !== undefined) {
+      params.append('is_active', isActive.toString());
+    }
+
+    const response = await fetch(`${API_BASE_URL}/brands/${brandId}?${params}`);
     if (!response.ok) throw new Error('Failed to fetch brand');
     return response.json();
   },
 
+  // Получить бренд по слагу
+  getBrandBySlug: async (slug, isActive = true) => {
+    const params = new URLSearchParams();
+    if (isActive !== undefined) {
+      params.append('is_active', isActive.toString());
+    }
+    const response = await fetch(`${API_BASE_URL}/brands/slug/${slug}?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch brand by slug');
+    return response.json();
+  },
+
   // Создать бренд
-  createBrand: async (brandData) => {
+  createBrand: async (formData) => {
     const csrfToken = getCsrfToken();
-    const headers = {
-      'Content-Type': 'application/json',
-    };
+    const headers = {};
     if (csrfToken) {
       headers['X-CSRF-Token'] = csrfToken;
     }
@@ -446,18 +462,40 @@ export const brandsAPI = {
       method: 'POST',
       headers,
       credentials: 'include',
-      body: JSON.stringify(brandData),
+      body: formData,
     });
-    if (!response.ok) throw new Error('Failed to create brand');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      let errorMessage = 'Не удалось создать бренд';
+
+      // Обработка ошибок валидации FastAPI (422)
+      if (response.status === 422 && errorData.detail) {
+        if (Array.isArray(errorData.detail)) {
+          const messages = errorData.detail.map(err => {
+            if (err.msg) {
+              return err.msg;
+            }
+            return String(err);
+          });
+          errorMessage = messages.join(', ');
+        } else {
+          errorMessage = errorData.detail;
+        }
+      } else if (errorData.detail) {
+        errorMessage = errorData.detail;
+      }
+
+      const error = new Error(errorMessage);
+      error.status = response.status;
+      throw error;
+    }
     return response.json();
   },
 
   // Обновить бренд
-  updateBrand: async (brandId, brandData) => {
+  updateBrand: async (brandId, formData) => {
     const csrfToken = getCsrfToken();
-    const headers = {
-      'Content-Type': 'application/json',
-    };
+    const headers = {};
     if (csrfToken) {
       headers['X-CSRF-Token'] = csrfToken;
     }
@@ -466,7 +504,7 @@ export const brandsAPI = {
       method: 'PATCH',
       headers,
       credentials: 'include',
-      body: JSON.stringify(brandData),
+      body: formData,
     });
     if (!response.ok) throw new Error('Failed to update brand');
     return response.json();
@@ -503,6 +541,20 @@ export const brandsAPI = {
       credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to restore brand');
+    return response.json();
+  },
+
+  // Получить продукты бренда по слагу
+  getBrandProductsBySlug: async (slug, skip = 0, limit = 100, isActive = true) => {
+    const params = new URLSearchParams({
+      skip: skip.toString(),
+      limit: limit.toString(),
+    });
+    if (isActive !== undefined) {
+      params.append('is_active', isActive.toString());
+    }
+    const response = await fetch(`${API_BASE_URL}/brands/slug/${slug}/products/?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch brand products by slug');
     return response.json();
   },
 };

@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field
 
 from app.core.constants import Constants
 from app.schemas.brand import BrandResponse
-from app.schemas.category import CategoryResponse
 from app.schemas.media import MediaResponse
 
 
@@ -31,11 +30,7 @@ class ProductBase(BaseModel):
         description='Цена должна быть больше 0'
         )
     is_active: bool = Field(default=True)
-    category_id: int = Field(..., gt=Constants.CATEGORY_ID_MIN_VALUE)
-    brand_id: Optional[int] = Field(
-        None,
-        gt=Constants.BRAND_ID_MIN_VALUE
-    )
+    brand_id: int = Field(..., gt=Constants.BRAND_ID_MIN_VALUE)
 
 
 class ProductCreate(BaseModel):
@@ -46,7 +41,6 @@ class ProductCreate(BaseModel):
     - name: str (обязательно)
     - part_number: str (обязательно)
     - price: float (обязательно, > 0)
-    - category_id: int (обязательно)
     - brand_id: int (обязательно)
     - description: str (опционально)
     - images: List[file] (обязательно, минимум 1 файл)
@@ -55,8 +49,7 @@ class ProductCreate(BaseModel):
     name: str = Field(..., description='Название продукта')
     part_number: str = Field(..., description='Артикул продукта')
     price: float = Field(..., gt=0, description='Цена')
-    category_id: int = Field(..., description='ID категории')
-    brand_id: Optional[int] = Field(None, description='ID бренда')
+    brand_id: int = Field(..., description='ID бренда')
     description: Optional[str] = Field(None, description='Описание')
     # images: List[UploadFile] - не указываем, т.к. Pydantic не поддерживает
 
@@ -80,10 +73,6 @@ class ProductUpdate(BaseModel):
         )
     price: Optional[float] = Field(None, gt=Constants.PRICE_MIN_VALUE)
     is_active: Optional[bool] = None
-    category_id: Optional[int] = Field(
-        None,
-        gt=Constants.CATEGORY_ID_MIN_VALUE
-        )
     brand_id: Optional[int] = Field(
         None,
         gt=Constants.BRAND_ID_MIN_VALUE
@@ -95,7 +84,6 @@ class ProductUpdate(BaseModel):
                 'name': 'iPhone 15 Pro',
                 'part_number': 'APL-IP15-PRO-256',
                 'price': 99999.00,
-                'category_id': 1,
                 'brand_id': 1,
                 'description': 'Новейший смартфон от Apple'
             }
@@ -111,11 +99,10 @@ class ProductResponse(ProductBase):
 
 
 class ProductDetailResponse(ProductResponse):
-    """Детальная схема с изображениями, категорией и брендом"""
+    """Детальная схема с изображениями и брендом"""
     images: List[MediaResponse] = []
     main_image: Optional[str] = None
-    category: CategoryResponse
-    brand: Optional[BrandResponse] = None
+    brand: BrandResponse
 
     class Config:
         from_attributes = True
@@ -124,8 +111,7 @@ class ProductDetailResponse(ProductResponse):
 class ProductListResponse(ProductResponse):
     """Схема для списка продуктов (с главным изображением)"""
     main_image: Optional[str] = None
-    category: CategoryResponse
-    brand: Optional[BrandResponse] = None
+    brand: BrandResponse
 
     class Config:
         from_attributes = True
@@ -145,9 +131,7 @@ class ProductListResponse(ProductResponse):
             part_number=product.part_number,
             description=product.description,
             price=product.price,
-            category_id=product.category_id,
             brand_id=product.brand_id,
             main_image=main_img,
-            category=product.category,
             brand=product.brand
         )

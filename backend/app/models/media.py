@@ -17,8 +17,7 @@ from app.core.db import Base
 
 class MediaType(str, enum.Enum):
     PRODUCT = 'product'
-    CATEGORY = 'category'
-    ICON = 'icon'
+    BRAND = 'brand'
 
 
 class Media(Base):
@@ -36,32 +35,36 @@ class Media(Base):
         Integer, default=Constants.MEDIA_ORDER_DEFAULT
     )
     is_main: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Product relationship (optional)
     product_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey('products.id', ondelete='CASCADE'),
         nullable=True,
-        index=True  # Add index for foreign key queries
-    )
-    category_id: Mapped[int | None] = mapped_column(
-        Integer,
-        ForeignKey('categories.id', ondelete='CASCADE'),
-        nullable=True,
-        index=True  # Add index for foreign key queries
+        index=True
     )
     product = relationship(
         'Product',
         back_populates='images'
     )
-    category = relationship(
-        'Category',
-        back_populates='image',
-        uselist=False
+
+    # Brand relationship (optional)
+    brand_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey('brands.id', ondelete='CASCADE'),
+        nullable=True,
+        index=True
+    )
+    brand = relationship(
+        'Brand',
+        back_populates='images'
     )
 
     def __repr__(self):
         return (
-            f'Media(id={self.id}, product_id={self.product_id}, '
-            f'category_id={self.category_id}, '
+            f'Media(id={self.id}, '
+            f'product_id={self.product_id}, '
+            f'brand_id={self.brand_id}, '
             f'url={self.url}, '
             f'media_type={self.media_type}, '
             f'order={self.order}, '

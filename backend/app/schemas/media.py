@@ -28,7 +28,7 @@ class MediaBase(BaseModel):
 class MediaCreate(MediaBase):
     """Схема для создания Media (обычно не используется напрямую)"""
     product_id: int | None = None
-    category_id: int | None = None
+    brand_id: int | None = None
 
     class Config:
         json_schema_extra = {
@@ -38,7 +38,7 @@ class MediaCreate(MediaBase):
                 'order': 0,
                 'is_main': True,
                 'product_id': 5,
-                'category_id': None
+                'brand_id': None
             }
         }
 
@@ -46,7 +46,7 @@ class MediaCreate(MediaBase):
 class MediaResponse(MediaBase):
     id: UUID
     product_id: int | None = None
-    category_id: int | None = None
+    brand_id: int | None = None
 
     class Config:
         from_attributes = True
@@ -58,7 +58,7 @@ class MediaResponse(MediaBase):
                 'order': 0,
                 'is_main': True,
                 'product_id': 5,
-                'category_id': None
+                'brand_id': None
             }
         }
 

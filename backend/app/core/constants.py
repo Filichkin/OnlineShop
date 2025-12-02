@@ -81,6 +81,7 @@ class Constants:
     UPLOAD_DIR = Path('media')
     PRODUCTS_DIR = UPLOAD_DIR / 'products'
     CATEGORIES_DIR = UPLOAD_DIR / 'categories'
+    BRANDS_DIR = UPLOAD_DIR / 'brands'
     ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
 
     # Rate Limiting

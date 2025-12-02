@@ -26,7 +26,6 @@ class CRUDProduct(CRUDBase):
         """Получить продукт по ID с опциональной фильтрацией по статусу"""
         query = select(Product).options(
             selectinload(Product.images),
-            selectinload(Product.category),
             selectinload(Product.brand)
         ).where(Product.id == product_id)
 
@@ -80,9 +79,9 @@ class CRUDProduct(CRUDBase):
         """Получить список активных продуктов (устаревший метод)"""
         return await self.get_multi(session, skip, limit, is_active=True)
 
-    async def get_by_category(
+    async def get_by_brand(
         self,
-        category_id: int,
+        brand_id: int,
         session: AsyncSession,
         skip: int = Constants.DEFAULT_SKIP,
         limit: int = Constants.DEFAULT_LIMIT,
@@ -90,18 +89,18 @@ class CRUDProduct(CRUDBase):
         sort_by: str = 'price_asc',
     ):
         """
-        Получить продукты по категории
+        Получить продукты по бренду
         с опциональной фильтрацией по статусу и сортировкой
 
         Args:
-            category_id: ID категории
+            brand_id: ID бренда
             session: Сессия БД
             skip: Количество элементов для пропуска
             limit: Количество элементов для возврата
             is_active: Фильтр по статусу активности
             sort_by: Тип сортировки (price_asc, price_desc, name_asc, name_desc)
         """
-        query = select(Product).where(Product.category_id == category_id)
+        query = select(Product).where(Product.brand_id == brand_id)
 
         if is_active is not None:
             query = query.where(Product.is_active.is_(is_active))
