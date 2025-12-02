@@ -30,9 +30,35 @@ function Home() {
             <p className="text-xl text-gray-600">Бренды не найдены</p>
           </div>
         ) : (
-          <div className="grid grid-cols-auto-fit-cards auto-rows-fr gap-[12px]">
+          <div
+            className="
+              grid
+              grid-cols-[0.65fr,1fr,1fr,1fr]
+              auto-rows-[minmax(140px,auto)]
+              gap-4
+            "
+          >
+            {/* ЛЕВАЯ КАРТОЧКА — КАТАЛОГ */}
+            <div className="row-span-2">
+              <button
+                className="
+                  h-full w-full
+                  bg-white rounded-3xl shadow
+                  flex items-center justify-center
+                  hover:shadow-lg transition
+                  text-xl font-semibold
+                "
+                onClick={() => console.log('Получение всех продуктов из БД')}
+              >
+                Каталог
+              </button>
+            </div>
+  
+            {/* ПРАВЫЕ 3 КОЛОНКИ — БРЕНДЫ */}
             {sortedBrands.map((brand) => (
-              <BrandCard key={brand.id} brand={brand} />
+              <div key={brand.id} className="h-full">
+                <BrandCard brand={brand} />
+              </div>
             ))}
           </div>
         )}

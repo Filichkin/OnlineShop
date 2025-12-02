@@ -21,7 +21,7 @@ function BrandCard({ brand }) {
           <div className={`w-full aspect-[4/3] ${effects.rounded.DEFAULT} overflow-hidden`}>
             {brand.image ? (
               <img
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 src={getImageUrl(brand.image)}
                 alt={`${brand.name} brand`}
               />
