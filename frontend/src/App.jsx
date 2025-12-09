@@ -48,14 +48,6 @@ const router = createBrowserRouter([
       { path: "catalog/:productId", element: <ProductDetails /> },
       // Старый роут продукта (для совместимости)
       { path: "product/:productId", element: <ProductDetails /> },
-      // Страница бренда с продуктами (должна быть последней чтобы не перехватывать другие роуты)
-      { path: ":slug/products/:productId", element: <ProductDetails /> },
-      {
-        path: ":slug",
-        element: <Brand />,
-        loader: fetchBrandProductsLoader,
-        errorElement: <ErrorBoundary />,
-      },
       {
         path: "admin",
         element: (
@@ -63,6 +55,14 @@ const router = createBrowserRouter([
             <AdminPanel />
           </ProtectedRoute>
         ),
+      },
+      // Страница бренда с продуктами
+      { path: "brand/:slug/products/:productId", element: <ProductDetails /> },
+      {
+        path: "brand/:slug",
+        element: <Brand />,
+        loader: fetchBrandProductsLoader,
+        errorElement: <ErrorBoundary />,
       },
       { path: "*", element: <NotFound /> },
     ],

@@ -273,8 +273,13 @@ async def create_brand_product(
         # Сохраняем изображения в БД
         saved_images = await media_crud.add_images(media_objects, session)
 
-        # Обновляем продукт с изображениями
-        await session.refresh(db_product)
+        # Перезагружаем продукт с загруженными связями через selectinload
+        db_product = await product_crud.get_by_brand_slug(
+            brand_slug=brand_slug,
+            product_id=db_product.id,
+            session=session,
+            is_active=None
+        )
 
         logger.info(
             f'Продукт создан: brand_slug={brand_slug}, '
@@ -363,7 +368,14 @@ async def update_brand_product(
 
     session.add(db_product)
     await session.commit()
-    await session.refresh(db_product)
+
+    # Перезагружаем продукт с загруженными связями через selectinload
+    db_product = await product_crud.get_by_brand_slug(
+        brand_slug=brand_slug,
+        product_id=product_id,
+        session=session,
+        is_active=None
+    )
 
     logger.info(
         f'Продукт обновлен: brand_slug={brand_slug}, '
@@ -474,6 +486,14 @@ async def restore_brand_product(
 
     # Восстановление
     await product_crud.restore(db_product, session)
+
+    # Перезагружаем продукт с загруженными связями через selectinload
+    db_product = await product_crud.get_by_brand_slug(
+        brand_slug=brand_slug,
+        product_id=product_id,
+        session=session,
+        is_active=None
+    )
 
     logger.info(
         f'Продукт восстановлен: brand_slug={brand_slug}, '

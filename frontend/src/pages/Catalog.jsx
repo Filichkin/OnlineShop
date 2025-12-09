@@ -275,7 +275,7 @@ const Catalog = () => {
                 {/* Бренд */}
                 {product.brand && (
                   <Link
-                    to={`/${product.brand.slug}`}
+                    to={`/brand/${product.brand.slug}`}
                     className="text-xs text-gray-500 hover:text-indigo-600 mb-1 inline-block"
                   >
                     {product.brand.name}

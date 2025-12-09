@@ -177,7 +177,7 @@ function ProductDetails() {
                 {product.brand && (
                   <p className={`${typography.fontSize.sm} ${typography.fontFamily} ${typography.textColor.secondary} mb-2`}>
                     Бренд: <Link
-                      to={`/${product.brand.slug}`}
+                      to={`/brand/${product.brand.slug}`}
                       className={`${typography.fontWeight.medium} text-indigo-600 hover:text-indigo-800`}
                     >
                       {product.brand.name}
@@ -236,7 +236,7 @@ function ProductDetails() {
                 <div className="flex justify-between py-2 border-b border-gray-200">
                   <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.medium} ${typography.textColor.secondary}`}>Бренд</span>
                   <Link
-                    to={`/${product.brand.slug}`}
+                    to={`/brand/${product.brand.slug}`}
                     className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.semibold} text-indigo-600 hover:text-indigo-800`}
                   >
                     {product.brand.name}

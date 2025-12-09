@@ -752,7 +752,7 @@ export const brandsAPI = {
     if (isActive !== undefined) {
       params.append('is_active', isActive.toString());
     }
-    const response = await fetch(`${API_BASE_URL}/brands/slug/${slug}/products/?${params}`);
+    const response = await fetch(`${API_BASE_URL}/brands/${slug}/products/?${params}`);
     if (!response.ok) throw new Error('Failed to fetch brand products by slug');
     return response.json();
   },

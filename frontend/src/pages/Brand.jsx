@@ -153,7 +153,7 @@ function Brand() {
   return (
     <div className="py-10">
       <div className="container px-3 sm:px-3 md:px-6 lg:px-12 xl:px-[75px] 2xl:px-[150px]">
-        <h1 className={`mb-3 ${typography.fontSize['2xl']} ${typography.fontWeight.semibold} ${typography.fontFamily} text-left ${typography.textColor.dark}`}>{brandName}</h1>
+        <h1 className={`mb-3 ${typography.fontSize['2xl']} ${typography.fontWeight.semibold} ${typography.fontFamily} text-left ${typography.textColor.dark}`}>Продукция {brandName}</h1>
 
         {/* Контейнер для фильтров и сортировки */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -233,7 +233,7 @@ function Brand() {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className={`relative w-[220px] h-[400px] bg-white ${effects.rounded.lg} ${effects.shadow.DEFAULT} hover:shadow-xl ${effects.transition.shadow} overflow-hidden`}
+                className={`relative flex flex-col h-full bg-white ${effects.rounded.lg} ${effects.shadow.DEFAULT} hover:shadow-xl ${effects.transition.shadow} overflow-hidden`}
               >
                 {/* Кнопка избранного в правом верхнем углу */}
                 <div className="absolute top-2 right-2 z-10">
@@ -244,24 +244,25 @@ function Brand() {
                 <Link
                   to={`/product/${product.id}`}
                   state={{ brandId }}
-                  className="block aspect-square overflow-hidden mb-4 mt-14 mr-4 ml-4"
+                  className="block aspect-square overflow-hidden mt-14 mx-4 flex-shrink-0"
                 >
                   <img
                     src={getImageUrl(product.main_image)}
                     alt={product.name}
-                    className={`object-contain w-full h-full ${effects.transition.transform} hover:scale-105`}
+                    className={`object-contain w-full h-full pb-2 ${effects.transition.transform} hover:scale-105`}
                   />
                 </Link>
 
                 {/* Информация о товаре */}
-                <div className="flex flex-col flex-grow p-3 border-t border-gray-200">
+                <div className="flex flex-col flex-1 p-3 border-t border-gray-200">
+                  {/* Название - фиксированная высота 2 строки */}
                   <Link
                     to={`/product/${product.id}`}
                     state={{ brandId }}
-                    className={`hover:text-blue-600 ${effects.transition.colors} block`}
+                    className={`hover:text-blue-600 ${effects.transition.colors} block h-[2.5rem] mb-2`}
                   >
                     <h3
-                      className={`${typography.fontSize.base} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary} mb-2`}
+                      className={`${typography.fontSize.base} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary}`}
                       style={{
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
@@ -269,32 +270,27 @@ function Brand() {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         lineHeight: '1.25rem',
-                        maxHeight: '2.5rem',
                         textTransform: 'uppercase'
                       }}>
                       {product.name}
                     </h3>
                   </Link>
 
-                  {/* Артикул */}
-                  {product.part_number && (
-                    <p className={`${typography.fontSize.sm} ${typography.fontWeight.normal} ${typography.fontFamily} ${typography.textColor.tertiary} mb-3`}>
-                      Артикул: {product.part_number}
-                    </p>
-                  )}
+                  {/* Артикул - фиксированная высота */}
+                  <p className={`${typography.fontSize.sm} ${typography.fontWeight.normal} ${typography.fontFamily} ${typography.textColor.tertiary} h-5`}>
+                    {product.part_number ? `Артикул: ${product.part_number}` : '\u00A0'}
+                  </p>
 
-                  {/* Цена и кнопка */}
-                  <div className="mt-auto flex items-center justify-between gap-2">
-                    <span className={`${typography.fontSize.md} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary} whitespace-nowrap flex-shrink`}>
+                  {/* Цена и кнопка - всегда внизу */}
+                  <div className="mt-auto pt-2 flex items-center justify-between gap-2">
+                    <span className={`${typography.fontSize.md} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary} whitespace-nowrap`}>
                       {formatPrice(product.price)}
                     </span>
-                    <div className="flex-shrink-0">
-                      <AddToCartButton
-                        product={product}
-                        onAddToCart={handleAddToCart}
-                        size="sm"
-                      />
-                    </div>
+                    <AddToCartButton
+                      product={product}
+                      onAddToCart={handleAddToCart}
+                      size="sm"
+                    />
                   </div>
                 </div>
               </div>

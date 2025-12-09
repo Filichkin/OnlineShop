@@ -1,6 +1,15 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query, Request, Form, File, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.validators import (
@@ -55,6 +64,40 @@ async def get_brands(
         limit=limit,
         is_active=is_active
     )
+
+
+@router.get(
+    '/slug/{slug}',
+    response_model=BrandResponse,
+    summary='Получить бренд по slug',
+    description='Получить информацию о бренде по slug'
+)
+async def get_brand_by_slug(
+    slug: str,
+    is_active: Optional[bool] = Query(
+        True, description='Фильтр по статусу активности'
+    ),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Получить бренд по slug"""
+    db_brand = await brand_crud.get_by_slug(
+        slug=slug,
+        session=session
+    )
+
+    if not db_brand:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail=f'Бренд с slug "{slug}" не найден'
+        )
+
+    if is_active is not None and db_brand.is_active != is_active:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail=f'Бренд с slug "{slug}" не найден'
+        )
+
+    return db_brand
 
 
 @router.get(
