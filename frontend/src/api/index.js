@@ -289,9 +289,9 @@ export const productsImageAPI = {
   },
 };
 
-// API для продуктов
+// API для продуктов (DEPRECATED - используйте brandProductsAPI или catalogAPI)
 export const productsAPI = {
-  // Получить все продукты
+  // Получить все продукты (DEPRECATED)
   getProducts: async (skip = 0, limit = 10, categoryId = null, search = null, minPrice = null, maxPrice = null, isActive) => {
     const params = new URLSearchParams({
       skip: skip.toString(),
@@ -316,21 +316,21 @@ export const productsAPI = {
     return response.json();
   },
 
-  // Получить продукт по ID
+  // Получить продукт по ID (DEPRECATED)
   getProduct: async (productId, isActive = true) => {
     const params = new URLSearchParams();
-    
+
     // Добавляем is_active только если он не undefined
     if (isActive !== undefined) {
       params.append('is_active', isActive.toString());
     }
-    
+
     const response = await fetch(`${API_BASE_URL}/products/${productId}?${params}`);
     if (!response.ok) throw new Error('Failed to fetch product');
     return response.json();
   },
 
-  // Создать продукт в категории
+  // DEPRECATED: Используйте brandProductsAPI.create
   createProduct: async (categoryId, formData) => {
     const csrfToken = getCsrfToken();
     const headers = {};
@@ -353,7 +353,7 @@ export const productsAPI = {
     return response.json();
   },
 
-  // Обновить продукт
+  // DEPRECATED: Используйте brandProductsAPI.update
   updateProduct: async (categoryId, productId, formData) => {
     const csrfToken = getCsrfToken();
     const headers = {};
@@ -371,7 +371,7 @@ export const productsAPI = {
     return response.json();
   },
 
-  // Удалить продукт
+  // DEPRECATED: Используйте brandProductsAPI.delete
   deleteProduct: async (categoryId, productId) => {
     const csrfToken = getCsrfToken();
     const headers = {};
@@ -388,7 +388,7 @@ export const productsAPI = {
     return response.json();
   },
 
-  // Восстановить продукт
+  // DEPRECATED: Используйте brandProductsAPI.restore
   restoreProduct: async (categoryId, productId) => {
     const csrfToken = getCsrfToken();
     const headers = {};
@@ -402,6 +402,205 @@ export const productsAPI = {
       credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to restore product');
+    return response.json();
+  },
+};
+
+// API для управления продуктами бренда (ADMIN)
+export const brandProductsAPI = {
+  // Получить все продукты бренда
+  getAll: async (brandSlug, params = {}) => {
+    const {
+      skip = 0,
+      limit = 20,
+      is_active = true,
+      sort_by = 'name',
+      sort_order = 'asc'
+    } = params;
+
+    const queryParams = new URLSearchParams({
+      skip: skip.toString(),
+      limit: limit.toString(),
+    });
+
+    if (is_active !== undefined) {
+      queryParams.append('is_active', is_active.toString());
+    }
+    if (sort_by) queryParams.append('sort_by', sort_by);
+    if (sort_order) queryParams.append('sort_order', sort_order);
+
+    const response = await fetch(
+      `${API_BASE_URL}/brands/${brandSlug}/products/?${queryParams}`,
+      { credentials: 'include' }
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to fetch brand products');
+    }
+    return response.json();
+  },
+
+  // Получить один продукт бренда
+  getOne: async (brandSlug, productId) => {
+    const response = await fetch(
+      `${API_BASE_URL}/brands/${brandSlug}/products/${productId}`,
+      { credentials: 'include' }
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to fetch product');
+    }
+    return response.json();
+  },
+
+  // Создать продукт для бренда (ADMIN)
+  create: async (brandSlug, formData) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/brands/${brandSlug}/products/`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: formData,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = new Error(errorData.detail || 'Failed to create product');
+      error.response = { data: errorData };
+      throw error;
+    }
+    return response.json();
+  },
+
+  // Обновить продукт (ADMIN)
+  update: async (brandSlug, productId, formData) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/brands/${brandSlug}/products/${productId}`,
+      {
+        method: 'PATCH',
+        headers,
+        credentials: 'include',
+        body: formData,
+      }
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to update product');
+    }
+    return response.json();
+  },
+
+  // Удалить продукт (мягкое удаление) (ADMIN)
+  delete: async (brandSlug, productId) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/brands/${brandSlug}/products/${productId}`,
+      {
+        method: 'DELETE',
+        headers,
+        credentials: 'include',
+      }
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to delete product');
+    }
+    return response.json();
+  },
+
+  // Восстановить продукт (ADMIN)
+  restore: async (brandSlug, productId) => {
+    const csrfToken = getCsrfToken();
+    const headers = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/brands/${brandSlug}/products/${productId}/restore`,
+      {
+        method: 'PATCH',
+        headers,
+        credentials: 'include',
+      }
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to restore product');
+    }
+    return response.json();
+  },
+};
+
+// API для каталога продуктов (для всех пользователей)
+export const catalogAPI = {
+  // Получить все продукты с фильтрами
+  getAll: async (filters = {}) => {
+    const {
+      skip = 0,
+      limit = 20,
+      brand_slug,
+      search,
+      min_price,
+      max_price,
+      is_active = true,
+      sort_by = 'name',
+      sort_order = 'asc'
+    } = filters;
+
+    const params = new URLSearchParams({
+      skip: skip.toString(),
+      limit: limit.toString(),
+    });
+
+    if (is_active !== undefined) {
+      params.append('is_active', is_active.toString());
+    }
+    if (brand_slug) params.append('brand_slug', brand_slug);
+    if (search) params.append('search', search);
+    if (min_price !== undefined && min_price !== null && min_price !== '') {
+      params.append('min_price', min_price.toString());
+    }
+    if (max_price !== undefined && max_price !== null && max_price !== '') {
+      params.append('max_price', max_price.toString());
+    }
+    if (sort_by) params.append('sort_by', sort_by);
+    if (sort_order) params.append('sort_order', sort_order);
+
+    const response = await fetch(`${API_BASE_URL}/catalog/?${params}`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to fetch catalog products');
+    }
+    return response.json();
+  },
+
+  // Получить один продукт из каталога
+  getOne: async (productId) => {
+    const response = await fetch(`${API_BASE_URL}/catalog/${productId}`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to fetch product');
+    }
     return response.json();
   },
 };

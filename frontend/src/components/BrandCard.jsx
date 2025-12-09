@@ -5,7 +5,7 @@ import { typography, effects } from "../styles/designSystem";
 function BrandCard({ brand }) {
   return (
     <Link
-      to={`/brand/${brand.slug}`}
+      to={`/${brand.slug}`}
       className="group block"
     >
       <div className={`relative bg-white ${effects.rounded['3xl']} ${effects.shadow.sm} hover:shadow-lg hover:shadow-blue-300/60 hover:-translate-y-0.5 ${effects.transition.shadow} transition-transform duration-300 overflow-hidden flex flex-col h-full`}>

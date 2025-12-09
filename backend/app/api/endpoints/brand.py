@@ -103,7 +103,9 @@ async def create_brand(
     is_active_bool = is_active.lower() in ('true', '1', 'yes')
 
     # Обрабатываем пустые строки как None
-    description_value = description if description and description.strip() else None
+    description_value = (
+        description if description and description.strip() else None
+    )
 
     # Сохраняем изображение если файл загружен
     image_url = None
@@ -162,7 +164,9 @@ async def update_brand(
         is_active_bool = is_active.lower() in ('true', '1', 'yes')
 
     # Обрабатываем пустые строки как None
-    description_value = description if description and description.strip() else None
+    description_value = (
+        description if description and description.strip() else None
+    )
 
     # Сохраняем новое изображение если файл загружен
     image_url = None

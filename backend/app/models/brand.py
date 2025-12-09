@@ -14,6 +14,12 @@ class Brand(Base):
     __tablename__ = 'brands'
 
     name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    slug: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        unique=True,
+        index=True
+    )
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     image: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     is_active: Mapped[bool] = mapped_column(
@@ -35,6 +41,7 @@ class Brand(Base):
     def __repr__(self):
         return (
             f'Brand(id={self.id}, name={self.name}, '
+            f'slug={self.slug}, '
             f'description={self.description}, '
             f'image={self.image}, '
             f'is_active={self.is_active})'

@@ -7,13 +7,19 @@ class BrandBase(BaseModel):
     """Базовые поля бренда"""
 
     name: str = Field(..., min_length=1, max_length=100)
+    slug: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=1000)
     image: Optional[str] = Field(None, max_length=500)
     is_active: bool = Field(default=True)
 
 
-class BrandCreate(BrandBase):
-    """Схема для создания бренда"""
+class BrandCreate(BaseModel):
+    """Схема для создания бренда (slug генерируется автоматически)"""
+
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=1000)
+    image: Optional[str] = Field(None, max_length=500)
+    is_active: bool = Field(default=True)
 
     class Config:
         json_schema_extra = {
@@ -26,7 +32,7 @@ class BrandCreate(BrandBase):
 
 
 class BrandUpdate(BaseModel):
-    """Схема для обновления бренда"""
+    """Схема для обновления бренда (slug обновляется автоматически при изменении name)"""
 
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=1000)

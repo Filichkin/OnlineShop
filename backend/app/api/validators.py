@@ -262,3 +262,134 @@ async def validate_brand_update(
         await validate_brand_name_unique(
             name, session, exclude_brand_id=brand_id
         )
+
+
+# ========== Валидаторы для работы с brand slug ==========
+
+
+async def validate_brand_slug_exists(
+    slug: str,
+    session: AsyncSession,
+    must_be_active: bool = True
+) -> None:
+    """
+    Проверяет существование бренда по slug
+
+    Args:
+        slug: Slug бренда
+        session: Сессия базы данных
+        must_be_active: Должен ли бренд быть активным
+
+    Raises:
+        HTTPException: Если бренд не найден или неактивен
+    """
+    brand = await brand_crud.get_by_slug(
+        slug=slug,
+        session=session
+    )
+
+    if not brand:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail=f'Бренд с slug "{slug}" не найден'
+        )
+
+    if must_be_active and not brand.is_active:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail=f'Бренд с slug "{slug}" не найден'
+        )
+
+
+async def validate_product_belongs_to_brand(
+    product_id: int,
+    brand_slug: str,
+    session: AsyncSession
+) -> None:
+    """
+    Проверяет, что продукт принадлежит указанному бренду
+
+    Args:
+        product_id: ID продукта
+        brand_slug: Slug бренда
+        session: Сессия базы данных
+
+    Raises:
+        HTTPException: Если продукт не принадлежит бренду или не найден
+    """
+    from app.crud.product import product_crud
+
+    product = await product_crud.get_by_brand_slug(
+        brand_slug=brand_slug,
+        product_id=product_id,
+        session=session,
+        is_active=None  # Не фильтруем по активности
+    )
+
+    if not product:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail=f'Продукт {product_id} не найден для бренда "{brand_slug}"'
+        )
+
+
+async def validate_product_creation_for_brand(
+    name: str,
+    brand_slug: str,
+    images: List[UploadFile],
+    session: AsyncSession
+) -> None:
+    """
+    Валидация для создания продукта в рамках бренда
+
+    Args:
+        name: Название продукта
+        brand_slug: Slug бренда
+        images: Список изображений
+        session: Сессия базы данных
+
+    Raises:
+        HTTPException: Если валидация не пройдена
+    """
+    # Проверяем существование бренда по slug
+    await validate_brand_slug_exists(brand_slug, session)
+
+    # Проверяем уникальность названия продукта
+    await validate_product_name_unique(name, session)
+
+    # Проверяем количество изображений
+    validate_images_count(images)
+
+
+async def validate_product_update_for_brand(
+    product_id: int,
+    brand_slug: str,
+    name: Optional[str],
+    images: Optional[List[UploadFile]],
+    session: AsyncSession
+) -> None:
+    """
+    Валидация для обновления продукта в рамках бренда
+
+    Args:
+        product_id: ID продукта
+        brand_slug: Slug бренда
+        name: Новое название продукта (если изменяется)
+        images: Новые изображения (если загружаются)
+        session: Сессия базы данных
+
+    Raises:
+        HTTPException: Если валидация не пройдена
+    """
+    # Проверяем, что продукт принадлежит бренду
+    await validate_product_belongs_to_brand(product_id, brand_slug, session)
+
+    # Если название изменяется, проверяем уникальность
+    if name:
+        await validate_product_name_unique(
+            name, session, exclude_product_id=product_id
+        )
+
+    # Если загружаются новые изображения, проверяем их количество
+    if images:
+        validate_images_count(images)

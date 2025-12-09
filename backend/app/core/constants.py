@@ -14,6 +14,8 @@ class Constants:
     PRODUCTS_TAGS = ('products',)
     BRANDS_PREFIX = '/brands'
     BRANDS_TAGS = ('brands',)
+    CATALOG_PREFIX = '/catalog'
+    CATALOG_TAGS = ('catalog',)
     JWT_TOKEN_URL = 'auth/jwt/login'
     JWT_AUTH_BACKEND_NAME = 'jwt'
 
@@ -89,8 +91,10 @@ class Constants:
     RATE_LIMIT_CATEGORY_UPDATE = '20/minute'
     RATE_LIMIT_PRODUCT_CREATE = '5/minute'
     RATE_LIMIT_PRODUCT_UPDATE = '10/minute'
+    RATE_LIMIT_PRODUCT_DELETE = '5/minute'
     RATE_LIMIT_BRAND_CREATE = '10/minute'
     RATE_LIMIT_BRAND_UPDATE = '20/minute'
+    RATE_LIMIT_CATALOG = '30/minute'
 
     # Cart Constants
     CART_PREFIX = '/cart'

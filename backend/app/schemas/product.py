@@ -41,16 +41,18 @@ class ProductCreate(BaseModel):
     - name: str (обязательно)
     - part_number: str (обязательно)
     - price: float (обязательно, > 0)
-    - brand_id: int (обязательно)
     - description: str (опционально)
+    - is_active: bool (опционально, по умолчанию True)
     - images: List[file] (обязательно, минимум 1 файл)
+
+    brand_id берется из URL path параметра brand_slug
     """
 
     name: str = Field(..., description='Название продукта')
     part_number: str = Field(..., description='Артикул продукта')
     price: float = Field(..., gt=0, description='Цена')
-    brand_id: int = Field(..., description='ID бренда')
     description: Optional[str] = Field(None, description='Описание')
+    is_active: bool = Field(default=True, description='Активность продукта')
     # images: List[UploadFile] - не указываем, т.к. Pydantic не поддерживает
 
 
@@ -135,3 +137,51 @@ class ProductListResponse(ProductResponse):
             main_image=main_img,
             brand=product.brand
         )
+
+
+class CatalogFilters(BaseModel):
+    """Фильтры для каталога продуктов"""
+
+    brand_slug: Optional[str] = Field(None, description='Фильтр по slug бренда')
+    search: Optional[str] = Field(
+        None,
+        max_length=Constants.SEARCH_STRING_MAX_LENGTH,
+        description='Поиск по названию, артикулу, описанию'
+    )
+    min_price: Optional[float] = Field(
+        None,
+        ge=Constants.PRICE_MIN_VALUE,
+        le=Constants.PRICE_MAX_VALUE,
+        description='Минимальная цена'
+    )
+    max_price: Optional[float] = Field(
+        None,
+        ge=Constants.PRICE_MIN_VALUE,
+        le=Constants.PRICE_MAX_VALUE,
+        description='Максимальная цена'
+    )
+    is_active: Optional[bool] = Field(
+        True,
+        description='Фильтр по статусу активности (по умолчанию только активные)'
+    )
+    sort_by: str = Field(
+        'created_at',
+        description='Поле для сортировки (name, price, created_at)'
+    )
+    sort_order: str = Field(
+        'desc',
+        description='Порядок сортировки (asc, desc)'
+    )
+
+    class Config:
+        json_schema_extra = {
+            'example': {
+                'brand_slug': 'apple',
+                'search': 'iPhone',
+                'min_price': 10000,
+                'max_price': 150000,
+                'is_active': True,
+                'sort_by': 'price',
+                'sort_order': 'asc'
+            }
+        }

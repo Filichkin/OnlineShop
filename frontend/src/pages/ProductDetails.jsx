@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
-import { categoriesAPI, productsAPI } from "../api";
+import { useLocation, useParams, Link } from "react-router-dom";
+import { catalogAPI } from "../api";
 import AddToCartButton from "../UI/AddToCartButton";
 import FavoriteButton from "../UI/FavoriteButton";
 import ErrorBoundary from "../components/ErrorBoundary";
@@ -15,8 +15,6 @@ function ProductDetails() {
   const [error, setError] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
 
-  const categoryId = location.state?.categoryId;
-
   useEffect(() => {
     // AbortController для отмены запроса при размонтировании или изменении параметров
     const abortController = new AbortController();
@@ -27,18 +25,8 @@ function ProductDetails() {
         setLoading(true);
         setError(null);
 
-        let productData;
-
-        // Если categoryId передан, используем метод категории, иначе используем прямой метод получения товара
-        if (categoryId) {
-          // Передаем signal в API запрос для возможности отмены
-          productData = await categoriesAPI.getCategoryProduct(categoryId, productId, {
-            signal: abortController.signal
-          });
-        } else {
-          // Получаем товар напрямую по ID без categoryId
-          productData = await productsAPI.getProduct(productId, true);
-        }
+        // Используем новый API каталога для получения продукта
+        const productData = await catalogAPI.getOne(productId);
 
         // Проверяем, что компонент все еще смонтирован перед обновлением state
         if (!isComponentMounted) {
@@ -91,7 +79,7 @@ function ProductDetails() {
       isComponentMounted = false;
       abortController.abort();
     };
-  }, [categoryId, productId]);
+  }, [productId]);
 
   function handleAddToCart(product) {
     console.log('Добавление товара в корзину:', product);
@@ -188,7 +176,12 @@ function ProductDetails() {
 
                 {product.brand && (
                   <p className={`${typography.fontSize.sm} ${typography.fontFamily} ${typography.textColor.secondary} mb-2`}>
-                    Бренд: <span className={typography.fontWeight.medium}>{product.brand.name}</span>
+                    Бренд: <Link
+                      to={`/${product.brand.slug}`}
+                      className={`${typography.fontWeight.medium} text-indigo-600 hover:text-indigo-800`}
+                    >
+                      {product.brand.name}
+                    </Link>
                   </p>
                 )}
 
@@ -242,7 +235,12 @@ function ProductDetails() {
               {product.brand && (
                 <div className="flex justify-between py-2 border-b border-gray-200">
                   <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.medium} ${typography.textColor.secondary}`}>Бренд</span>
-                  <span className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.semibold} ${typography.textColor.primary}`}>{product.brand.name}</span>
+                  <Link
+                    to={`/${product.brand.slug}`}
+                    className={`${typography.fontFamily} ${typography.fontSize.base} ${typography.fontWeight.semibold} text-indigo-600 hover:text-indigo-800`}
+                  >
+                    {product.brand.name}
+                  </Link>
                 </div>
               )}
               <div className="flex justify-between py-2 border-b border-gray-200">

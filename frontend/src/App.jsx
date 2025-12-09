@@ -20,6 +20,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const Brand = lazy(() => import("./pages/Brand"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const Catalog = lazy(() => import("./pages/Catalog"));
 const router = createBrowserRouter([
   {
     path: "/",
@@ -42,13 +43,19 @@ const router = createBrowserRouter([
       { path: "favorites", element: <Favorites /> },
       { path: "profile", element: <Profile /> },
       { path: "thanks", element: <Thanks /> },
+      // Каталог
+      { path: "catalog", element: <Catalog /> },
+      { path: "catalog/:productId", element: <ProductDetails /> },
+      // Старый роут продукта (для совместимости)
+      { path: "product/:productId", element: <ProductDetails /> },
+      // Страница бренда с продуктами (должна быть последней чтобы не перехватывать другие роуты)
+      { path: ":slug/products/:productId", element: <ProductDetails /> },
       {
-        path: "brand/:slug",
+        path: ":slug",
         element: <Brand />,
         loader: fetchBrandProductsLoader,
         errorElement: <ErrorBoundary />,
       },
-      { path: "product/:productId", element: <ProductDetails /> },
       {
         path: "admin",
         element: (
