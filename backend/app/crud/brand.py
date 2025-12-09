@@ -1,4 +1,5 @@
 from typing import Optional
+import re
 
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
@@ -16,6 +17,27 @@ class CRUDBrand(CRUDBase):
     def __init__(self):
         super().__init__(Brand)
 
+    @staticmethod
+    def generate_slug(name: str) -> str:
+        """
+        Генерация slug из названия бренда
+
+        Args:
+            name: Название бренда
+
+        Returns:
+            str: Сгенерированный slug (lowercase, только буквы/цифры/дефисы)
+        """
+        # Преобразуем в нижний регистр
+        slug = name.lower()
+        # Убираем все, кроме букв, цифр, пробелов и дефисов
+        slug = re.sub(r'[^\w\s-]', '', slug)
+        # Заменяем пробелы и множественные дефисы на один дефис
+        slug = re.sub(r'[-\s]+', '-', slug)
+        # Убираем дефисы в начале и конце
+        slug = slug.strip('-')
+        return slug
+
     async def get_by_name(
         self,
         name: str,
@@ -24,6 +46,17 @@ class CRUDBrand(CRUDBase):
         """Получить бренд по имени"""
         result = await session.execute(
             select(Brand).where(Brand.name == name)
+        )
+        return result.scalars().first()
+
+    async def get_by_slug(
+        self,
+        slug: str,
+        session: AsyncSession,
+    ) -> Optional[Brand]:
+        """Получить бренд по slug"""
+        result = await session.execute(
+            select(Brand).where(Brand.slug == slug)
         )
         return result.scalars().first()
 

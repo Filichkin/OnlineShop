@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { brandsAPI } from '../../api';
+import { getImageUrl } from '../../utils';
 
 const BrandManager = () => {
   const [brands, setBrands] = useState([]);
@@ -10,6 +11,8 @@ const BrandManager = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [formData, setFormData] = useState({
     name: '',
+    description: '',
+    image: null,
     is_active: true,
   });
 
@@ -45,20 +48,35 @@ const BrandManager = () => {
     }));
   };
 
+  const handleFileChange = (e) => {
+    setFormData(prev => ({
+      ...prev,
+      image: e.target.files[0]
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    
+
+    const formDataToSend = new FormData();
+    formDataToSend.append('name', formData.name);
+    formDataToSend.append('description', formData.description);
+    formDataToSend.append('is_active', formData.is_active.toString());
+    if (formData.image) {
+      formDataToSend.append('image', formData.image);
+    }
+
     try {
       if (editingBrand) {
-        await brandsAPI.updateBrand(editingBrand.id, formData);
+        await brandsAPI.updateBrand(editingBrand.id, formDataToSend);
       } else {
-        await brandsAPI.createBrand(formData);
+        await brandsAPI.createBrand(formDataToSend);
       }
-      
+
       setShowModal(false);
       setEditingBrand(null);
-      setFormData({ name: '', is_active: true });
+      setFormData({ name: '', description: '', image: null, is_active: true });
       loadBrands();
     } catch (err) {
       setError(err.message);
@@ -69,6 +87,8 @@ const BrandManager = () => {
     setEditingBrand(brand);
     setFormData({
       name: brand.name,
+      description: brand.description || '',
+      image: null,
       is_active: brand.is_active,
     });
     setShowModal(true);
@@ -86,7 +106,7 @@ const BrandManager = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingBrand(null);
-    setFormData({ name: '', is_active: true });
+    setFormData({ name: '', description: '', image: null, is_active: true });
     setError(null);
   };
 
@@ -155,10 +175,13 @@ const BrandManager = () => {
             <thead className='bg-gray-50'>
               <tr>
                 <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                  ID
+                  Изображение
                 </th>
                 <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                   Название
+                </th>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                  Описание
                 </th>
                 <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                   Статус
@@ -173,17 +196,38 @@ const BrandManager = () => {
                 brands.map((brand) => (
                   <tr key={brand.id} className='hover:bg-gray-50'>
                     <td className='px-6 py-4 whitespace-nowrap'>
-                      <div className='text-sm text-gray-900'>{brand.id}</div>
+                      {brand.image ? (
+                        <img
+                          src={getImageUrl(brand.image)}
+                          alt={`${brand.name} brand image`}
+                          className='h-12 w-12 rounded-lg object-cover'
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className='h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center'
+                        style={{ display: brand.image ? 'none' : 'flex' }}
+                      >
+                        <span className='text-gray-400 text-xs'>Нет фото</span>
+                      </div>
                     </td>
                     <td className='px-6 py-4 whitespace-nowrap'>
                       <div className='text-sm font-medium text-gray-900'>
                         {brand.name}
                       </div>
                     </td>
+                    <td className='px-6 py-4'>
+                      <div className='text-sm text-gray-900 max-w-xs truncate'>
+                        {brand.description || 'Нет описания'}
+                      </div>
+                    </td>
                     <td className='px-6 py-4 whitespace-nowrap'>
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        brand.is_active 
-                          ? 'bg-green-100 text-green-800' 
+                        brand.is_active
+                          ? 'bg-green-100 text-green-800'
                           : 'bg-red-100 text-red-800'
                       }`}>
                         {brand.is_active ? 'Активен' : 'Неактивен'}
@@ -209,7 +253,7 @@ const BrandManager = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan='4' className='px-6 py-4 text-center text-gray-500'>
+                  <td colSpan='5' className='px-6 py-4 text-center text-gray-500'>
                     Бренды не найдены
                   </td>
                 </tr>
@@ -253,6 +297,46 @@ const BrandManager = () => {
                     required
                     className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
                   />
+                </div>
+
+                <div className='mb-4'>
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>
+                    Описание
+                  </label>
+                  <textarea
+                    name='description'
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
+                  />
+                </div>
+
+                <div className='mb-4'>
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>
+                    Изображение
+                  </label>
+                  <input
+                    type='file'
+                    accept='image/*'
+                    onChange={handleFileChange}
+                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
+                  />
+                  {editingBrand && formData.image && (
+                    <p className='mt-1 text-xs text-green-600'>
+                      Новое изображение выбрано
+                    </p>
+                  )}
+                  {editingBrand && !formData.image && editingBrand.image && (
+                    <div className='mt-2'>
+                      <img
+                        src={getImageUrl(editingBrand.image)}
+                        alt='Текущее изображение'
+                        className='h-20 w-20 rounded-lg object-cover'
+                      />
+                      <p className='mt-1 text-xs text-gray-500'>Текущее изображение</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className='mb-4'>

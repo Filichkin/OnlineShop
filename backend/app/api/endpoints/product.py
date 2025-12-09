@@ -12,7 +12,6 @@ from app.crud.media import media_crud
 from app.crud.product import product_crud
 from app.models.brand import Brand
 from app.models.media import Media, MediaType
-from app.models.product import Category
 from app.schemas.media import (
     DeleteImagesRequest,
     DeleteImagesResponse,
@@ -47,8 +46,8 @@ async def get_products(
         le=Constants.MAX_LIMIT,
         description='Количество элементов для возврата'
     ),
-    category_id: Optional[int] = Query(
-        None, description='Фильтр по категории'
+    brand_id: Optional[int] = Query(
+        None, description='Фильтр по бренду'
     ),
     search: Optional[str] = Query(
         None,
@@ -74,7 +73,7 @@ async def get_products(
 ):
     """Получить список продуктов с фильтрацией"""
     logger.debug(
-        f'Запрос списка продуктов: category_id={category_id}, '
+        f'Запрос списка продуктов: brand_id={brand_id}, '
         f'search={search}, min_price={min_price}, max_price={max_price}, '
         f'skip={skip}, limit={limit}, is_active={is_active}'
     )
@@ -91,10 +90,10 @@ async def get_products(
                 detail='min_price cannot be greater than max_price'
             )
 
-    if category_id:
-        logger.debug(f'Загрузка продуктов для категории: {category_id}')
-        products = await product_crud.get_by_category(
-            category_id=category_id,
+    if brand_id:
+        logger.debug(f'Загрузка продуктов для бренда: {brand_id}')
+        products = await product_crud.get_by_brand(
+            brand_id=brand_id,
             session=session,
             skip=skip,
             limit=limit,
@@ -154,28 +153,13 @@ async def get_products(
         for img in main_images.scalars().all()
     }
 
-    # Загружаем категории для всех продуктов одним запросом
-    category_ids = list(set(p.category_id for p in products))
-    categories = await session.execute(
-        select(Category)
-        .where(Category.id.in_(category_ids))
-    )
-    categories_dict = {cat.id: cat for cat in categories.scalars().all()}
-
     # Загружаем бренды для всех продуктов одним запросом
-    # Фильтруем None значения для продуктов без бренда
-    brand_ids = list(set(
-        p.brand_id for p in products if p.brand_id is not None
-    ))
-    brands_dict = {}
-    if brand_ids:
-        brands = await session.execute(
-            select(Brand)
-            .where(Brand.id.in_(brand_ids))
-        )
-        brands_dict = {
-            brand.id: brand for brand in brands.scalars().all()
-        }
+    brand_ids = list(set(p.brand_id for p in products))
+    brands = await session.execute(
+        select(Brand)
+        .where(Brand.id.in_(brand_ids))
+    )
+    brands_dict = {brand.id: brand for brand in brands.scalars().all()}
 
     # Преобразуем в ProductListResponse с главным изображением
     result = [
@@ -186,10 +170,8 @@ async def get_products(
             description=p.description,
             price=p.price,
             is_active=p.is_active,
-            category_id=p.category_id,
             brand_id=p.brand_id,
             main_image=main_images_dict.get(p.id),
-            category=categories_dict.get(p.category_id),
             brand=brands_dict.get(p.brand_id)
         ) for p in products
     ]

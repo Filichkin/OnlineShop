@@ -1,6 +1,15 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.validators import (
@@ -11,6 +20,7 @@ from app.api.validators import (
 from app.core.constants import Constants
 from app.core.db import get_async_session
 from app.core.limiter import limiter
+from app.core.storage import save_image, delete_image_file
 from app.core.user import current_superuser
 from app.crud.brand import brand_crud
 from app.models.user import User
@@ -57,6 +67,40 @@ async def get_brands(
 
 
 @router.get(
+    '/slug/{slug}',
+    response_model=BrandResponse,
+    summary='Получить бренд по slug',
+    description='Получить информацию о бренде по slug'
+)
+async def get_brand_by_slug(
+    slug: str,
+    is_active: Optional[bool] = Query(
+        True, description='Фильтр по статусу активности'
+    ),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Получить бренд по slug"""
+    db_brand = await brand_crud.get_by_slug(
+        slug=slug,
+        session=session
+    )
+
+    if not db_brand:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail=f'Бренд с slug "{slug}" не найден'
+        )
+
+    if is_active is not None and db_brand.is_active != is_active:
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail=f'Бренд с slug "{slug}" не найден'
+        )
+
+    return db_brand
+
+
+@router.get(
     '/{brand_id}',
     response_model=BrandResponse,
     summary='Получить бренд по ID',
@@ -87,13 +131,41 @@ async def get_brand(
 @limiter.limit(Constants.RATE_LIMIT_BRAND_CREATE)
 async def create_brand(
     request: Request,
-    brand_in: BrandCreate,
+    name: str = Form(...),
+    description: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    is_active: str = Form('true'),
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_superuser)
 ):
     """Создать новый бренд"""
     # Валидируем создание бренда
-    await validate_brand_creation(brand_in.name, session)
+    await validate_brand_creation(name, session)
+
+    # Конвертируем is_active из строки в boolean
+    is_active_bool = is_active.lower() in ('true', '1', 'yes')
+
+    # Обрабатываем пустые строки как None
+    description_value = (
+        description if description and description.strip() else None
+    )
+
+    # Сохраняем изображение если файл загружен
+    image_url = None
+    if image and image.filename:
+        image_url = await save_image(
+            file=image,
+            directory=Constants.BRANDS_DIR,
+            prefix='brand'
+        )
+
+    # Создаем объект BrandCreate из данных формы
+    brand_in = BrandCreate(
+        name=name,
+        description=description_value,
+        image=image_url,
+        is_active=is_active_bool
+    )
 
     return await brand_crud.create(
         obj_in=brand_in,
@@ -111,18 +183,54 @@ async def create_brand(
 async def update_brand(
     request: Request,
     brand_id: int,
-    brand_in: BrandUpdate,
+    name: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    is_active: Optional[str] = Form(None),
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_superuser)
 ):
     """Обновить бренд"""
     # Валидируем обновление бренда
-    await validate_brand_update(brand_id, brand_in.name, session)
+    if name is not None:
+        await validate_brand_update(brand_id, name, session)
 
     # Получаем бренд для обновления
     db_brand = await brand_crud.get(
         obj_id=brand_id,
         session=session
+    )
+
+    # Конвертируем is_active из строки в boolean если передан
+    is_active_bool = None
+    if is_active is not None:
+        is_active_bool = is_active.lower() in ('true', '1', 'yes')
+
+    # Обрабатываем пустые строки как None
+    description_value = (
+        description if description and description.strip() else None
+    )
+
+    # Сохраняем новое изображение если файл загружен
+    image_url = None
+    if image and image.filename:
+        # Удаляем старое изображение если оно есть
+        if db_brand.image:
+            await delete_image_file(db_brand.image)
+
+        # Сохраняем новое изображение
+        image_url = await save_image(
+            file=image,
+            directory=Constants.BRANDS_DIR,
+            prefix='brand'
+        )
+
+    # Создаем объект BrandUpdate из данных формы
+    brand_in = BrandUpdate(
+        name=name,
+        description=description_value,
+        image=image_url,
+        is_active=is_active_bool
     )
 
     return await brand_crud.update(

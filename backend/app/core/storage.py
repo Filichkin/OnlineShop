@@ -14,6 +14,7 @@ from app.core.constants import Constants
 
 Constants.PRODUCTS_DIR.mkdir(parents=True, exist_ok=True)
 Constants.CATEGORIES_DIR.mkdir(parents=True, exist_ok=True)
+Constants.BRANDS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def validate_file_size(file: UploadFile) -> None:
@@ -343,8 +344,8 @@ async def save_image(
         await file.close()
 
     # Return relative URL
-    relative_path = file_path.relative_to(Constants.UPLOAD_DIR)
-    return f'{Constants.UPLOAD_DIR}/{relative_path.as_posix()}'
+    relative_path = file_path.relative_to(Path('.'))
+    return relative_path.as_posix()
 
 
 async def save_images(
@@ -401,7 +402,7 @@ async def delete_image_file(url: str) -> None:
 
     Note:
         - File must be within allowed directories
-        (PRODUCTS_DIR or CATEGORIES_DIR)
+        (PRODUCTS_DIR, CATEGORIES_DIR, or BRANDS_DIR)
         - Errors are logged but do not raise exceptions
         - Call this AFTER successful database commit
     """
@@ -426,24 +427,20 @@ async def delete_image_file(url: str) -> None:
         abs_file_path = file_path.resolve()
         abs_products_dir = Constants.PRODUCTS_DIR.resolve()
         abs_categories_dir = Constants.CATEGORIES_DIR.resolve()
+        abs_brands_dir = Constants.BRANDS_DIR.resolve()
 
-        # Check if file is in products or categories directory
-        is_in_products = False
-        is_in_categories = False
+        # Check if file is in products, categories, or brands directory
+        is_in_allowed_dir = False
 
-        try:
-            abs_file_path.relative_to(abs_products_dir)
-            is_in_products = True
-        except ValueError:
-            pass
+        for allowed_dir in [abs_products_dir, abs_categories_dir, abs_brands_dir]:
+            try:
+                abs_file_path.relative_to(allowed_dir)
+                is_in_allowed_dir = True
+                break
+            except ValueError:
+                pass
 
-        try:
-            abs_file_path.relative_to(abs_categories_dir)
-            is_in_categories = True
-        except ValueError:
-            pass
-
-        if not (is_in_products or is_in_categories):
+        if not is_in_allowed_dir:
             logger.warning(
                 f'Попытка удаления файла вне разрешенных директорий: {url}'
             )

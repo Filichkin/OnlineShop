@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  fetchProducts,
-  createProduct,
-  updateProduct,
-  deleteProduct,
+  fetchCatalogProducts,
+  createBrandProduct,
+  updateBrandProduct,
+  deleteBrandProduct,
   clearError
 } from '../../store/slices/productsSlice';
-import { fetchCategories } from '../../store/slices/categoriesSlice';
 import { getImageUrl, formatPrice } from '../../utils';
 import { brandsAPI } from '../../api';
 import ProductImageManager from './ProductImageManager';
@@ -16,17 +15,16 @@ const ProductManager = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [statusFilter, setStatusFilter] = useState('active'); // 'active', 'inactive'
+  const [selectedBrandSlug, setSelectedBrandSlug] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [brands, setBrands] = useState([]);
-  const [selectedProductId, setSelectedProductId] = useState(null); // Для менеджера изображений
+  const [selectedProductId, setSelectedProductId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
     part_number: '',
     description: '',
     price: '',
-    category_id: '',
     brand_id: '',
     is_active: true,
     images: null,
@@ -37,54 +35,49 @@ const ProductManager = () => {
 
   const dispatch = useDispatch();
   const { products, loading, error } = useSelector((state) => state.products);
-  const { categories } = useSelector((state) => state.categories);
 
   const ITEMS_PER_PAGE = 20;
 
-  // Используем useRef для отслеживания предыдущих значений фильтров
-  const prevFiltersRef = useRef({ searchTerm, selectedCategory, statusFilter });
-  const prevFiltersForPageRef = useRef({ searchTerm, selectedCategory, statusFilter });
+  const prevFiltersRef = useRef({ searchTerm, selectedBrandSlug, statusFilter });
+  const prevFiltersForPageRef = useRef({ searchTerm, selectedBrandSlug, statusFilter });
 
+  // Сброс страницы при изменении фильтров
   useEffect(() => {
-    // Проверяем, изменились ли фильтры
-    const filtersChanged = 
+    const filtersChanged =
       prevFiltersRef.current.searchTerm !== searchTerm ||
-      prevFiltersRef.current.selectedCategory !== selectedCategory ||
+      prevFiltersRef.current.selectedBrandSlug !== selectedBrandSlug ||
       prevFiltersRef.current.statusFilter !== statusFilter;
 
-    // Если фильтры изменились, сбрасываем страницу на 1
     if (filtersChanged) {
       setCurrentPage(1);
-      prevFiltersRef.current = { searchTerm, selectedCategory, statusFilter };
+      prevFiltersRef.current = { searchTerm, selectedBrandSlug, statusFilter };
     }
-  }, [searchTerm, selectedCategory, statusFilter]);
+  }, [searchTerm, selectedBrandSlug, statusFilter]);
 
+  // Загрузка продуктов и брендов
   useEffect(() => {
-    // Определяем параметр isActive на основе фильтра статуса
     const isActive = statusFilter === 'inactive' ? false : true;
 
-    // Проверяем, изменились ли фильтры - если да, используем страницу 1
     const filtersChanged =
       prevFiltersForPageRef.current.searchTerm !== searchTerm ||
-      prevFiltersForPageRef.current.selectedCategory !== selectedCategory ||
+      prevFiltersForPageRef.current.selectedBrandSlug !== selectedBrandSlug ||
       prevFiltersForPageRef.current.statusFilter !== statusFilter;
 
-    // Если фильтры изменились, используем страницу 1, иначе текущую страницу
     const pageToUse = filtersChanged ? 1 : currentPage;
     const skip = (pageToUse - 1) * ITEMS_PER_PAGE;
 
-    // Обновляем ref после использования, чтобы в следующем рендере знать, что фильтры уже применены
-    prevFiltersForPageRef.current = { searchTerm, selectedCategory, statusFilter };
+    prevFiltersForPageRef.current = { searchTerm, selectedBrandSlug, statusFilter };
 
-    dispatch(fetchProducts({
+    // Используем новый API для каталога с фильтрами
+    dispatch(fetchCatalogProducts({
       skip,
       limit: ITEMS_PER_PAGE,
-      isActive
+      is_active: isActive,
+      search: searchTerm || undefined,
+      brand_slug: selectedBrandSlug || undefined,
     }));
-    // Загружаем все категории (увеличиваем лимит до 1000 для получения всех категорий)
-    dispatch(fetchCategories({ skip: 0, limit: 1000, isActive: true }));
 
-    // Загружаем бренды
+    // Загружаем бренды для фильтра и селекта
     const loadBrands = async () => {
       try {
         const brandsData = await brandsAPI.getBrands(0, 100, true);
@@ -94,18 +87,14 @@ const ProductManager = () => {
       }
     };
     loadBrands();
-  }, [dispatch, statusFilter, currentPage, searchTerm, selectedCategory]);
+  }, [dispatch, statusFilter, currentPage, searchTerm, selectedBrandSlug]);
 
-  // Focus management for modal
+  // Focus management для модального окна
   useEffect(() => {
     if (showModal && modalRef.current) {
-      // Save the currently focused element
       const previouslyFocusedElement = document.activeElement;
-
-      // Focus the modal
       modalRef.current.focus();
 
-      // Return focus when modal closes
       return () => {
         if (previouslyFocusedElement && previouslyFocusedElement.focus) {
           previouslyFocusedElement.focus();
@@ -114,30 +103,29 @@ const ProductManager = () => {
     }
   }, [showModal]);
 
-  // Memoized filtered products for performance
+  // Фильтрация продуктов
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
-      // Проверяем, что product существует и имеет необходимые свойства
       if (!product || !product.name) {
         return false;
       }
-      
+
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesCategory = !selectedCategory || (product.category_id && product.category_id.toString() === selectedCategory);
-      
-      // Фильтрация по статусу уже происходит на уровне API, но можем добавить дополнительную фильтрацию
+                           (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                           (product.part_number && product.part_number.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      const matchesBrand = !selectedBrandSlug || (product.brand && product.brand.slug === selectedBrandSlug);
+
       let matchesStatus = true;
       if (statusFilter === 'active') {
         matchesStatus = product.is_active === true;
       } else if (statusFilter === 'inactive') {
         matchesStatus = product.is_active === false;
       }
-      // Если statusFilter === 'all', то matchesStatus остается true
-      
-      return matchesSearch && matchesCategory && matchesStatus;
+
+      return matchesSearch && matchesBrand && matchesStatus;
     });
-  }, [products, searchTerm, selectedCategory, statusFilter]);
+  }, [products, searchTerm, selectedBrandSlug, statusFilter]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -156,82 +144,62 @@ const ProductManager = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
+    // Валидация: brand_id обязателен
+    if (!formData.brand_id) {
+      alert('Пожалуйста, выберите бренд. Это обязательное поле.');
+      return;
+    }
+
     const formDataToSend = new FormData();
     formDataToSend.append('name', formData.name);
     formDataToSend.append('part_number', formData.part_number);
     formDataToSend.append('description', formData.description);
     formDataToSend.append('price', formData.price);
-    // Добавляем brand_id только если он выбран (не пустая строка)
-    if (formData.brand_id) {
-      formDataToSend.append('brand_id', formData.brand_id);
-    }
     formDataToSend.append('is_active', formData.is_active.toString());
-    
-    // НЕ добавляем изображения в FormData для редактирования
-    // Они будут обработаны отдельно через новый API
+
+    // Добавляем изображения если есть
+    if (formData.images && formData.images.length > 0) {
+      formData.images.forEach((image) => {
+        formDataToSend.append('images', image);
+      });
+    }
 
     try {
+      // Находим slug бренда по ID
+      const brand = brands.find(b => b.id === parseInt(formData.brand_id));
+      if (!brand) {
+        throw new Error('Выбранный бренд не найден');
+      }
+
       if (editingProduct) {
-        // Обновляем продукт БЕЗ изображений
-        await dispatch(updateProduct({ 
-          categoryId: editingProduct.category_id,
-          productId: editingProduct.id, 
-          formData: formDataToSend 
+        // Обновляем продукт через новый API
+        await dispatch(updateBrandProduct({
+          brandSlug: brand.slug,
+          productId: editingProduct.id,
+          formData: formDataToSend
         })).unwrap();
-        
-        // Если есть новые изображения, добавляем их через новый API
-        if (formData.images && formData.images.length > 0) {
-          try {
-            const imageFormData = new FormData();
-            formData.images.forEach((image) => {
-              imageFormData.append('images', image);
-            });
-            
-            const response = await fetch(
-              `http://localhost:8000/products/${editingProduct.id}/images`,
-              {
-                method: 'POST',
-                body: imageFormData,
-              }
-            );
-            
-            if (!response.ok) {
-              console.warn('Не удалось добавить изображения:', await response.text());
-            }
-          } catch (imageError) {
-            console.warn('Ошибка при добавлении изображений:', imageError);
-          }
-        }
       } else {
-        // Для создания продукта добавляем изображения в FormData
-        if (formData.images && formData.images.length > 0) {
-          formData.images.forEach((image) => {
-            formDataToSend.append('images', image);
-          });
-        }
-        
-        // Добавляем category_id в FormData для создания продукта
-        formDataToSend.append('category_id', formData.category_id);
-        await dispatch(createProduct({ 
-          categoryId: formData.category_id, 
-          formData: formDataToSend 
+        // Создаем продукт через новый API
+        await dispatch(createBrandProduct({
+          brandSlug: brand.slug,
+          formData: formDataToSend
         })).unwrap();
       }
-      
-      setShowModal(false);
-      setEditingProduct(null);
-      setFormData({ 
-        name: '', 
-        part_number: '',
-        description: '', 
-        price: '', 
-        category_id: '',
-        brand_id: '',
-        images: null 
-      });
+
+      handleCloseModal();
+
+      // Перезагружаем список продуктов
+      dispatch(fetchCatalogProducts({
+        skip: (currentPage - 1) * ITEMS_PER_PAGE,
+        limit: ITEMS_PER_PAGE,
+        is_active: statusFilter === 'inactive' ? false : true,
+        search: searchTerm || undefined,
+        brand_slug: selectedBrandSlug || undefined,
+      }));
     } catch (err) {
       // Ошибка уже обработана в slice
+      console.error('Error submitting product:', err);
     }
   };
 
@@ -243,7 +211,6 @@ const ProductManager = () => {
       part_number: product.part_number || '',
       description: product.description || '',
       price: product.price ? product.price.toString() : '0',
-      category_id: product.category_id ? product.category_id.toString() : '',
       brand_id: product.brand_id ? product.brand_id.toString() : '',
       is_active: product.is_active,
       images: null,
@@ -254,31 +221,36 @@ const ProductManager = () => {
   const handleDelete = async (product) => {
     if (window.confirm('Вы уверены, что хотите удалить этот продукт?')) {
       try {
-        await dispatch(deleteProduct({ 
-          categoryId: product.category_id, 
-          productId: product.id 
+        // Находим slug бренда
+        const brand = brands.find(b => b.id === product.brand_id);
+        if (!brand) {
+          alert('Не удалось найти бренд продукта');
+          return;
+        }
+
+        await dispatch(deleteBrandProduct({
+          brandSlug: brand.slug,
+          productId: product.id
         })).unwrap();
-        // Закрываем модальное окно после успешного удаления
+
         handleCloseModal();
       } catch (err) {
-        // Ошибка уже обработана в slice
+        console.error('Error deleting product:', err);
       }
     }
   };
 
-
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingProduct(null);
-    setFormData({ 
-      name: '', 
+    setFormData({
+      name: '',
       part_number: '',
-      description: '', 
-      price: '', 
-      category_id: '',
+      description: '',
+      price: '',
       brand_id: '',
       is_active: true,
-      images: null 
+      images: null
     });
     dispatch(clearError());
   };
@@ -304,29 +276,29 @@ const ProductManager = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Поиск по названию или описанию
+              Поиск по названию, артикулу или описанию
             </label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Введите название или описание..."
+              placeholder="Введите поисковый запрос..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Фильтр по категории
+              Фильтр по бренду
             </label>
             <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              value={selectedBrandSlug}
+              onChange={(e) => setSelectedBrandSlug(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             >
-              <option value="">Все категории</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
+              <option value="">Все бренды</option>
+              {brands.map((brand) => (
+                <option key={brand.id} value={brand.slug}>
+                  {brand.name}
                 </option>
               ))}
             </select>
@@ -352,9 +324,9 @@ const ProductManager = () => {
           <button
             onClick={() => {
               setSearchTerm('');
-              setSelectedCategory('');
+              setSelectedBrandSlug('');
               setStatusFilter('active');
-              setCurrentPage(1); // Сброс страницы при очистке фильтров
+              setCurrentPage(1);
             }}
             className="text-sm text-indigo-600 hover:text-indigo-900"
           >
@@ -408,9 +380,6 @@ const ProductManager = () => {
                   Цена
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Категория
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Статус
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -453,7 +422,7 @@ const ProductManager = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {product.brand?.name || 'Не указан'}
+                      {product.brand?.name || 'Без бренда'}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -462,14 +431,9 @@ const ProductManager = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {product.category?.name || 'Не указана'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      product.is_active 
-                        ? 'bg-green-100 text-green-800' 
+                      product.is_active
+                        ? 'bg-green-100 text-green-800'
                         : 'bg-red-100 text-red-800'
                     }`}>
                       {product.is_active ? 'Активен' : 'Неактивен'}
@@ -487,7 +451,7 @@ const ProductManager = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
                     Продукты не найдены
                   </td>
                 </tr>
@@ -500,7 +464,6 @@ const ProductManager = () => {
       {/* Pagination */}
       {!loading && filteredProducts.length > 0 && (
         <div className="mt-6 flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 rounded-b-md sm:px-6">
-          {/* Mobile version */}
           <div className="flex flex-1 justify-between sm:hidden">
             <button
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
@@ -518,7 +481,6 @@ const ProductManager = () => {
             </button>
           </div>
 
-          {/* Desktop version */}
           <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-gray-700">
@@ -576,17 +538,17 @@ const ProductManager = () => {
               <h3 id="product-modal-title" className="text-lg font-medium text-gray-900 mb-4">
                 {editingProduct ? 'Редактировать продукт' : 'Добавить продукт'}
               </h3>
-              
+
               {error && (
                 <div className="mb-4 rounded-md bg-red-50 p-4">
                   <div className="text-sm text-red-700">{error}</div>
                 </div>
               )}
-              
+
               <form onSubmit={handleSubmit}>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Название
+                    Название <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -600,7 +562,7 @@ const ProductManager = () => {
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Каталожный номер
+                    Каталожный номер <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -627,7 +589,7 @@ const ProductManager = () => {
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Цена
+                    Цена <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -641,52 +603,34 @@ const ProductManager = () => {
                   />
                 </div>
 
-                {!editingProduct && (
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Категория
-                    </label>
-                    <select
-                      name="category_id"
-                      value={formData.category_id}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                      <option value="">Выберите категорию</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Бренд <span className="text-gray-500 font-normal">(необязательно)</span>
+                    Бренд <span className="text-red-500">*</span>
                   </label>
                   <select
                     name="brand_id"
                     value={formData.brand_id}
                     onChange={handleInputChange}
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   >
-                    <option value="">Не выбран</option>
+                    <option value="">Выберите бренд</option>
                     {brands.map((brand) => (
                       <option key={brand.id} value={brand.id}>
                         {brand.name}
                       </option>
                     ))}
                   </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Бренд обязателен для всех продуктов
+                  </p>
                 </div>
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Изображения
                   </label>
-                  
+
                   {editingProduct ? (
                     <div className="space-y-3">
                       <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
@@ -696,7 +640,7 @@ const ProductManager = () => {
                               Управление изображениями продукта
                             </h4>
                             <p className="text-xs text-purple-700 mt-1">
-                              Добавляйте, удаляйте, устанавливайте главное изображение и меняйте порядок
+                              Добавляйте, удаляйте, устанавливайте главное изображение
                             </p>
                           </div>
                           <button
@@ -707,16 +651,11 @@ const ProductManager = () => {
                             }}
                             className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium flex items-center gap-2"
                           >
-                            <span>📸</span>
-                            <span>Управление изображениями</span>
+                            <span>Управление</span>
                           </button>
                         </div>
                       </div>
-                      
-                      <div className="text-xs text-gray-500">
-                        💡 Для быстрого добавления изображений используйте поле ниже
-                      </div>
-                      
+
                       <input
                         type="file"
                         accept="image/*"
@@ -724,9 +663,9 @@ const ProductManager = () => {
                         onChange={handleFileChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                       />
-                      
+
                       <div className="text-xs text-blue-600 mt-1">
-                        ⚠️ Изображения будут добавлены после сохранения продукта
+                        Изображения будут добавлены после сохранения продукта
                       </div>
                     </div>
                   ) : (
@@ -798,7 +737,11 @@ const ProductManager = () => {
           onClose={() => {
             setSelectedProductId(null);
             // Перезагружаем продукты после изменений
-            dispatch(fetchProducts({ isActive: statusFilter === 'all' ? undefined : statusFilter === 'active' }));
+            dispatch(fetchCatalogProducts({
+              is_active: statusFilter === 'all' ? undefined : statusFilter === 'active',
+              search: searchTerm || undefined,
+              brand_slug: selectedBrandSlug || undefined,
+            }));
           }}
         />
       )}

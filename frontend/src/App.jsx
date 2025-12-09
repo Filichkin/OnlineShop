@@ -5,8 +5,8 @@ import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import Thanks from "./pages/Thanks";
 import ProtectedRoute from "./components/ProtectedRoute";
-import fetchCategoryLoader from "./loaders/categoryLoader";
-import fetchProductLoader from "./loaders/productsLoader";
+import fetchBrandLoader from "./loaders/brandLoader";
+import fetchBrandProductsLoader from "./loaders/brandProductsLoader";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 const Home = lazy(() => import("./pages/Home"));
@@ -17,9 +17,10 @@ const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
 const OrderDetails = lazy(() => import("./pages/OrderDetails"));
 const Favorites = lazy(() => import("./pages/Favorites"));
 const Profile = lazy(() => import("./pages/Profile"));
-const Category = lazy(() => import("./pages/Category"));
+const Brand = lazy(() => import("./pages/Brand"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const Catalog = lazy(() => import("./pages/Catalog"));
 const router = createBrowserRouter([
   {
     path: "/",
@@ -29,7 +30,7 @@ const router = createBrowserRouter([
       {
         index: true,
         element: <Home />,
-        loader: fetchCategoryLoader,
+        loader: fetchBrandLoader,
         errorElement: <ErrorBoundary />,
       },
       { path: "old-home", element: <Navigate to="/" /> },
@@ -42,12 +43,10 @@ const router = createBrowserRouter([
       { path: "favorites", element: <Favorites /> },
       { path: "profile", element: <Profile /> },
       { path: "thanks", element: <Thanks /> },
-      {
-        path: "category/:slug",
-        element: <Category />,
-        loader: fetchProductLoader,
-        errorElement: <ErrorBoundary />,
-      },
+      // Каталог
+      { path: "catalog", element: <Catalog /> },
+      { path: "catalog/:productId", element: <ProductDetails /> },
+      // Старый роут продукта (для совместимости)
       { path: "product/:productId", element: <ProductDetails /> },
       {
         path: "admin",
@@ -56,6 +55,14 @@ const router = createBrowserRouter([
             <AdminPanel />
           </ProtectedRoute>
         ),
+      },
+      // Страница бренда с продуктами
+      { path: "brand/:slug/products/:productId", element: <ProductDetails /> },
+      {
+        path: "brand/:slug",
+        element: <Brand />,
+        loader: fetchBrandProductsLoader,
+        errorElement: <ErrorBoundary />,
       },
       { path: "*", element: <NotFound /> },
     ],

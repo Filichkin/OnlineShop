@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout, getCurrentUser } from '../store/slices/authSlice';
-import { fetchCategories } from '../store/slices/categoriesSlice';
 import { fetchProducts } from '../store/slices/productsSlice';
-import CategoryManager from '../components/admin/CategoryManager';
 import ProductManager from '../components/admin/ProductManager';
 import BrandManager from '../components/admin/BrandManager';
 import OrderManager from '../components/admin/OrderManager';
@@ -12,21 +10,19 @@ import UserManager from '../components/admin/UserManager';
 import { adminOrdersAPI, adminUsersAPI } from '../api';
 
 const AdminPanel = () => {
-  const [activeTab, setActiveTab] = useState('categories');
+  const [activeTab, setActiveTab] = useState('products');
   const [ordersStats, setOrdersStats] = useState({ total: 0, pending: 0 });
   const [productsStats, setProductsStats] = useState({ total: 0, active: 0 });
   const [usersStats, setUsersStats] = useState({ total: 0, active: 0 });
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { isAuthenticated, user, token } = useSelector((state) => state.auth);
-  const { categories, loading: categoriesLoading } = useSelector((state) => state.categories);
 
   useEffect(() => {
     // Загружаем данные при входе в админ-панель
     if (token) {
       dispatch(getCurrentUser(token));
     }
-    dispatch(fetchCategories());
 
     // Загружаем статистику продуктов отдельным запросом
     const fetchProductsStats = async () => {
@@ -98,16 +94,6 @@ const AdminPanel = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8">
             <button
-              onClick={() => setActiveTab('categories')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'categories'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Категории
-            </button>
-            <button
               onClick={() => setActiveTab('products')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'products'
@@ -158,27 +144,7 @@ const AdminPanel = () => {
 
       {/* Statistics */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-indigo-500 rounded-md flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Всего категорий</dt>
-                    <dd className="text-lg font-medium text-gray-900">{categories.length}</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white overflow-hidden shadow rounded-lg">
             <div className="p-5">
               <div className="flex items-center">
@@ -264,7 +230,6 @@ const AdminPanel = () => {
       {/* Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {activeTab === 'categories' && <CategoryManager />}
           {activeTab === 'products' && <ProductManager />}
           {activeTab === 'brands' && <BrandManager />}
           {activeTab === 'orders' && <OrderManager />}

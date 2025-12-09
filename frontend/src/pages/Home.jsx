@@ -1,18 +1,18 @@
 import { useLoaderData } from "react-router-dom";
 import { useMemo } from "react";
-import CategoryCard from "../components/CategoryCard";
+import BrandCard from "../components/BrandCard";
 
 function Home() {
-  const categories = useLoaderData();
+  const brands = useLoaderData();
 
-  // Валидация и сортировка категорий
-  const sortedCategories = useMemo(() => {
-    if (!Array.isArray(categories)) {
+  // Валидация и сортировка брендов
+  const sortedBrands = useMemo(() => {
+    if (!Array.isArray(brands)) {
       return [];
     }
 
-    return categories
-      .filter(category => category && category.id && category.name)
+    return brands
+      .filter(brand => brand && brand.id && brand.name)
       .sort((a, b) => {
         // Алфавитная сортировка с учетом локали (кириллица)
         return a.name.localeCompare(b.name, 'ru', {
@@ -20,19 +20,45 @@ function Home() {
           ignorePunctuation: true
         });
       });
-  }, [categories]);
+  }, [brands]);
 
   return (
     <div className="py-10 bg-[radial-gradient(circle,rgba(255,255,255,1)_0%,rgba(219,234,254,0.25)_50%,rgba(219,234,254,0.4)_100%)]">
       <div className="container px-3 sm:px-3 md:px-6 lg:px-12 xl:px-[75px] 2xl:px-[150px]">
-        {sortedCategories.length === 0 ? (
+        {sortedBrands.length === 0 ? (
           <div className="text-center py-10">
-            <p className="text-xl text-gray-600">Категории не найдены</p>
+            <p className="text-xl text-gray-600">Бренды не найдены</p>
           </div>
         ) : (
-          <div className="grid grid-cols-auto-fit-cards auto-rows-fr gap-[12px]">
-            {sortedCategories.map((category) => (
-              <CategoryCard key={category.id} category={category} />
+          <div
+            className="
+              grid
+              grid-cols-[0.65fr,1fr,1fr,1fr]
+              auto-rows-[minmax(140px,auto)]
+              gap-4
+            "
+          >
+            {/* ЛЕВАЯ КАРТОЧКА — КАТАЛОГ */}
+            <div className="row-span-2">
+              <button
+                className="
+                  h-full w-full
+                  bg-white rounded-3xl shadow
+                  flex items-center justify-center
+                  hover:shadow-lg transition
+                  text-xl font-semibold
+                "
+                onClick={() => console.log('Получение всех продуктов из БД')}
+              >
+                Каталог
+              </button>
+            </div>
+  
+            {/* ПРАВЫЕ 3 КОЛОНКИ — БРЕНДЫ */}
+            {sortedBrands.map((brand) => (
+              <div key={brand.id} className="h-full">
+                <BrandCard brand={brand} />
+              </div>
             ))}
           </div>
         )}
