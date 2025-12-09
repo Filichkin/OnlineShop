@@ -153,7 +153,7 @@ function Brand() {
   return (
     <div className="py-10">
       <div className="container px-3 sm:px-3 md:px-6 lg:px-12 xl:px-[75px] 2xl:px-[150px]">
-        <h1 className={`mb-3 ${typography.fontSize['2xl']} ${typography.fontWeight.semibold} ${typography.fontFamily} text-left ${typography.textColor.dark}`}>Продукция {brandName}</h1>
+        <h1 className={`capitalize mb-3 ${typography.fontSize['2xl']} ${typography.fontWeight.semibold} ${typography.fontFamily} text-left ${typography.textColor.dark}`}>Продукция {brandName}</h1>
 
         {/* Контейнер для фильтров и сортировки */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
