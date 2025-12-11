@@ -242,16 +242,21 @@ function Brand() {
 
                 {/* Изображение товара */}
                 <Link
-                  to={`/product/${product.id}`}
-                  state={{ brandId }}
-                  className="block aspect-square overflow-hidden mt-14 mx-4 flex-shrink-0"
-                >
-                  <img
-                    src={getImageUrl(product.main_image)}
-                    alt={product.name}
-                    className={`object-contain w-full h-full pb-2 ${effects.transition.transform} hover:scale-105`}
-                  />
-                </Link>
+  to={`/product/${product.id}`}
+  state={{ brandId }}
+  className="block aspect-square overflow-hidden mt-12 flex-shrink-0 relative"
+>
+  <img
+    src={getImageUrl(product.main_image)}
+    alt={product.name}
+    className="
+      object-cover
+      w-full h-full
+      scale-[0.9] hover:scale-[0.95]
+      transition-transform duration-500
+    "
+  />
+</Link>
 
                 {/* Информация о товаре */}
                 <div className="flex flex-col flex-1 p-3 border-t border-gray-200">

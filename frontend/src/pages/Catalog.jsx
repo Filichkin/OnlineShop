@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { fetchCatalogProducts } from '../store/slices/productsSlice';
 import { brandsAPI } from '../api';
 import { getImageUrl, formatPrice } from '../utils';
 import AddToCartButton from '../UI/AddToCartButton';
 import FavoriteButton from '../UI/FavoriteButton';
+import { typography, effects, inputStyles, labelStyles } from '../styles/designSystem';
 
 const Catalog = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { products, loading, error } = useSelector((state) => state.products);
 
   const [brands, setBrands] = useState([]);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+
+  // Фильтры с улучшенной сортировкой
   const [filters, setFilters] = useState({
     search: searchParams.get('search') || '',
     brand_slug: searchParams.get('brand') || '',
@@ -65,7 +70,22 @@ const Catalog = () => {
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-    setCurrentPage(1); // Сбросить на первую страницу при изменении фильтров
+    setCurrentPage(1);
+  };
+
+  // Обработчик изменения объединенной сортировки
+  const handleSortChange = (value) => {
+    // Парсим значение формата "field_order" (например: "price_asc")
+    const [sort_by, sort_order] = value.includes('_')
+      ? value.split('_')
+      : [value, 'asc'];
+
+    setFilters(prev => ({
+      ...prev,
+      sort_by: sort_by || 'name',
+      sort_order: sort_order || 'asc'
+    }));
+    setCurrentPage(1);
   };
 
   const handleResetFilters = () => {
@@ -81,326 +101,432 @@ const Catalog = () => {
     });
     setCurrentPage(1);
     setSearchParams({});
+    setIsMobileFiltersOpen(false);
   };
 
   const hasActiveFilters = filters.search || filters.brand_slug || filters.min_price || filters.max_price;
 
-  return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-[75px] 2xl:px-[150px] py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Каталог продуктов</h1>
-        <p className="text-gray-600">Найдите нужные товары с помощью фильтров</p>
-      </div>
+  // Handler для клика по карточке
+  const handleCardClick = (productId, e) => {
+    if (
+      e.target.closest('button') ||
+      e.target.closest('a[href*="brand"]')
+    ) {
+      return;
+    }
+    navigate(`/catalog/${productId}`);
+  };
 
-      {/* Фильтры */}
-      <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            {/* Поиск */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Поиск
-              </label>
-              <input
-                type="text"
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-                placeholder="Название или артикул..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              />
-            </div>
+  // Handler для клавиатурной навигации по карточке
+  const handleCardKeyDown = (productId, e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      navigate(`/catalog/${productId}`);
+    }
+  };
 
-            {/* Бренд */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Бренд
-              </label>
-              <select
-                value={filters.brand_slug}
-                onChange={(e) => handleFilterChange('brand_slug', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              >
-                <option value="">Все бренды</option>
-                {brands.map(brand => (
-                  <option key={brand.id} value={brand.slug}>{brand.name}</option>
-                ))}
-              </select>
-            </div>
+  // Получаем текущее значение для объединенного селекта сортировки
+  const currentSortValue = `${filters.sort_by}_${filters.sort_order}`;
 
-            {/* Цена от */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Цена от
-              </label>
-              <input
-                type="number"
-                value={filters.min_price}
-                onChange={(e) => handleFilterChange('min_price', e.target.value)}
-                placeholder="0"
-                min="0"
-                step="1"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Цена до */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Цена до
-              </label>
-              <input
-                type="number"
-                value={filters.max_price}
-                onChange={(e) => handleFilterChange('max_price', e.target.value)}
-                placeholder="99999"
-                min="0"
-                step="1"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Сортировка и сброс */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between pt-4 border-t border-gray-200">
-            <div className="flex gap-4 flex-wrap items-center">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Сортировка:
-                </label>
-                <select
-                  value={filters.sort_by}
-                  onChange={(e) => handleFilterChange('sort_by', e.target.value)}
-                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="name">По названию</option>
-                  <option value="price">По цене</option>
-                  <option value="created_at">По дате добавления</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Порядок:
-                </label>
-                <select
-                  value={filters.sort_order}
-                  onChange={(e) => handleFilterChange('sort_order', e.target.value)}
-                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="asc">По возрастанию</option>
-                  <option value="desc">По убыванию</option>
-                </select>
-              </div>
-            </div>
-
-            {hasActiveFilters && (
-              <button
-                onClick={handleResetFilters}
-                className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-              >
-                Сбросить фильтры
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Результаты */}
-      <div className="mb-6 flex justify-between items-center">
-        <div className="text-sm text-gray-600">
-          {loading ? (
-            'Загрузка...'
-          ) : (
-            `Найдено: ${products.length} ${products.length === 1 ? 'товар' : products.length < 5 ? 'товара' : 'товаров'}`
-          )}
-        </div>
-      </div>
-
-      {/* Ошибка */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800 text-sm">{error}</p>
-        </div>
-      )}
-
-      {/* Загрузка */}
-      {loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 animate-pulse">
-              <div className="aspect-square bg-gray-200"></div>
-              <div className="p-4 space-y-3">
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Продукты */}
-      {!loading && products.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <div
-              key={product.id}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200 flex flex-col"
-            >
-              {/* Изображение */}
-              <Link
-                to={`/catalog/${product.id}`}
-                className="relative aspect-square overflow-hidden rounded-t-lg bg-gray-50 group"
-              >
-                {product.main_image ? (
-                  <img
-                    src={getImageUrl(product.main_image)}
-                    alt={product.name}
-                    className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-200"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-gray-400 text-sm">Нет изображения</span>
-                  </div>
-                )}
-
-                {/* Кнопка избранного */}
-                <div className="absolute top-2 right-2">
-                  <FavoriteButton productId={product.id} />
-                </div>
-              </Link>
-
-              {/* Информация */}
-              <div className="p-4 flex flex-col flex-grow">
-                {/* Бренд */}
-                {product.brand && (
-                  <Link
-                    to={`/brand/${product.brand.slug}`}
-                    className="text-xs text-gray-500 hover:text-indigo-600 mb-1 inline-block"
-                  >
-                    {product.brand.name}
-                  </Link>
-                )}
-
-                {/* Название */}
-                <Link
-                  to={`/catalog/${product.id}`}
-                  className="text-sm font-medium text-gray-900 hover:text-indigo-600 mb-1 line-clamp-2 min-h-[2.5rem]"
-                >
-                  {product.name}
-                </Link>
-
-                {/* Артикул */}
-                {product.part_number && (
-                  <p className="text-xs text-gray-500 mb-2">
-                    Арт: {product.part_number}
-                  </p>
-                )}
-
-                {/* Цена и кнопка */}
-                <div className="mt-auto pt-3 border-t border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="text-lg font-bold text-gray-900">
-                      {formatPrice(product.price)}
-                    </div>
-                    <AddToCartButton productId={product.id} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Пустое состояние */}
-      {!loading && products.length === 0 && (
-        <div className="text-center py-12">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
+  // Компонент фильтров (переиспользуемый для desktop и mobile)
+  const FiltersContent = () => (
+    <div className="flex flex-col gap-6">
+      {/* Заголовок фильтров */}
+      <div className="flex items-center justify-between">
+        <h2 className={`${typography.fontSize.lg} ${typography.fontWeight.semibold} ${typography.textColor.primary}`}>
+          Фильтры
+        </h2>
+        {/* Кнопка закрытия для мобильных */}
+        <button
+          onClick={() => setIsMobileFiltersOpen(false)}
+          className="md:hidden text-gray-500 hover:text-gray-700"
+          aria-label="Закрыть фильтры"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Продукты не найдены</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Попробуйте изменить фильтры или сбросить их
+        </button>
+      </div>
+
+      {/* Поиск */}
+      <div>
+        <label htmlFor="search-input" className={labelStyles.base}>
+          Поиск
+        </label>
+        <input
+          id="search-input"
+          type="text"
+          value={filters.search}
+          onChange={(e) => handleFilterChange('search', e.target.value)}
+          placeholder="Название или артикул..."
+          className={`${inputStyles.base} ${typography.fontFamily} w-full`}
+          aria-label="Поиск по названию или артикулу"
+        />
+      </div>
+
+      {/* Бренд */}
+      <div>
+        <label htmlFor="brand-select" className={labelStyles.base}>
+          Бренд
+        </label>
+        <select
+          id="brand-select"
+          value={filters.brand_slug}
+          onChange={(e) => handleFilterChange('brand_slug', e.target.value)}
+          className={`${inputStyles.select} ${typography.fontFamily} w-full`}
+          aria-label="Фильтр по бренду"
+        >
+          <option value="">Все бренды</option>
+          {brands.map(brand => (
+            <option key={brand.id} value={brand.slug}>{brand.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Цена от */}
+      <div>
+        <label htmlFor="min-price-input" className={labelStyles.base}>
+          Цена от
+        </label>
+        <input
+          id="min-price-input"
+          type="number"
+          value={filters.min_price}
+          onChange={(e) => handleFilterChange('min_price', e.target.value)}
+          placeholder="0"
+          min="0"
+          step="1"
+          className={`${inputStyles.base} ${typography.fontFamily} w-full`}
+          aria-label="Минимальная цена"
+        />
+      </div>
+
+      {/* Цена до */}
+      <div>
+        <label htmlFor="max-price-input" className={labelStyles.base}>
+          Цена до
+        </label>
+        <input
+          id="max-price-input"
+          type="number"
+          value={filters.max_price}
+          onChange={(e) => handleFilterChange('max_price', e.target.value)}
+          placeholder="99999"
+          min="0"
+          step="1"
+          className={`${inputStyles.base} ${typography.fontFamily} w-full`}
+          aria-label="Максимальная цена"
+        />
+      </div>
+
+      {/* Объединенная сортировка */}
+      <div>
+        <label htmlFor="sort-select" className={labelStyles.base}>
+          Сортировка
+        </label>
+        <select
+          id="sort-select"
+          value={currentSortValue}
+          onChange={(e) => handleSortChange(e.target.value)}
+          className={`${inputStyles.select} ${typography.fontFamily} w-full`}
+          aria-label="Сортировка товаров"
+        >
+          <option value="price_asc">Цена по возрастанию</option>
+          <option value="price_desc">Цена по убыванию</option>
+          <option value="name_asc">Название А-Я</option>
+          <option value="name_desc">Название Я-А</option>
+          <option value="created_at_desc">Сначала новые</option>
+          <option value="created_at_asc">Сначала старые</option>
+        </select>
+      </div>
+
+      {/* Кнопка сброса фильтров */}
+      {hasActiveFilters && (
+        <button
+          onClick={handleResetFilters}
+          className={`${typography.fontSize.sm} ${typography.fontWeight.medium} text-blue-600 hover:text-blue-800 ${effects.transition.colors} text-left`}
+          aria-label="Сбросить все фильтры"
+        >
+          Сбросить фильтры
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="py-10">
+      <div className="container px-3 sm:px-3 md:px- lg:px-12 xl:px-[75px] 2xl:px-[150px]">
+        {/* Заголовок страницы */}
+        <div className="mb-6">
+          <h1 className={`${typography.fontSize['2xl']} ${typography.fontWeight.semibold} ${typography.fontFamily} ${typography.textColor.primary}`}>
+            Каталог продуктов
+          </h1>
+          <p className={`${typography.fontSize.sm} ${typography.textColor.tertiary} mt-1`}>
+            Найдите нужные товары с помощью фильтров
           </p>
-          {hasActiveFilters && (
-            <div className="mt-6">
-              <button
-                onClick={handleResetFilters}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+        </div>
+
+        {/* Кнопка фильтров для мобильных */}
+        <div className="mb-6 md:hidden">
+          <button
+            onClick={() => setIsMobileFiltersOpen(true)}
+            className={`flex items-center gap-2 px-4 py-2 bg-gray-800 text-white ${effects.rounded.DEFAULT} ${typography.fontSize.sm} ${typography.fontWeight.medium} hover:bg-gray-900 ${effects.transition.DEFAULT}`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            Фильтры
+            {hasActiveFilters && (
+              <span className="ml-1 px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                {[filters.search, filters.brand_slug, filters.min_price, filters.max_price].filter(Boolean).length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Layout: Фильтры слева + Продукты справа */}
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Фильтры - Desktop Sidebar */}
+          <aside className="hidden md:block w-[280px] flex-shrink-0">
+            <div className={`bg-white ${effects.rounded.lg} ${effects.shadow.DEFAULT} p-6 sticky top-6`}>
+              <FiltersContent />
+            </div>
+          </aside>
+
+          {/* Фильтры - Mobile Overlay */}
+          {isMobileFiltersOpen && (
+            <div
+              className="md:hidden fixed inset-0 z-50 bg-black bg-opacity-50"
+              onClick={() => setIsMobileFiltersOpen(false)}
+            >
+              <div
+                className="absolute left-0 top-0 bottom-0 w-[280px] bg-white p-6 overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
               >
-                Сбросить фильтры
-              </button>
+                <FiltersContent />
+              </div>
             </div>
           )}
-        </div>
-      )}
 
-      {/* Пагинация */}
-      {!loading && products.length > 0 && (
-        <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6">
-          <div className="flex flex-1 justify-between sm:hidden">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Назад
-            </button>
-            <button
-              onClick={() => setCurrentPage(prev => prev + 1)}
-              disabled={products.length < ITEMS_PER_PAGE}
-              className="relative ml-3 inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Далее
-            </button>
-          </div>
-
-          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Страница <span className="font-medium">{currentPage}</span>
-              </p>
+          {/* Продукты */}
+          <main className="flex-1 min-w-0">
+            {/* Информация о результатах */}
+            <div className="mb-4 flex justify-between items-center">
+              <div className={`${typography.fontSize.sm} ${typography.textColor.tertiary}`} role="status" aria-live="polite">
+                {loading ? (
+                  'Загрузка...'
+                ) : (
+                  `Найдено: ${products.length} ${products.length === 1 ? 'товар' : products.length < 5 ? 'товара' : 'товаров'}`
+                )}
+              </div>
             </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label="Previous"
+
+            {/* Ошибка */}
+            {error && (
+              <div className={`mb-6 p-4 bg-red-50 border border-red-200 ${effects.rounded.lg}`} role="alert">
+                <p className={`${typography.fontSize.sm} ${typography.textColor.error}`}>{error}</p>
+              </div>
+            )}
+
+            {/* Загрузка */}
+            {loading && (
+              <div className="grid grid-cols-1 gap-[12px] sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6" role="list" aria-label="Загрузка продуктов">
+                {[...Array(12)].map((_, i) => (
+                  <div key={i} className={`bg-white ${effects.rounded.lg} ${effects.shadow.DEFAULT} animate-pulse`} role="listitem">
+                    <div className="aspect-square bg-gray-200"></div>
+                    <div className="p-3 space-y-3">
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                      <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Продукты - Grid как в Brand.jsx */}
+            {!loading && products.length > 0 && (
+              <div className="grid grid-cols-1 gap-[12px] sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6">
+                {products.map((product) => (
+                  <div
+                    key={product.id}
+                    onClick={(e) => handleCardClick(product.id, e)}
+                    onKeyDown={(e) => handleCardKeyDown(product.id, e)}
+                    tabIndex="0"
+                    className={`relative flex flex-col h-full bg-white ${effects.rounded.lg} ${effects.shadow.DEFAULT} hover:shadow-xl ${effects.transition.shadow} overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-offset-2`}
+                    role="article"
+                    aria-label={`${product.name}, ${formatPrice(product.price)}${product.brand ? `, бренд ${product.brand.name}` : ''}`}
+                  >
+                    {/* Кнопка избранного в правом верхнем углу */}
+                    <div
+                      className="absolute top-2 right-2 z-10"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <FavoriteButton product={product} className="w-12 h-9" iconSize="w-6 h-6"/>
+                    </div>
+
+                    {/* Изображение товара */}
+                    <Link
+                      to={`/catalog/${product.id}`}
+                      className="block aspect-square overflow-hidden mt-12 flex-shrink-0 relative"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {product.main_image ? (
+                        <img
+                          src={getImageUrl(product.main_image)}
+                          alt={product.name}
+                          className="object-cover w-full h-full scale-[0.9] hover:scale-[0.95] transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className={`${typography.fontSize.sm} ${typography.textColor.tertiary}`}>Нет изображения</span>
+                        </div>
+                      )}
+                    </Link>
+
+                    {/* Информация о товаре */}
+                    <div className="flex flex-col flex-1 p-3 border-t border-gray-200">
+                      {/* Название - фиксированная высота 2 строки */}
+                      <Link
+                        to={`/catalog/${product.id}`}
+                        className={`hover:text-blue-600 ${effects.transition.colors} block h-[2.5rem] mb-2`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <h3
+                          className={`${typography.fontSize.base} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary}`}
+                          style={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: '1.25rem',
+                            textTransform: 'uppercase'
+                          }}>
+                          {product.name}
+                        </h3>
+                      </Link>
+
+                      {/* Артикул - фиксированная высота */}
+                      <p className={`${typography.fontSize.sm} ${typography.fontWeight.normal} ${typography.fontFamily} ${typography.textColor.tertiary} h-5`}>
+                        {product.part_number ? `Артикул: ${product.part_number}` : '\u00A0'}
+                      </p>
+
+                      {/* Цена и кнопка - всегда внизу */}
+                      <div className="mt-auto pt-2 flex items-center justify-between gap-2">
+                        <span className={`${typography.fontSize.md} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary} whitespace-nowrap`}>
+                          {formatPrice(product.price)}
+                        </span>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <AddToCartButton
+                            product={product}
+                            size="sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Пустое состояние */}
+            {!loading && products.length === 0 && (
+              <div className="text-center py-12" role="status">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
                 >
-                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </button>
-                <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                  {currentPage}
-                </span>
-                <button
-                  onClick={() => setCurrentPage(prev => prev + 1)}
-                  disabled={products.length < ITEMS_PER_PAGE}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label="Next"
-                >
-                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                  </svg>
-                </button>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <h3 className={`mt-2 ${typography.fontSize.base} ${typography.fontWeight.medium} ${typography.textColor.primary}`}>
+                  Продукты не найдены
+                </h3>
+                <p className={`mt-1 ${typography.fontSize.sm} ${typography.textColor.tertiary}`}>
+                  Попробуйте изменить фильтры или сбросить их
+                </p>
+                {hasActiveFilters && (
+                  <div className="mt-6">
+                    <button
+                      onClick={handleResetFilters}
+                      className={`px-4 py-2 bg-gray-800 text-white ${effects.rounded.DEFAULT} ${typography.fontSize.sm} ${typography.fontWeight.medium} hover:bg-gray-900 ${effects.transition.DEFAULT}`}
+                    >
+                      Сбросить фильтры
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Пагинация */}
+            {!loading && products.length > 0 && (
+              <nav className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6" aria-label="Пагинация">
+                <div className="flex flex-1 justify-between sm:hidden">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className={`relative inline-flex items-center px-4 py-2 ${typography.fontSize.sm} ${typography.fontWeight.medium} ${effects.rounded.DEFAULT} text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed ${effects.transition.DEFAULT}`}
+                    aria-label="Предыдущая страница"
+                  >
+                    Назад
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(prev => prev + 1)}
+                    disabled={products.length < ITEMS_PER_PAGE}
+                    className={`relative ml-3 inline-flex items-center px-4 py-2 ${typography.fontSize.sm} ${typography.fontWeight.medium} ${effects.rounded.DEFAULT} text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed ${effects.transition.DEFAULT}`}
+                    aria-label="Следующая страница"
+                  >
+                    Далее
+                  </button>
+                </div>
+
+                <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                  <div>
+                    <p className={`${typography.fontSize.sm} ${typography.textColor.secondary}`}>
+                      Страница <span className={typography.fontWeight.medium}>{currentPage}</span>
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white ${typography.fontSize.sm} ${typography.fontWeight.medium} text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed ${effects.transition.DEFAULT}`}
+                        aria-label="Предыдущая страница"
+                      >
+                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      <span className={`relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white ${typography.fontSize.sm} ${typography.fontWeight.medium} text-gray-700`} aria-current="page">
+                        {currentPage}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage(prev => prev + 1)}
+                        disabled={products.length < ITEMS_PER_PAGE}
+                        className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white ${typography.fontSize.sm} ${typography.fontWeight.medium} text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed ${effects.transition.DEFAULT}`}
+                        aria-label="Следующая страница"
+                      >
+                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </nav>
+                  </div>
+                </div>
               </nav>
-            </div>
-          </div>
+            )}
+          </main>
         </div>
-      )}
+      </div>
     </div>
   );
 };

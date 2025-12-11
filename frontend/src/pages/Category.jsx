@@ -244,12 +244,12 @@ function Category() {
                 <Link
                   to={`/product/${product.id}`}
                   state={{ categoryId }}
-                  className="block aspect-square overflow-hidden mb-4 mt-14 mr-4 ml-4"
+                  className="block h-[220px] overflow-hidden mb-4 mt-14 mr-4 ml-4"
                 >
                   <img
                     src={getImageUrl(product.main_image)}
                     alt={product.name}
-                    className={`object-contain w-full h-full ${effects.transition.transform} hover:scale-105`}
+                    className={`object-cover w-full h-full scale-125 hover:scale-150 transition-transform duration-500`}
                   />
                 </Link>
 

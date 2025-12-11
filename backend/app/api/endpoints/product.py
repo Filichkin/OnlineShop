@@ -1,4 +1,5 @@
 from typing import List, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from loguru import logger
@@ -576,6 +577,185 @@ async def reorder_product_images(
         logger.warning(
             f'Ошибка изменения порядка изображений: '
             f'product_id={product_id}, error={str(e)}'
+        )
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+
+# ==================== Single Image Endpoints (Path Parameters) ====================
+
+
+@router.delete(
+    '/{product_id}/images/{image_id}',
+    response_model=DeleteImagesResponse,
+    summary='Удалить одно изображение продукта',
+    description='Удалить конкретное изображение продукта по его ID'
+)
+async def delete_single_product_image(
+    product_id: int,
+    image_id: str,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Удалить одно изображение продукта"""
+    logger.info(
+        f'Удаление изображения продукта: product_id={product_id}, '
+        f'image_id={image_id}'
+    )
+
+    # Проверяем существование продукта
+    db_product = await product_crud.get_with_status(
+        product_id=product_id,
+        session=session,
+        is_active=None
+    )
+    if not db_product:
+        logger.warning(
+            f'Продукт не найден при удалении изображения: '
+            f'product_id={product_id}'
+        )
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail='Продукт не найден'
+        )
+
+    # Проверяем, что не удаляем все изображения
+    all_images = await media_crud.get_product_images(
+        product_id=product_id,
+        session=session
+    )
+
+    if len(all_images) <= 1:
+        logger.warning(
+            f'Попытка удалить последнее изображение продукта: '
+            f'product_id={product_id}'
+        )
+        raise HTTPException(
+            status_code=Constants.HTTP_400_BAD_REQUEST,
+            detail='Нельзя удалить последнее изображение продукта'
+        )
+
+    # Получаем изображение для удаления
+    try:
+        media_uuid = UUID(image_id)
+    except ValueError:
+        logger.warning(
+            f'Неверный формат UUID изображения: '
+            f'product_id={product_id}, image_id={image_id}'
+        )
+        raise HTTPException(
+            status_code=Constants.HTTP_400_BAD_REQUEST,
+            detail='Неверный формат ID изображения'
+        )
+
+    image_to_delete = next(
+        (img for img in all_images if img.id == media_uuid),
+        None
+    )
+
+    if not image_to_delete:
+        logger.warning(
+            f'Изображение для удаления не найдено: '
+            f'product_id={product_id}, image_id={image_id}'
+        )
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail='Изображение не найдено'
+        )
+
+    # Удаляем из БД
+    try:
+        deleted_count = await media_crud.delete_images(
+            media_ids=[media_uuid],
+            product_id=product_id,
+            session=session
+        )
+
+        # Удаляем файл с диска
+        await delete_image_files([image_to_delete.url])
+
+        logger.info(
+            f'Изображение удалено: product_id={product_id}, '
+            f'image_id={image_id}'
+        )
+        return DeleteImagesResponse(
+            deleted_count=deleted_count,
+            message=f'Изображение успешно удалено'
+        )
+    except ValueError as e:
+        logger.error(
+            f'Ошибка удаления изображения: product_id={product_id}, '
+            f'image_id={image_id}, error={str(e)}'
+        )
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+
+@router.patch(
+    '/{product_id}/images/{image_id}/main',
+    response_model=MediaResponse,
+    summary='Установить изображение как главное',
+    description='Установить конкретное изображение как главное для продукта'
+)
+async def set_single_image_as_main(
+    product_id: int,
+    image_id: str,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Установить изображение как главное для продукта"""
+    logger.info(
+        f'Установка главного изображения: product_id={product_id}, '
+        f'image_id={image_id}'
+    )
+
+    # Проверяем существование продукта
+    db_product = await product_crud.get_with_status(
+        product_id=product_id,
+        session=session,
+        is_active=None
+    )
+    if not db_product:
+        logger.warning(
+            f'Продукт не найден при установке главного изображения: '
+            f'product_id={product_id}'
+        )
+        raise HTTPException(
+            status_code=Constants.HTTP_404_NOT_FOUND,
+            detail='Продукт не найден'
+        )
+
+    # Конвертируем image_id в UUID
+    try:
+        media_uuid = UUID(image_id)
+    except ValueError:
+        logger.warning(
+            f'Неверный формат UUID изображения: '
+            f'product_id={product_id}, image_id={image_id}'
+        )
+        raise HTTPException(
+            status_code=Constants.HTTP_400_BAD_REQUEST,
+            detail='Неверный формат ID изображения'
+        )
+
+    try:
+        updated_image = await media_crud.set_main_image(
+            media_id=media_uuid,
+            product_id=product_id,
+            session=session
+        )
+        logger.info(
+            f'Главное изображение установлено: product_id={product_id}, '
+            f'image_id={image_id}'
+        )
+        return updated_image
+    except ValueError as e:
+        logger.warning(
+            f'Ошибка установки главного изображения: '
+            f'product_id={product_id}, image_id={image_id}, '
+            f'error={str(e)}'
         )
         raise HTTPException(
             status_code=Constants.HTTP_404_NOT_FOUND,

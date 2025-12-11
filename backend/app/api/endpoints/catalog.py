@@ -64,7 +64,9 @@ async def get_catalog(
     ),
     is_active: Optional[bool] = Query(
         True,
-        description='Фильтр по статусу активности (по умолчанию только активные)'
+        description=(
+            'Фильтр по статусу активности (по умолчанию только активные)'
+        )
     ),
     sort_by: str = Query(
         'created_at',
