@@ -59,7 +59,15 @@ function ProductCard({ product, brandId, linkPrefix = "/product", onAddToCart })
         >
           <h3
             className={`hover:text-blue-500 ${typography.fontSize.base} ${typography.fontWeight.light} ${typography.fontFamily} text-gray-600`}
-            >
+            style={{
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              lineHeight: '1.25rem'
+            }}
+          >
             {product.name}
           </h3>
         </Link>
