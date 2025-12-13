@@ -62,7 +62,7 @@ const Catalog = () => {
     if (filters.sort_by !== 'name') params.sort_by = filters.sort_by;
     if (filters.sort_order !== 'asc') params.sort_order = filters.sort_order;
 
-    setSearchParams(params);
+    setSearchParams(params, { replace: true });
   }, [dispatch, filters, currentPage]);
 
   const handleFilterChange = (key, value) => {
@@ -97,7 +97,7 @@ const Catalog = () => {
       limit: 24
     });
     setCurrentPage(1);
-    setSearchParams({});
+    setSearchParams({}, { replace: true });
     setIsMobileFiltersOpen(false);
   };
 
