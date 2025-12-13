@@ -1,6 +1,7 @@
-import { useLoaderData, Link } from "react-router-dom";
+import { useLoaderData } from "react-router-dom";
 import { useMemo } from "react";
 import BrandCard from "../components/BrandCard";
+import CatalogCard from "../components/CatalogCard";
 
 function Home() {
   const brands = useLoaderData();
@@ -40,19 +41,7 @@ function Home() {
           >
             {/* ЛЕВАЯ КАРТОЧКА — КАТАЛОГ */}
             <div className="row-span-2">
-              <Link
-                to="/catalog"
-                className="
-                  h-full w-full
-                  bg-white rounded-3xl shadow
-                  flex items-center justify-center
-                  hover:shadow-lg transition-shadow
-                  text-xl font-semibold text-gray-900
-                  cursor-pointer
-                "
-              >
-                Каталог
-              </Link>
+              <CatalogCard />
             </div>
   
             {/* ПРАВЫЕ 3 КОЛОНКИ — БРЕНДЫ */}
