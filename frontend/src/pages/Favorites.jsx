@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   fetchFavorites,
@@ -10,9 +10,7 @@ import {
   selectFavoritesIsUnauthorized,
   selectFavoritesIsGuest,
 } from '../store/slices/favoritesSlice';
-import { getImageUrl, formatPrice } from '../utils';
-import AddToCartButton from '../UI/AddToCartButton';
-import FavoriteButton from '../UI/FavoriteButton';
+import ProductCard from '../components/ProductCard';
 
 /**
  * Страница избранных товаров
@@ -24,7 +22,6 @@ import FavoriteButton from '../UI/FavoriteButton';
  */
 function Favorites() {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
 
   // Redux state
   const items = useSelector(selectFavoriteItems);
@@ -186,74 +183,11 @@ function Favorites() {
           // Список избранных товаров
           <div className="grid grid-cols-1 gap-[12px] sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-6">
             {items.map((product) => (
-              <div
+              <ProductCard
                 key={product.id}
-                className="relative w-[220px] h-[400px] bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
-              >
-                {/* Кнопка избранного в правом верхнем углу */}
-                <div className="absolute top-2 right-2 z-10">
-                  <FavoriteButton product={product} className="w-12 h-9" iconSize="w-6 h-6"/>
-                </div>
-
-                {/* Изображение товара */}
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/product/${product.id}`);
-                  }}
-                  className="block aspect-square overflow-hidden mb-4 mt-14 mr-4 ml-4 cursor-pointer"
-                >
-                  <img
-                    src={getImageUrl(product.main_image)}
-                    alt={product.name}
-                    className="object-contain w-full h-full transition-transform duration-300 hover:scale-105"
-                  />
-                </div>
-
-                {/* Информация о товаре */}
-                <div className="flex flex-col flex-grow p-3 border-t border-gray-200">
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/product/${product.id}`);
-                    }}
-                    className="hover:text-blue-600 transition-colors block cursor-pointer"
-                  >
-                    <h3
-                      className="text-[15px] font-[600] text-gray-900 mb-2"
-                      style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        lineHeight: '1.25rem',
-                        maxHeight: '2.5rem',
-                        textTransform: 'uppercase'
-                      }}>
-                      {product.name}
-                    </h3>
-                  </div>
-
-                  {/* Артикул */}
-                  {product.part_number && (
-                    <p className="text-[13px] font-[400] text-gray-500 mb-3">
-                    Артикул: {product.part_number}
-                  </p>
-                  )}
-
-                  {/* Цена и кнопка */}
-                  <div className="mt-auto flex items-center justify-between gap-3">
-                  <span className="text-[18px] font-[600] text-gray-800 whitespace-nowrap">
-                      {formatPrice(product.price)}
-                    </span>
-                    <AddToCartButton
-                      product={product}
-                      size="sm"
-                    />
-                  </div>
-                </div>
-              </div>
+                product={product}
+                onAddToCart={(product) => console.log('Добавление товара в корзину:', product)}
+              />
             ))}
           </div>
         )}

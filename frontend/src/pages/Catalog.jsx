@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { fetchCatalogProducts } from '../store/slices/productsSlice';
 import { brandsAPI } from '../api';
-import { getImageUrl, formatPrice } from '../utils';
-import AddToCartButton from '../UI/AddToCartButton';
-import FavoriteButton from '../UI/FavoriteButton';
+import ProductCard from '../components/ProductCard';
 import { typography, effects, inputStyles, labelStyles } from '../styles/designSystem';
 
 const Catalog = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { products, loading, error } = useSelector((state) => state.products);
 
@@ -105,25 +102,6 @@ const Catalog = () => {
   };
 
   const hasActiveFilters = filters.search || filters.brand_slug || filters.min_price || filters.max_price;
-
-  // Handler для клика по карточке
-  const handleCardClick = (productId, e) => {
-    if (
-      e.target.closest('button') ||
-      e.target.closest('a[href*="brand"]')
-    ) {
-      return;
-    }
-    navigate(`/catalog/${productId}`);
-  };
-
-  // Handler для клавиатурной навигации по карточке
-  const handleCardKeyDown = (productId, e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      navigate(`/catalog/${productId}`);
-    }
-  };
 
   // Получаем текущее значение для объединенного селекта сортировки
   const currentSortValue = `${filters.sort_by}_${filters.sort_order}`;
@@ -348,84 +326,12 @@ const Catalog = () => {
             {!loading && products.length > 0 && (
               <div className="grid grid-cols-1 gap-[12px] sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6">
                 {products.map((product) => (
-                  <div
+                  <ProductCard
                     key={product.id}
-                    onClick={(e) => handleCardClick(product.id, e)}
-                    onKeyDown={(e) => handleCardKeyDown(product.id, e)}
-                    tabIndex="0"
-                    className={`relative flex flex-col h-full bg-white ${effects.rounded.lg} ${effects.shadow.DEFAULT} hover:shadow-xl ${effects.transition.shadow} overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-offset-2`}
-                    role="article"
-                    aria-label={`${product.name}, ${formatPrice(product.price)}${product.brand ? `, бренд ${product.brand.name}` : ''}`}
-                  >
-                    {/* Кнопка избранного в правом верхнем углу */}
-                    <div
-                      className="absolute top-2 right-2 z-10"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <FavoriteButton product={product} className="w-12 h-9" iconSize="w-6 h-6"/>
-                    </div>
-
-                    {/* Изображение товара */}
-                    <Link
-                      to={`/catalog/${product.id}`}
-                      className="block aspect-square overflow-hidden mt-12 flex-shrink-0 relative"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {product.main_image ? (
-                        <img
-                          src={getImageUrl(product.main_image)}
-                          alt={product.name}
-                          className="object-cover w-full h-full scale-[0.9] hover:scale-[0.95] transition-transform duration-500"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className={`${typography.fontSize.sm} ${typography.textColor.tertiary}`}>Нет изображения</span>
-                        </div>
-                      )}
-                    </Link>
-
-                    {/* Информация о товаре */}
-                    <div className="flex flex-col flex-1 p-3 border-t border-gray-200">
-                      {/* Название - фиксированная высота 2 строки */}
-                      <Link
-                        to={`/catalog/${product.id}`}
-                        className={`hover:text-blue-600 ${effects.transition.colors} block h-[2.5rem] mb-2`}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <h3
-                          className={`${typography.fontSize.base} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary}`}
-                          style={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            lineHeight: '1.25rem',
-                            textTransform: 'uppercase'
-                          }}>
-                          {product.name}
-                        </h3>
-                      </Link>
-
-                      {/* Артикул - фиксированная высота */}
-                      <p className={`${typography.fontSize.sm} ${typography.fontWeight.normal} ${typography.fontFamily} ${typography.textColor.tertiary} h-5`}>
-                        {product.part_number ? `Артикул: ${product.part_number}` : '\u00A0'}
-                      </p>
-
-                      {/* Цена и кнопка - всегда внизу */}
-                      <div className="mt-auto pt-2 flex items-center justify-between gap-2">
-                        <span className={`${typography.fontSize.md} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary} whitespace-nowrap`}>
-                          {formatPrice(product.price)}
-                        </span>
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <AddToCartButton
-                            product={product}
-                            size="sm"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                    product={product}
+                    linkPrefix="/catalog"
+                    onAddToCart={(product) => console.log('Добавление товара в корзину:', product)}
+                  />
                 ))}
               </div>
             )}
