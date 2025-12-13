@@ -1,4 +1,4 @@
-import { useLoaderData } from "react-router-dom";
+import { useLoaderData, Link } from "react-router-dom";
 import { useMemo } from "react";
 import BrandCard from "../components/BrandCard";
 
@@ -40,18 +40,19 @@ function Home() {
           >
             {/* ЛЕВАЯ КАРТОЧКА — КАТАЛОГ */}
             <div className="row-span-2">
-              <button
+              <Link
+                to="/catalog"
                 className="
                   h-full w-full
                   bg-white rounded-3xl shadow
                   flex items-center justify-center
-                  hover:shadow-lg transition
-                  text-xl font-semibold
+                  hover:shadow-lg transition-shadow
+                  text-xl font-semibold text-gray-900
+                  cursor-pointer
                 "
-                onClick={() => console.log('Получение всех продуктов из БД')}
               >
                 Каталог
-              </button>
+              </Link>
             </div>
   
             {/* ПРАВЫЕ 3 КОЛОНКИ — БРЕНДЫ */}

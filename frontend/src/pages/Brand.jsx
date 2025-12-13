@@ -1,8 +1,6 @@
-import { Link, useLoaderData, useSearchParams } from "react-router-dom";
+import { useLoaderData, useSearchParams } from "react-router-dom";
 import { useMemo, useState, useEffect } from "react";
-import AddToCartButton from "../UI/AddToCartButton";
-import FavoriteButton from "../UI/FavoriteButton";
-import { getImageUrl, formatPrice } from "../utils";
+import ProductCard from "../components/ProductCard";
 import useDebounce from "../hooks/useDebounce";
 import { typography, effects, inputStyles, labelStyles } from "../styles/designSystem";
 
@@ -231,69 +229,12 @@ function Brand() {
         ) : (
           <div className="grid grid-cols-1 gap-[12px] sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-6">
             {filteredProducts.map((product) => (
-              <div
+              <ProductCard
                 key={product.id}
-                className={`relative flex flex-col h-full bg-white ${effects.rounded.lg} ${effects.shadow.DEFAULT} hover:shadow-xl ${effects.transition.shadow} overflow-hidden`}
-              >
-                {/* Кнопка избранного в правом верхнем углу */}
-                <div className="absolute top-2 right-2 z-10">
-                  <FavoriteButton product={product} className="w-12 h-9" iconSize="w-6 h-6"/>
-                </div>
-
-                {/* Изображение товара */}
-                <Link
-                  to={`/product/${product.id}`}
-                  state={{ brandId }}
-                  className="block aspect-square overflow-hidden mt-14 mx-4 flex-shrink-0"
-                >
-                  <img
-                    src={getImageUrl(product.main_image)}
-                    alt={product.name}
-                    className={`object-contain w-full h-full pb-2 ${effects.transition.transform} hover:scale-105`}
-                  />
-                </Link>
-
-                {/* Информация о товаре */}
-                <div className="flex flex-col flex-1 p-3 border-t border-gray-200">
-                  {/* Название - фиксированная высота 2 строки */}
-                  <Link
-                    to={`/product/${product.id}`}
-                    state={{ brandId }}
-                    className={`hover:text-blue-600 ${effects.transition.colors} block h-[2.5rem] mb-2`}
-                  >
-                    <h3
-                      className={`${typography.fontSize.base} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary}`}
-                      style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        lineHeight: '1.25rem',
-                        textTransform: 'uppercase'
-                      }}>
-                      {product.name}
-                    </h3>
-                  </Link>
-
-                  {/* Артикул - фиксированная высота */}
-                  <p className={`${typography.fontSize.sm} ${typography.fontWeight.normal} ${typography.fontFamily} ${typography.textColor.tertiary} h-5`}>
-                    {product.part_number ? `Артикул: ${product.part_number}` : '\u00A0'}
-                  </p>
-
-                  {/* Цена и кнопка - всегда внизу */}
-                  <div className="mt-auto pt-2 flex items-center justify-between gap-2">
-                    <span className={`${typography.fontSize.md} ${typography.fontWeight.extrabold} ${typography.fontFamily} ${typography.textColor.primary} whitespace-nowrap`}>
-                      {formatPrice(product.price)}
-                    </span>
-                    <AddToCartButton
-                      product={product}
-                      onAddToCart={handleAddToCart}
-                      size="sm"
-                    />
-                  </div>
-                </div>
-              </div>
+                product={product}
+                brandId={brandId}
+                onAddToCart={handleAddToCart}
+              />
             ))}
           </div>
         )}
