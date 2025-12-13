@@ -8,7 +8,23 @@ function BrandCard({ brand }) {
       to={`/brand/${brand.slug}`}
       className="group block"
     >
-      <div className={`relative bg-white ${effects.rounded['3xl']} ${effects.shadow.sm} hover:shadow-lg hover:shadow-blue-300/60 hover:-translate-y-0.5 ${effects.transition.shadow} transition-transform duration-300 overflow-hidden flex flex-col h-full`}>
+      <div className={`
+        relative bg-slate-50
+        border border-slate-100
+        ${effects.rounded['3xl']}
+        ${effects.shadow.sm}
+        hover:shadow-lg
+        hover:shadow-blue-300/60
+        hover:-translate-y-0.5
+        ${effects.transition.shadow}
+        transition-transform
+        duration-300
+        overflow-hidden
+        flex
+        flex-col
+        h-full
+        `}
+      >
         {/* Название бренда
         <div className="px-4 pt-4 min-h-[2.5rem] flex items-start ml-1 mb-2">
           <h3 className={`${typography.fontFamily} ${typography.fontWeight.medium} ${typography.fontSize.md} ${typography.textColor.primary} ${typography.lineHeight.tight}`}>
