@@ -209,12 +209,9 @@ const Catalog = () => {
           className={`${inputStyles.select} ${typography.fontFamily} w-full`}
           aria-label="Сортировка товаров"
         >
-          <option value="price_asc">Цена по возрастанию</option>
-          <option value="price_desc">Цена по убыванию</option>
-          <option value="name_asc">Название А-Я</option>
-          <option value="name_desc">Название Я-А</option>
-          <option value="created_at_desc">Сначала новые</option>
-          <option value="created_at_asc">Сначала старые</option>
+          <option value="price_asc">Дешевле</option>
+          <option value="price_desc">Дороже</option>
+          <option value="name_asc">По наименованию</option>
         </select>
       </div>
 
