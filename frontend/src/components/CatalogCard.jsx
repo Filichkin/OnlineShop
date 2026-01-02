@@ -45,7 +45,7 @@ function CatalogCard() {
           </div>
 
           {/* Основной заголовок */}
-          <h3 className={`${typography.fontFamily} ${typography.fontWeight.semibold} ${typography.fontSize['xl']} text-gray-900 ${typography.lineHeight.tight} mb-1`}>
+          <h3 className={`${typography.fontFamily} ${typography.fontWeight.semibold} ${typography.fontSize['2xl']} text-gray-900 ${typography.lineHeight.tight} mb-1`}>
             Полный каталог
           </h3>
 
