@@ -1,5 +1,8 @@
+import asyncio
 from contextlib import asynccontextmanager
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -10,6 +13,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.api.routers import main_router
 from app.core.config import settings
+from app.core.db import get_async_session
 from app.core.exceptions import (
     AuthErrorCode,
     AuthErrorDetail,
@@ -21,9 +25,43 @@ from app.core.exceptions import (
 from app.core.init_db import create_first_superuser
 from app.core.limiter import limiter
 from app.core.logging_config import setup_logging
+from app.crud.cart import cart_crud
 
 # Initialize logging
 setup_logging()
+
+# Initialize scheduler for background tasks
+scheduler = AsyncIOScheduler()
+
+
+async def cleanup_expired_carts_task():
+    """
+    Background task to cleanup expired carts.
+
+    Runs daily at 2 AM to remove expired guest carts from database.
+    This prevents database bloat from abandoned shopping carts.
+    """
+    try:
+        logger.info('Starting expired carts cleanup task')
+        async for session in get_async_session():
+            try:
+                deleted_count = await cart_crud.cleanup_expired_carts(session)
+                logger.info(
+                    f'Expired carts cleanup completed: '
+                    f'{deleted_count} carts deleted'
+                )
+            except Exception as e:
+                logger.error(
+                    f'Error during cart cleanup: {str(e)}',
+                    exc_info=True
+                )
+            finally:
+                await session.close()
+    except Exception as e:
+        logger.error(
+            f'Failed to execute cart cleanup task: {str(e)}',
+            exc_info=True
+        )
 
 
 @asynccontextmanager
@@ -31,12 +69,27 @@ async def lifespan(app: FastAPI):
     logger.info('Запуск приложения...')
     try:
         await create_first_superuser()
+
+        # Start background scheduler
+        scheduler.add_job(
+            cleanup_expired_carts_task,
+            CronTrigger(hour=2, minute=0),  # Run daily at 2 AM
+            id='cleanup_expired_carts',
+            name='Cleanup expired shopping carts',
+            replace_existing=True
+        )
+        scheduler.start()
+        logger.info('Background scheduler started')
+
         logger.info('Запуск приложения завершен успешно')
     except Exception as e:
         logger.exception(f'Ошибка при запуске приложения: {e}')
         raise
     yield
     logger.info('Остановка приложения...')
+    # Shutdown scheduler
+    scheduler.shutdown()
+    logger.info('Background scheduler stopped')
 
 app = FastAPI(
     title=settings.app_title,

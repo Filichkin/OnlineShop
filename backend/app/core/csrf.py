@@ -66,16 +66,16 @@ async def verify_csrf_token(
     Safe methods (GET, HEAD, OPTIONS) are exempt from CSRF protection
     as they should not have side effects.
 
-    IMPORTANT: For anonymous users (session_id cookie only),
-    CSRF protection is relaxed as session_id provides some protection.
-    Only authenticated users (with access_token) MUST have CSRF token.
+    SECURITY: ALL state-changing operations require CSRF token,
+    including for anonymous users. CSRF token is generated when
+    creating session cookie.
 
     Args:
         request: FastAPI request object
         csrf_token_cookie: CSRF token from cookie
 
     Raises:
-        HTTPException: 403 if CSRF verification fails for authenticated users
+        HTTPException: 403 if CSRF verification fails
     """
     # Exempt safe methods from CSRF check
     if request.method in ('GET', 'HEAD', 'OPTIONS'):
@@ -85,40 +85,28 @@ async def verify_csrf_token(
         )
         return
 
-    # Check if user is authenticated (has access_token cookie)
-    access_token = request.cookies.get('access_token')
+    # CSRF token is REQUIRED for ALL state-changing operations
+    csrf_token_header = request.headers.get(CSRF_HEADER_NAME)
 
-    # If user is authenticated, CSRF token is REQUIRED
-    if access_token:
-        csrf_token_header = request.headers.get(CSRF_HEADER_NAME)
-
-        if not csrf_token_cookie or not csrf_token_header:
-            logger.warning(
-                f'CSRF токен отсутствует для аутентифицированного '
-                f'пользователя: {request.method} {request.url.path}'
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail='CSRF token missing'
-            )
-
-        # Verify CSRF tokens match
-        if not secrets.compare_digest(csrf_token_cookie, csrf_token_header):
-            logger.warning(
-                f'CSRF токен недействителен для {request.method} '
-                f'{request.url.path}'
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail='CSRF token invalid'
-            )
-
-        logger.debug(f'CSRF токен проверен успешно для {request.url.path}')
-    else:
-        # For anonymous users, CSRF is optional
-        # They are protected by session_id cookie which has SameSite protection
-        logger.debug(
-            f'CSRF проверка пропущена для анонимного пользователя: '
-            f'{request.method} {request.url.path}'
+    if not csrf_token_cookie or not csrf_token_header:
+        logger.warning(
+            f'CSRF токен отсутствует: {request.method} {request.url.path}'
         )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='CSRF token missing'
+        )
+
+    # Verify CSRF tokens match using constant-time comparison
+    if not secrets.compare_digest(csrf_token_cookie, csrf_token_header):
+        logger.warning(
+            f'CSRF токен недействителен для {request.method} '
+            f'{request.url.path}'
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='CSRF token invalid'
+        )
+
+    logger.debug(f'CSRF токен проверен успешно для {request.url.path}')
 

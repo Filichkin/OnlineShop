@@ -1,4 +1,5 @@
 import asyncio
+import random
 from typing import Optional
 
 from fastapi import (
@@ -268,6 +269,9 @@ async def forgot_password(
         f'ip={request.client.host}'
     )
 
+    # Add random jitter (0-50ms) to prevent timing attacks
+    jitter = random.uniform(0.0, 0.05)
+
     # Find user by email
     user = await user_crud.get_user_by_email(
         email=request_data.email,
@@ -291,7 +295,8 @@ async def forgot_password(
                 f'Failed to update password for user {user.email}: {e}',
                 exc_info=True
             )
-            # Still return success to prevent timing attack
+            # Add jitter and return success to prevent timing attack
+            await asyncio.sleep(jitter)
             return {
                 'message': Messages.PASSWORD_RESET_EMAIL_SENT
             }
@@ -319,8 +324,11 @@ async def forgot_password(
         password_helper = PasswordHelper()
         password_helper.hash('dummy_password_for_timing')  # Hash operation
 
-        # Simulate database commit time
+        # Simulate database commit time with variability
         await asyncio.sleep(0.01)
+
+    # Add final jitter before response to make timing unpredictable
+    await asyncio.sleep(jitter)
 
     # Always return success - don't reveal if email exists
     return {
@@ -448,8 +456,10 @@ async def get_current_user_profile(
     summary='Update current user profile',
     description='Update authenticated user profile information'
 )
+@limiter.limit('10/minute')
 async def update_current_user_profile(
     user_update: UserUpdate,
+    request: Request,
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_async_session),
     _: None = Depends(verify_csrf_token)
@@ -676,9 +686,11 @@ async def get_user_details(
     summary='Update user (superuser only)',
     description='Update any user field including is_active status'
 )
+@limiter.limit('20/minute')
 async def update_user_by_admin(
     user_id: int,
     user_update: UserUpdateAdmin,
+    request: Request,
     current_user: User = Depends(current_superuser),
     session: AsyncSession = Depends(get_async_session),
     _: None = Depends(verify_csrf_token)

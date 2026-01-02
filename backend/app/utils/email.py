@@ -1,5 +1,6 @@
 """Email service utility for sending order confirmations."""
 
+import html
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -42,7 +43,7 @@ def _format_order_items_html(order: Order) -> str:
         items_html += f'''
             <tr>
                 <td style="border: 1px solid #ddd; padding: 12px;">
-                    {item.product_name}
+                    {html.escape(item.product_name)}
                 </td>
                 <td style="border: 1px solid #ddd; padding: 12px;
                            text-align: center;">
@@ -109,7 +110,7 @@ def _create_order_email_html(order: Order) -> str:
         <div style="padding: 20px; background-color: #f9f9f9;
                     margin-top: 20px;">
             <h2 style="color: #4CAF50;">
-                Заказ {order.order_number}
+                Заказ {html.escape(order.order_number)}
             </h2>
             <p>
                 Ваш заказ успешно оформлен и принят в обработку.
@@ -120,13 +121,13 @@ def _create_order_email_html(order: Order) -> str:
             <h3>Информация о доставке:</h3>
             <p>
                 <strong>Получатель:</strong>
-                {order.first_name} {order.last_name}<br>
+                {html.escape(order.first_name)} {html.escape(order.last_name)}<br>
                 <strong>Адрес:</strong>
-                {order.city}, {order.postal_code}, {order.address}<br>
-                <strong>Телефон:</strong> {order.phone}<br>
-                <strong>Email:</strong> {order.email}
+                {html.escape(order.city)}, {html.escape(order.postal_code)}, {html.escape(order.address)}<br>
+                <strong>Телефон:</strong> {html.escape(order.phone)}<br>
+                <strong>Email:</strong> {html.escape(order.email)}
             </p>
-            {f"<p><strong>Примечания:</strong> {order.notes}</p>"
+            {f"<p><strong>Примечания:</strong> {html.escape(order.notes)}</p>"
              if order.notes else ""}
         </div>
 
@@ -175,10 +176,11 @@ def send_order_confirmation_email(order: Order) -> bool:
         # Create message
         msg = MIMEMultipart('alternative')
         msg['Subject'] = (
-            f'Подтверждение заказа {order.order_number} - Ecom Market'
+            f'Подтверждение заказа '
+            f'{html.escape(order.order_number)} - Ecom Market'
         )
         msg['From'] = settings.yandex_email
-        msg['To'] = order.email
+        msg['To'] = html.escape(order.email)
 
         # Create HTML body
         html_body = _create_order_email_html(order)
@@ -252,10 +254,11 @@ def send_order_status_update_email(order: Order, old_status: str) -> bool:
         # Create message
         msg = MIMEMultipart('alternative')
         msg['Subject'] = (
-            f'Изменение статуса заказа {order.order_number} - Ecom Market'
+            f'Изменение статуса заказа '
+            f'{html.escape(order.order_number)} - Ecom Market'
         )
         msg['From'] = settings.yandex_email
-        msg['To'] = order.email
+        msg['To'] = html.escape(order.email)
 
         # Create HTML body
         html_body = f'''
@@ -276,7 +279,7 @@ def send_order_status_update_email(order: Order, old_status: str) -> bool:
             <div style="padding: 20px; background-color: #f9f9f9;
                         margin-top: 20px;">
                 <h2 style="color: #2196F3;">
-                    Заказ {order.order_number}
+                    Заказ {html.escape(order.order_number)}
                 </h2>
                 <p>
                     Статус вашего заказа был изменен.
@@ -284,12 +287,12 @@ def send_order_status_update_email(order: Order, old_status: str) -> bool:
                 <div style="background-color: white; padding: 15px;
                             border-left: 4px solid #2196F3; margin: 20px 0;">
                     <p style="margin: 5px 0;">
-                        <strong>Предыдущий статус:</strong> {old_status_label}
+                        <strong>Предыдущий статус:</strong> {html.escape(old_status_label)}
                     </p>
                     <p style="margin: 5px 0;">
                         <strong>Текущий статус:</strong>
                         <span style="color: #2196F3; font-weight: bold;">
-                            {new_status_label}
+                            {html.escape(new_status_label)}
                         </span>
                     </p>
                 </div>
@@ -299,10 +302,10 @@ def send_order_status_update_email(order: Order, old_status: str) -> bool:
                 <h3>Информация о заказе:</h3>
                 <p>
                     <strong>Получатель:</strong>
-                    {order.first_name} {order.last_name}<br>
+                    {html.escape(order.first_name)} {html.escape(order.last_name)}<br>
                     <strong>Адрес доставки:</strong>
-                    {order.city}, {order.postal_code}, {order.address}<br>
-                    <strong>Телефон:</strong> {order.phone}
+                    {html.escape(order.city)}, {html.escape(order.postal_code)}, {html.escape(order.address)}<br>
+                    <strong>Телефон:</strong> {html.escape(order.phone)}
                 </p>
                 <p>
                     <strong>Количество товаров:</strong>
