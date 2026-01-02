@@ -45,9 +45,9 @@ function Layout() {
   };
 
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       <Header onOpenLoginModal={handleOpenLoginModal} />
-      <main>
+      <main className="flex-grow">
         <Suspense fallback={<div className="text-center">Загрузка...</div>}>
           <Outlet />
         </Suspense>
@@ -62,7 +62,7 @@ function Layout() {
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
       />
-    </>
+    </div>
   );
 }
 
