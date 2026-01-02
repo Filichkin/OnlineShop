@@ -215,10 +215,9 @@ function Brand() {
               value={sortBy}
               onChange={handleSortChange}
             >
-              <option value="price_asc">Цена по возрастанию</option>
-              <option value="price_desc">Цена по убыванию</option>
-              <option value="name_asc">Название А-Я</option>
-              <option value="name_desc">Название Я-А</option>
+              <option value="price_asc">Дешевле</option>
+              <option value="price_desc">Дороже</option>
+              <option value="name_asc">По наименованию</option>
             </select>
           </div>
         </div>
@@ -227,7 +226,7 @@ function Brand() {
             Продукты не найдены
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-[12px] sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-6">
+          <div className="grid grid-cols-1 gap-[12px] sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-5">
             {filteredProducts.map((product) => (
               <ProductCard
                 key={product.id}
