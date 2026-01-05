@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { adminOrdersAPI } from '../../api';
 import { formatPrice } from '../../utils';
 import OrderDetailsModal from './OrderDetailsModal';
+import { logger } from '../../utils/logger';
 
 const OrderManager = () => {
   const [orders, setOrders] = useState([]);
@@ -40,7 +41,7 @@ const OrderManager = () => {
       setTotalOrders(data.total || sortedOrders.length);
     } catch (err) {
       setError(err.message || 'Не удалось загрузить заказы');
-      console.error('Error fetching orders:', err);
+      logger.error('Error fetching orders:', err);
     } finally {
       setLoading(false);
     }
@@ -105,7 +106,7 @@ const OrderManager = () => {
       setShowDetailsModal(true);
     } catch (err) {
       alert(err.message || 'Не удалось загрузить детали заказа');
-      console.error('Error fetching order details:', err);
+      logger.error('Error fetching order details:', err);
     } finally {
       setLoadingOrderDetails(false);
     }

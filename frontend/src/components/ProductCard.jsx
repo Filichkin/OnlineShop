@@ -58,15 +58,7 @@ function ProductCard({ product, brandId, linkPrefix = "/product", onAddToCart })
           className={`hover:text-blue-600 ${effects.transition.colors} block h-[2.5rem] mb-2`}
         >
           <h3
-            className={`hover:text-blue-500 ${typography.fontSize.base} ${typography.fontWeight.light} ${typography.fontFamily} text-gray-600`}
-            style={{
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              lineHeight: '1.25rem'
-            }}
+            className={`hover:text-blue-500 ${typography.fontSize.base} ${typography.fontWeight.light} ${typography.fontFamily} text-gray-600 line-clamp-2 leading-5`}
           >
             {product.name}
           </h3>

@@ -1,4 +1,5 @@
 import { brandsAPI } from "../api";
+import { logger } from "../utils/logger";
 
 export default async function fetchBrandLoader() {
   try {
@@ -24,7 +25,7 @@ export default async function fetchBrandLoader() {
 
     return validBrands;
   } catch (error) {
-    console.error('Ошибка загрузки брендов:', error);
+    logger.error('Ошибка загрузки брендов:', error);
     throw new Response(error.message || 'Не удалось загрузить бренды', { status: 500 });
   }
 }

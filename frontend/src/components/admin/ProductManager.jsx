@@ -10,6 +10,7 @@ import {
 import { getImageUrl, formatPrice } from '../../utils';
 import { brandsAPI } from '../../api';
 import ProductImageManager from './ProductImageManager';
+import { logger } from '../../utils/logger';
 
 const ProductManager = () => {
   const [showModal, setShowModal] = useState(false);
@@ -83,7 +84,7 @@ const ProductManager = () => {
         const brandsData = await brandsAPI.getBrands(0, 100, true);
         setBrands(brandsData);
       } catch (err) {
-        console.error('Failed to load brands:', err);
+        logger.error('Failed to load brands:', err);
       }
     };
     loadBrands();
@@ -199,7 +200,7 @@ const ProductManager = () => {
       }));
     } catch (err) {
       // Ошибка уже обработана в slice
-      console.error('Error submitting product:', err);
+      logger.error('Error submitting product:', err);
     }
   };
 
@@ -235,7 +236,7 @@ const ProductManager = () => {
 
         handleCloseModal();
       } catch (err) {
-        console.error('Error deleting product:', err);
+        logger.error('Error deleting product:', err);
       }
     }
   };

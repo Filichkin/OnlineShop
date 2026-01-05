@@ -1,4 +1,5 @@
 import { categoriesAPI } from "../api";
+import { logger } from "../utils/logger";
 
 export default async function fetchCategoryLoader() {
   try {
@@ -24,7 +25,7 @@ export default async function fetchCategoryLoader() {
 
     return validCategories;
   } catch (error) {
-    console.error('Ошибка загрузки категорий:', error);
+    logger.error('Ошибка загрузки категорий:', error);
     throw new Response(error.message || 'Не удалось загрузить категории', { status: 500 });
   }
 }

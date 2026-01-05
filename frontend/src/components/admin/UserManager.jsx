@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { adminUsersAPI } from '../../api';
 import EditUserModal from './EditUserModal';
+import { logger } from '../../utils/logger';
 
 const UserManager = () => {
   const [users, setUsers] = useState([]);
@@ -38,7 +39,7 @@ const UserManager = () => {
       }
     } catch (err) {
       setError(err.message || 'Не удалось загрузить пользователей');
-      console.error('Error fetching users:', err);
+      logger.error('Error fetching users:', err);
     } finally {
       setLoading(false);
     }

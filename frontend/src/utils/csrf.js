@@ -5,6 +5,8 @@
  * for protection against Cross-Site Request Forgery attacks.
  */
 
+import { logger } from './logger';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 /**
@@ -57,7 +59,7 @@ export const fetchCsrfToken = async () => {
       return data.csrf_token;
     }
   } catch (err) {
-    console.error('Failed to fetch CSRF token:', err);
+    logger.error('Failed to fetch CSRF token:', err);
   }
 
   return null;

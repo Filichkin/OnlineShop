@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { adminUsersAPI } from '../../api';
+import { logger } from '../../utils/logger';
 
 const EditUserModal = ({ user, onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
@@ -96,7 +97,7 @@ const EditUserModal = ({ user, onClose, onUpdate }) => {
       onUpdate(updatedUser);
     } catch (err) {
       setError(err.message || 'Не удалось обновить пользователя');
-      console.error('Error updating user:', err);
+      logger.error('Error updating user:', err);
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { cartAPI } from '../../api';
+import { logger } from '../../utils/logger';
+import { validateCartResponse } from '../../utils/validators';
 
 /**
  * Cart Slice для управления корзиной покупок
@@ -23,7 +25,7 @@ const loadCartFromStorage = () => {
       return JSON.parse(savedCart);
     }
   } catch (error) {
-    console.error('Error loading cart from localStorage:', error);
+    logger.error('Error loading cart from localStorage:', error);
   }
   return { items: [], totalItems: 0, totalPrice: 0 };
 };
@@ -37,7 +39,7 @@ const saveCartToStorage = (items) => {
     };
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
   } catch (error) {
-    console.error('Error saving cart to localStorage:', error);
+    logger.error('Error saving cart to localStorage:', error);
   }
 };
 
@@ -45,7 +47,7 @@ const clearCartFromStorage = () => {
   try {
     localStorage.removeItem(CART_STORAGE_KEY);
   } catch (error) {
-    console.error('Error clearing cart from localStorage:', error);
+    logger.error('Error clearing cart from localStorage:', error);
   }
 };
 
@@ -80,7 +82,9 @@ export const fetchCart = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const data = await cartAPI.getCart();
-      return data;
+      // Validate response data
+      const validatedData = validateCartResponse(data);
+      return validatedData;
     } catch (error) {
       const status = error?.status;
       if (status === 401) {

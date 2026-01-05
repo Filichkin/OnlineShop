@@ -11,6 +11,7 @@ import favoriteIcon from '../assets/images/favorite.webp';
 import profileIcon from '../assets/images/profile.webp';
 import AddToCartButton from '../UI/AddToCartButton';
 import FavoriteButton from '../UI/FavoriteButton';
+import { logger } from '../utils/logger';
 
 /**
  * Profile компонент - страница профиля пользователя
@@ -86,7 +87,7 @@ function Profile() {
       const data = await ordersAPI.getOrders(0, 20);
       setOrders(data);
     } catch (err) {
-      console.error('Error loading orders:', err);
+      logger.error('Error loading orders:', err);
       setOrdersError(err || 'Не удалось загрузить заказы');
     } finally {
       setOrdersLoading(false);
@@ -114,7 +115,7 @@ function Profile() {
             }
           }
         } catch (e) {
-          console.error('Error formatting date_of_birth:', e, user.date_of_birth);
+          logger.error('Error formatting date_of_birth:', e, user.date_of_birth);
         }
       }
       
@@ -237,7 +238,7 @@ function Profile() {
       await dispatch(updateProfile(updateData)).unwrap();
       setIsEditing(false);
     } catch (err) {
-      console.error('Profile update error:', err);
+      logger.error('Profile update error:', err);
     }
   };
 
@@ -594,7 +595,7 @@ function Profile() {
                                     return dateStr;
                                   }
                                 } catch (e) {
-                                  console.error('Error formatting date_of_birth:', e, profileData.date_of_birth);
+                                  logger.error('Error formatting date_of_birth:', e, profileData.date_of_birth);
                                   return profileData.date_of_birth;
                                 }
                               })()
