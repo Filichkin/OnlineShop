@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { brandsAPI } from '../../api';
 import { getImageUrl } from '../../utils';
 import { useAdminResource } from '../../hooks/useAdminResource';
@@ -15,6 +15,15 @@ const BrandManager = () => {
     is_active: true,
   });
 
+  // Stable wrapper function for API call
+  const fetchBrands = useCallback((filters = {}) => {
+    return brandsAPI.getBrands(
+      filters.skip || 0,
+      filters.limit || 100,
+      filters.isActive
+    );
+  }, []);
+
   // Use the reusable useAdminResource hook
   const {
     items: brands,
@@ -29,11 +38,7 @@ const BrandManager = () => {
     startEdit,
     cancelEdit,
   } = useAdminResource({
-    fetchFn: (filters = {}) => brandsAPI.getBrands(
-      filters.skip || 0,
-      filters.limit || 100,
-      filters.isActive
-    ),
+    fetchFn: fetchBrands,
     createFn: brandsAPI.createBrand,
     updateFn: brandsAPI.updateBrand,
     deleteFn: brandsAPI.deleteBrand,
