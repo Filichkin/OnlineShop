@@ -29,7 +29,11 @@ const BrandManager = () => {
     startEdit,
     cancelEdit,
   } = useAdminResource({
-    fetchFn: brandsAPI.getBrands,
+    fetchFn: (filters = {}) => brandsAPI.getBrands(
+      filters.skip || 0,
+      filters.limit || 100,
+      filters.isActive
+    ),
     createFn: brandsAPI.createBrand,
     updateFn: brandsAPI.updateBrand,
     deleteFn: brandsAPI.deleteBrand,
