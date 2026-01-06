@@ -61,12 +61,14 @@ class Cart(Base):
     # TODO: Add user relationship when user authentication is implemented
     # user = relationship('User', back_populates='cart')
 
-    # Constraints
+    # Constraints and indexes
     __table_args__ = (
-        # Ensure either session_id or user_id is set, but not both
+        # Indexes for frequently queried fields
         Index('ix_cart_session_id', 'session_id'),
         Index('ix_cart_user_id', 'user_id'),
         Index('ix_cart_expires_at', 'expires_at'),
+        # Composite index for cleanup queries (expired carts by date)
+        Index('ix_cart_expires_session', 'expires_at', 'session_id'),
     )
 
     def __repr__(self) -> str:

@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
 import { fetchCatalogProducts } from '../store/slices/productsSlice';
 import { brandsAPI } from '../api';
 import ProductCard from '../components/ProductCard';
 import { typography, effects, inputStyles, labelStyles } from '../styles/designSystem';
+import { logger } from '../utils/logger';
+import useDebounce from '../hooks/useDebounce';
 
 const Catalog = () => {
   const dispatch = useDispatch();
@@ -29,6 +31,29 @@ const Catalog = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 24;
 
+  // Debounce search input to reduce API calls
+  const debouncedSearch = useDebounce(filters.search, 500);
+
+  // Memoize filters object to stabilize dependency in useEffect
+  const stableFilters = useMemo(
+    () => ({
+      search: debouncedSearch,
+      brand_slug: filters.brand_slug,
+      min_price: filters.min_price,
+      max_price: filters.max_price,
+      sort_by: filters.sort_by,
+      sort_order: filters.sort_order,
+    }),
+    [
+      debouncedSearch,
+      filters.brand_slug,
+      filters.min_price,
+      filters.max_price,
+      filters.sort_by,
+      filters.sort_order,
+    ]
+  );
+
   // Загрузка брендов
   useEffect(() => {
     const loadBrands = async () => {
@@ -36,7 +61,7 @@ const Catalog = () => {
         const brandsData = await brandsAPI.getBrands(0, 100, true);
         setBrands(brandsData);
       } catch (err) {
-        console.error('Failed to load brands:', err);
+        logger.error('Failed to load brands:', err);
       }
     };
     loadBrands();
@@ -47,23 +72,23 @@ const Catalog = () => {
     const skip = (currentPage - 1) * ITEMS_PER_PAGE;
 
     dispatch(fetchCatalogProducts({
-      ...filters,
+      ...stableFilters,
       skip,
       limit: ITEMS_PER_PAGE,
       is_active: true
     }));
 
-    // Обновляем URL с текущими фильтрами
+    // Обновляем URL с текущими фильтрами (используем недебаунсенный search для мгновенного обновления URL)
     const params = {};
     if (filters.search) params.search = filters.search;
-    if (filters.brand_slug) params.brand = filters.brand_slug;
-    if (filters.min_price) params.min_price = filters.min_price;
-    if (filters.max_price) params.max_price = filters.max_price;
-    if (filters.sort_by !== 'name') params.sort_by = filters.sort_by;
-    if (filters.sort_order !== 'asc') params.sort_order = filters.sort_order;
+    if (stableFilters.brand_slug) params.brand = stableFilters.brand_slug;
+    if (stableFilters.min_price) params.min_price = stableFilters.min_price;
+    if (stableFilters.max_price) params.max_price = stableFilters.max_price;
+    if (stableFilters.sort_by !== 'name') params.sort_by = stableFilters.sort_by;
+    if (stableFilters.sort_order !== 'asc') params.sort_order = stableFilters.sort_order;
 
     setSearchParams(params, { replace: true });
-  }, [dispatch, filters, currentPage]);
+  }, [dispatch, stableFilters, currentPage, filters.search, setSearchParams]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));

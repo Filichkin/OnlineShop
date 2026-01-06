@@ -1,5 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { favoritesAPI } from '../../api';
+import { logger } from '../../utils/logger';
+import { validateFavoritesResponse } from '../../utils/validators';
 
 /**
  * Favorites Slice для управления избранными товарами
@@ -23,7 +25,7 @@ const loadFavoritesFromStorage = () => {
       return JSON.parse(savedFavorites);
     }
   } catch (error) {
-    console.error('Error loading favorites from localStorage:', error);
+    logger.error('Error loading favorites from localStorage:', error);
   }
   return { items: [], favoriteIds: [], totalItems: 0 };
 };
@@ -37,7 +39,7 @@ const saveFavoritesToStorage = (items) => {
     };
     localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites));
   } catch (error) {
-    console.error('Error saving favorites to localStorage:', error);
+    logger.error('Error saving favorites to localStorage:', error);
   }
 };
 
@@ -45,7 +47,7 @@ const clearFavoritesFromStorage = () => {
   try {
     localStorage.removeItem(FAVORITES_STORAGE_KEY);
   } catch (error) {
-    console.error('Error clearing favorites from localStorage:', error);
+    logger.error('Error clearing favorites from localStorage:', error);
   }
 };
 
@@ -83,7 +85,9 @@ export const fetchFavorites = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const data = await favoritesAPI.getFavorites();
-      return data;
+      // Validate response data
+      const validatedData = validateFavoritesResponse(data);
+      return validatedData;
     } catch (error) {
       const status = error?.status;
       if (status === 401) {

@@ -9,6 +9,7 @@ import {
 } from '../../store/slices/categoriesSlice';
 import { fetchProducts } from '../../store/slices/productsSlice';
 import { getImageUrl, formatPrice } from '../../utils';
+import { getUserFriendlyError } from '../../utils/errorMessages';
 
 const CategoryManager = () => {
   const [showModal, setShowModal] = useState(false);
@@ -246,7 +247,7 @@ const CategoryManager = () => {
                 Ошибка
               </h3>
               <div className="mt-2 text-sm text-red-700">
-                {error}
+                {getUserFriendlyError(error)}
               </div>
             </div>
           </div>
@@ -337,10 +338,10 @@ const CategoryManager = () => {
               <h3 id="category-modal-title" className="text-lg font-medium text-gray-900 mb-4">
                 {editingCategory ? 'Редактировать категорию' : 'Добавить категорию'}
               </h3>
-              
+
               {error && (
                 <div className="mb-4 rounded-md bg-red-50 p-4">
-                  <div className="text-sm text-red-700">{error}</div>
+                  <div className="text-sm text-red-700">{getUserFriendlyError(error)}</div>
                 </div>
               )}
               

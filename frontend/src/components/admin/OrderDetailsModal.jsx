@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { getImageUrl, formatPrice } from '../../utils';
 import { adminOrdersAPI } from '../../api';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyErrorWithContext } from '../../utils/errorMessages';
 
 const OrderDetailsModal = ({ order, onClose, onStatusUpdate }) => {
   const modalRef = useRef(null);
@@ -59,8 +61,9 @@ const OrderDetailsModal = ({ order, onClose, onStatusUpdate }) => {
       // Close modal after successful update
       onClose();
     } catch (err) {
-      alert(err.message || 'Не удалось обновить статус заказа');
-      console.error('Error updating order status:', err);
+      const friendlyError = getUserFriendlyErrorWithContext(err, 'при обновлении статуса заказа');
+      alert(friendlyError);
+      logger.error('Error updating order status:', err);
       // Reset to original status on error
       setSelectedStatus(order.status);
     } finally {

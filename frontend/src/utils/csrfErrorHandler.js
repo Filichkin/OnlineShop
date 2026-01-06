@@ -5,6 +5,7 @@
  */
 
 import { fetchCsrfToken } from './csrf';
+import { logger } from './logger';
 
 /**
  * Handle CSRF errors and attempt retry with fresh token
@@ -41,7 +42,7 @@ export const handleCsrfError = async (error, retryCallback = null, store = null)
   const newToken = await fetchCsrfToken();
 
   if (!newToken) {
-    console.error('Failed to fetch new CSRF token');
+    logger.error('Failed to fetch new CSRF token');
     throw new Error('Не удалось обновить токен безопасности. Попробуйте обновить страницу.');
   }
 

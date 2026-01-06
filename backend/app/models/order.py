@@ -131,6 +131,10 @@ class Order(Base):
         Index('ix_order_status', 'status'),
         Index('ix_order_created_at', 'created_at'),
         Index('ix_order_number', 'order_number', unique=True),
+        # Composite index for user order history queries
+        Index('ix_order_user_created', 'user_id', 'created_at'),
+        # Composite index for status filtering with date sorting
+        Index('ix_order_status_created', 'status', 'created_at'),
     )
 
     def __repr__(self) -> str:

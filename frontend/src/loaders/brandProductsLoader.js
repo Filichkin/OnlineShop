@@ -1,4 +1,5 @@
 import { brandsAPI } from "../api";
+import { logger } from "../utils/logger";
 
 export default async function fetchBrandProductsLoader({ params }) {
   try {
@@ -34,7 +35,7 @@ export default async function fetchBrandProductsLoader({ params }) {
 
     return { products: validProducts, brandId: brand.id };
   } catch (error) {
-    console.error('Ошибка загрузки продуктов бренда:', error);
+    logger.error('Ошибка загрузки продуктов бренда:', error);
 
     if (error.message.includes('Failed to fetch')) {
       throw new Response('Не удалось загрузить продукты', { status: 500 });

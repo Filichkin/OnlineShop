@@ -1,4 +1,5 @@
 import { categoriesAPI } from "../api";
+import { logger } from "../utils/logger";
 
 export default async function fetchProductLoader({ params }) {
   try {
@@ -34,7 +35,7 @@ export default async function fetchProductLoader({ params }) {
 
     return { products: validProducts, categoryId: category.id };
   } catch (error) {
-    console.error('Ошибка загрузки продуктов:', error);
+    logger.error('Ошибка загрузки продуктов:', error);
 
     if (error.message.includes('Failed to fetch')) {
       throw new Response('Не удалось загрузить продукты', { status: 500 });

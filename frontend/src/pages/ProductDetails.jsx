@@ -6,6 +6,7 @@ import FavoriteButton from "../UI/FavoriteButton";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { getImageUrl, formatPrice } from "../utils";
 import { typography, effects, cardStyles } from "../styles/designSystem";
+import { logger } from '../utils/logger';
 
 function ProductDetails() {
   const { productId } = useParams();
@@ -62,7 +63,7 @@ function ProductDetails() {
           return;
         }
 
-        console.error('Ошибка загрузки продукта:', err);
+        logger.error('Ошибка загрузки продукта:', err);
         setError(err.message || 'Не удалось загрузить данные о товаре');
       } finally {
         // Проверяем, что компонент все еще смонтирован перед обновлением state

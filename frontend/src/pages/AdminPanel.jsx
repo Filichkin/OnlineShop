@@ -8,6 +8,7 @@ import BrandManager from '../components/admin/BrandManager';
 import OrderManager from '../components/admin/OrderManager';
 import UserManager from '../components/admin/UserManager';
 import { adminOrdersAPI, adminUsersAPI } from '../api';
+import { logger } from '../utils/logger';
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('products');
@@ -63,7 +64,7 @@ const AdminPanel = () => {
         const active = data.users ? data.users.filter(u => u.is_active).length : 0;
         setUsersStats({ total, active });
       } catch (error) {
-        console.error('Error fetching users stats:', error);
+        logger.error('Error fetching users stats:', error);
         setUsersStats({ total: 0, active: 0 });
       }
     };

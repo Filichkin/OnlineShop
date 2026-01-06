@@ -43,8 +43,15 @@ class CRUDProduct(CRUDBase):
         limit: int = Constants.DEFAULT_LIMIT,
         is_active: Optional[bool] = None,
     ):
-        """Получить список продуктов с опциональной фильтрацией по статусу"""
-        query = select(Product)
+        """
+        Получить список продуктов с опциональной фильтрацией по статусу
+
+        Uses eager loading to prevent N+1 queries.
+        """
+        query = select(Product).options(
+            selectinload(Product.images),
+            selectinload(Product.brand)
+        )
 
         if is_active is not None:
             query = query.where(Product.is_active.is_(is_active))
@@ -93,6 +100,8 @@ class CRUDProduct(CRUDBase):
         Получить продукты по бренду
         с опциональной фильтрацией по статусу и сортировкой
 
+        Uses eager loading to prevent N+1 queries.
+
         Args:
             brand_id: ID бренда
             session: Сессия БД
@@ -101,7 +110,14 @@ class CRUDProduct(CRUDBase):
             is_active: Фильтр по статусу активности
             sort_by: Тип сортировки (price_asc, price_desc, name_asc, name_desc)
         """
-        query = select(Product).where(Product.brand_id == brand_id)
+        query = (
+            select(Product)
+            .where(Product.brand_id == brand_id)
+            .options(
+                selectinload(Product.images),
+                selectinload(Product.brand)
+            )
+        )
 
         if is_active is not None:
             query = query.where(Product.is_active.is_(is_active))
@@ -324,6 +340,8 @@ class CRUDProduct(CRUDBase):
         """
         Получить список продуктов бренда по slug
 
+        Uses eager loading to prevent N+1 queries.
+
         Args:
             brand_slug: Slug бренда
             session: Сессия БД
@@ -340,6 +358,10 @@ class CRUDProduct(CRUDBase):
             select(Product)
             .join(Brand, Product.brand_id == Brand.id)
             .where(Brand.slug == brand_slug)
+            .options(
+                selectinload(Product.images),
+                selectinload(Product.brand)
+            )
         )
 
         if is_active is not None:
@@ -379,6 +401,9 @@ class CRUDProduct(CRUDBase):
         """
         Получить продукты для каталога с расширенными фильтрами
 
+        Uses eager loading to prevent N+1 queries by loading
+        related images and brand data in a single query.
+
         Args:
             session: Сессия БД
             skip: Пропустить элементов
@@ -394,7 +419,14 @@ class CRUDProduct(CRUDBase):
         Returns:
             List[Product]: Список продуктов
         """
-        query = select(Product).join(Brand, Product.brand_id == Brand.id)
+        query = (
+            select(Product)
+            .join(Brand, Product.brand_id == Brand.id)
+            .options(
+                selectinload(Product.images),
+                selectinload(Product.brand)
+            )
+        )
 
         # Применяем фильтры
         filters = []

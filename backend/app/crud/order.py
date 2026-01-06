@@ -21,18 +21,21 @@ class CRUDOrder:
         user_id: int,
         cart_items: list,
         order_data: dict,
-        session: AsyncSession
+        session: AsyncSession,
+        send_email: bool = False
     ) -> Order:
         """
         Create order from cart items.
 
-        Generates unique order number and sends confirmation email.
+        Generates unique order number. Email sending should be handled
+        separately using BackgroundTasks for better performance.
 
         Args:
             user_id: User ID
             cart_items: List of cart items to convert to order
             order_data: Dictionary with customer information
             session: Database session
+            send_email: Whether to send email (deprecated, use BackgroundTasks)
 
         Returns:
             Created Order object
@@ -87,26 +90,27 @@ class CRUDOrder:
             await session.commit()
             await session.refresh(order, attribute_names=['items'])
 
-            # Send confirmation email (non-blocking)
-            # Don't fail order creation if email fails
-            try:
-                email_sent = send_order_confirmation_email(order)
-                if email_sent:
-                    logger.info(
-                        f'Order confirmation email sent successfully '
-                        f'for order {order_number}'
+            # Only send email if explicitly requested (deprecated pattern)
+            # Prefer using BackgroundTasks in endpoint for async email sending
+            if send_email:
+                try:
+                    email_sent = send_order_confirmation_email(order)
+                    if email_sent:
+                        logger.info(
+                            f'Order confirmation email sent for '
+                            f'order {order_number}'
+                        )
+                    else:
+                        logger.warning(
+                            f'Failed to send order confirmation email for '
+                            f'order {order_number}'
+                        )
+                except Exception as e:
+                    logger.error(
+                        f'Unexpected error sending email for order '
+                        f'{order_number}: {str(e)}',
+                        exc_info=True
                     )
-                else:
-                    logger.warning(
-                        f'Failed to send order confirmation email '
-                        f'for order {order_number}'
-                    )
-            except Exception as e:
-                logger.error(
-                    f'Unexpected error sending email for order '
-                    f'{order_number}: {str(e)}',
-                    exc_info=True
-                )
 
         except Exception:
             await session.rollback()

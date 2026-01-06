@@ -1,6 +1,14 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status
+)
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +32,10 @@ from app.schemas.order import (
     OrderStatusUpdate,
     ProductInOrder,
 )
+from app.utils import (
+    send_order_confirmation_email,
+    send_order_status_update_email
+)
 
 
 router = APIRouter()
@@ -40,6 +52,7 @@ router = APIRouter()
 async def create_order(
     order_data: OrderCreate,
     request: Request,
+    background_tasks: BackgroundTasks,
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_async_session),
     _: None = Depends(verify_csrf_token)
@@ -83,11 +96,18 @@ async def create_order(
             user_id=user.id,
             cart_items=cart.items,
             order_data=order_data.model_dump(),
-            session=session
+            session=session,
+            send_email=False  # Don't send email synchronously
         )
 
         # Clear cart after successful order creation
         await cart_crud.clear_cart(cart=cart, session=session)
+
+        # Send confirmation email in background (non-blocking)
+        background_tasks.add_task(
+            send_order_confirmation_email,
+            order
+        )
 
         logger.bind(user_id=user.id).info(
             f'Заказ создан успешно: order_id={order.id}, '
@@ -438,6 +458,7 @@ async def get_all_orders(
 async def update_order_status(
     order_id: int,
     status_update: OrderStatusUpdate,
+    background_tasks: BackgroundTasks,
     user: User = Depends(current_superuser),
     session: AsyncSession = Depends(get_async_session),
     _: None = Depends(verify_csrf_token)
@@ -469,11 +490,21 @@ async def update_order_status(
 
     # Update status
     try:
+        old_status = order.status.value
         updated_order = await order_crud.update_status(
             order=order,
             new_status=status_update.status,
-            session=session
+            session=session,
+            send_notification=False  # Don't send email synchronously
         )
+
+        # Send status update email in background (non-blocking)
+        if old_status != updated_order.status.value:
+            background_tasks.add_task(
+                send_order_status_update_email,
+                updated_order,
+                old_status
+            )
 
         logger.bind(user_id=user.id).info(
             f'Статус заказа обновлен: order_id={order_id}, '

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { adminOrdersAPI } from '../../api';
 import { formatPrice } from '../../utils';
 import OrderDetailsModal from './OrderDetailsModal';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyError, getUserFriendlyErrorWithContext } from '../../utils/errorMessages';
 
 const OrderManager = () => {
   const [orders, setOrders] = useState([]);
@@ -39,8 +41,9 @@ const OrderManager = () => {
       setOrders(sortedOrders);
       setTotalOrders(data.total || sortedOrders.length);
     } catch (err) {
-      setError(err.message || 'Не удалось загрузить заказы');
-      console.error('Error fetching orders:', err);
+      const friendlyError = getUserFriendlyErrorWithContext(err, 'при загрузке заказов');
+      setError(friendlyError);
+      logger.error('Error fetching orders:', err);
     } finally {
       setLoading(false);
     }
@@ -104,8 +107,9 @@ const OrderManager = () => {
       setSelectedOrder(fullOrder);
       setShowDetailsModal(true);
     } catch (err) {
-      alert(err.message || 'Не удалось загрузить детали заказа');
-      console.error('Error fetching order details:', err);
+      const friendlyError = getUserFriendlyErrorWithContext(err, 'при загрузке деталей заказа');
+      alert(friendlyError);
+      logger.error('Error fetching order details:', err);
     } finally {
       setLoadingOrderDetails(false);
     }
@@ -202,7 +206,7 @@ const OrderManager = () => {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-800">{error}</p>
+              <p className="text-sm text-red-800">{getUserFriendlyError(error)}</p>
             </div>
           </div>
         </div>

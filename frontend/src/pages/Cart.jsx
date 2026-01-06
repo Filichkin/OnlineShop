@@ -19,6 +19,7 @@ import CartItem from '../components/CartItem';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import CartSkeleton from '../components/CartSkeleton';
 import { typography, buttonVariants, cardStyles } from '../styles/designSystem';
+import { logger } from '../utils/logger';
 
 /**
  * Оптимизированная страница корзины
@@ -64,7 +65,7 @@ function Cart() {
       try {
         await dispatch(updateQuantity({ productId, quantity: newQuantity })).unwrap();
       } catch (err) {
-        console.error('Ошибка при обновлении количества:', err);
+        logger.error('Ошибка при обновлении количества:', err);
         const errorMessage = typeof err === 'string' ? err : err?.message || 'Не удалось обновить количество товара';
         setOperationError(errorMessage);
         setTimeout(() => setOperationError(null), 4000);
@@ -79,7 +80,7 @@ function Cart() {
       try {
         await dispatch(removeFromCart(productId)).unwrap();
       } catch (err) {
-        console.error('Ошибка при удалении товара:', err);
+        logger.error('Ошибка при удалении товара:', err);
         const errorMessage = typeof err === 'string' ? err : err?.message || 'Не удалось удалить товар из корзины';
         setOperationError(errorMessage);
         setTimeout(() => setOperationError(null), 4000);
@@ -93,7 +94,7 @@ function Cart() {
     try {
       await dispatch(clearCart()).unwrap();
     } catch (err) {
-      console.error('Ошибка при очистке корзины:', err);
+      logger.error('Ошибка при очистке корзины:', err);
       const errorMessage = typeof err === 'string' ? err : err?.message || 'Не удалось очистить корзину';
       setOperationError(errorMessage);
       setTimeout(() => setOperationError(null), 4000);

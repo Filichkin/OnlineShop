@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ordersAPI } from '../api';
 import { formatPrice } from '../utils/formatPrice';
 import { getImageUrl } from '../utils';
+import { logger } from '../utils/logger';
 
 /**
  * OrderDetails page component
@@ -31,7 +32,7 @@ function OrderDetails() {
       const data = await ordersAPI.getOrder(orderId);
       setOrder(data);
     } catch (err) {
-      console.error('Error loading order details:', err);
+      logger.error('Error loading order details:', err);
       setError(err || 'Не удалось загрузить детали заказа');
     } finally {
       setLoading(false);
@@ -50,7 +51,7 @@ function OrderDetails() {
       // Reload order to get updated status
       await loadOrderDetails();
     } catch (err) {
-      console.error('Error cancelling order:', err);
+      logger.error('Error cancelling order:', err);
       setCancelError(err || 'Не удалось отменить заказ');
     } finally {
       setCancelling(false);

@@ -6,6 +6,7 @@ from fastapi import (
     Cookie,
     Depends,
     HTTPException,
+    Request,
     Response,
     status
 )
@@ -16,6 +17,7 @@ from app.core.config import settings
 from app.core.constants import Constants
 from app.core.csrf import verify_csrf_token
 from app.core.db import get_async_session
+from app.core.limiter import limiter
 from app.core.user import current_user_optional
 from app.crud.cart import cart_crud
 from app.models.user import User
@@ -45,11 +47,17 @@ def get_or_create_session_id(
     Validates that session_id is a valid UUID format to prevent
     injection attacks and ensure data integrity.
 
+    SECURITY: Invalid session IDs are rejected instead of silently
+    creating new ones to prevent session fixation attacks.
+
     Args:
         session_id: Session ID from cookie
 
     Returns:
         Session ID (existing or newly generated)
+
+    Raises:
+        HTTPException: 400 if session_id format is invalid
     """
     if session_id:
         try:
@@ -57,11 +65,13 @@ def get_or_create_session_id(
             uuid.UUID(session_id)
             return session_id
         except ValueError:
-            logger.warning(
-                f'Invalid session_id format received: {session_id[:20]}...'
+            # Don't log the session_id to prevent log injection
+            logger.warning('Invalid session_id format received')
+            # Reject invalid session ID with clear error
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Invalid session ID format'
             )
-            # Generate new session_id if invalid format
-            return str(uuid.uuid4())
 
     # No session_id provided, generate new one
     return str(uuid.uuid4())
@@ -70,6 +80,8 @@ def get_or_create_session_id(
 def set_session_cookie(response: Response, session_id: str) -> None:
     """
     Set session_id cookie in response with security flags.
+
+    Also generates and sets CSRF token for anonymous users.
 
     Security features:
     - httponly: Prevents JavaScript access (XSS protection)
@@ -81,6 +93,8 @@ def set_session_cookie(response: Response, session_id: str) -> None:
         response: FastAPI response object
         session_id: Session ID to set
     """
+    from app.core.csrf import generate_csrf_token, set_csrf_cookie
+
     # Set cookie for 30 days (same as cart lifetime)
     max_age = (
         Constants.CART_SESSION_LIFETIME_DAYS * 24 * 60 * 60
@@ -101,6 +115,10 @@ def set_session_cookie(response: Response, session_id: str) -> None:
         secure=secure_flag,
         samesite=settings.cookie_samesite,
     )
+
+    # Generate and set CSRF token for session (for anonymous users)
+    csrf_token = generate_csrf_token()
+    set_csrf_cookie(response, csrf_token)
 
 
 @router.get(
@@ -270,8 +288,10 @@ async def get_cart_summary(
     summary='Add item to cart',
     description='Add product to cart or update quantity if exists'
 )
+@limiter.limit('30/minute')
 async def add_item_to_cart(
     item_data: CartItemCreate,
+    request: Request,
     response: Response,
     user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),

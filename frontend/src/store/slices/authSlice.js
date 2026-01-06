@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authAPI } from '../../api';
 import { resetCart } from './cartSlice';
 import { resetFavorites } from './favoritesSlice';
+import { logger } from '../../utils/logger';
 
 // Асинхронные действия
 
@@ -94,7 +95,7 @@ export const logout = createAsyncThunk(
       });
     } catch (err) {
       // Ignore logout errors - still clear local state
-      console.error('Logout API error:', err);
+      logger.error('Logout API error:', err);
     }
 
     // Reset cart and favorites
