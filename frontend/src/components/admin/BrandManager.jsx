@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { brandsAPI } from '../../api';
 import { getImageUrl } from '../../utils';
+import { getUserFriendlyError, getUserFriendlyErrorWithContext } from '../../utils/errorMessages';
+import { logger } from '../../utils/logger';
 
 const BrandManager = () => {
   const [brands, setBrands] = useState([]);
@@ -34,7 +36,9 @@ const BrandManager = () => {
       const data = await brandsAPI.getBrands(0, 100, isActive);
       setBrands(data);
     } catch (err) {
-      setError(err.message);
+      const friendlyError = getUserFriendlyErrorWithContext(err, 'при загрузке брендов');
+      setError(friendlyError);
+      logger.error('Error loading brands:', err);
     } finally {
       setLoading(false);
     }
@@ -79,7 +83,10 @@ const BrandManager = () => {
       setFormData({ name: '', description: '', image: null, is_active: true });
       loadBrands();
     } catch (err) {
-      setError(err.message);
+      const context = editingBrand ? 'при обновлении бренда' : 'при создании бренда';
+      const friendlyError = getUserFriendlyErrorWithContext(err, context);
+      setError(friendlyError);
+      logger.error('Error submitting brand:', err);
     }
   };
 
@@ -99,7 +106,9 @@ const BrandManager = () => {
       await brandsAPI.restoreBrand(brandId);
       loadBrands();
     } catch (err) {
-      setError(err.message);
+      const friendlyError = getUserFriendlyErrorWithContext(err, 'при восстановлении бренда');
+      setError(friendlyError);
+      logger.error('Error restoring brand:', err);
     }
   };
 

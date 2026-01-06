@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { adminUsersAPI } from '../../api';
 import { logger } from '../../utils/logger';
+import { getUserFriendlyError, getUserFriendlyErrorWithContext } from '../../utils/errorMessages';
 
 const EditUserModal = ({ user, onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
@@ -96,7 +97,8 @@ const EditUserModal = ({ user, onClose, onUpdate }) => {
       const updatedUser = await adminUsersAPI.updateUser(user.id, updateData);
       onUpdate(updatedUser);
     } catch (err) {
-      setError(err.message || 'Не удалось обновить пользователя');
+      const friendlyError = getUserFriendlyErrorWithContext(err, 'при обновлении пользователя');
+      setError(friendlyError);
       logger.error('Error updating user:', err);
     } finally {
       setLoading(false);
@@ -141,7 +143,7 @@ const EditUserModal = ({ user, onClose, onUpdate }) => {
                 </svg>
               </div>
               <div className="ml-3">
-                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-sm text-red-800">{getUserFriendlyError(error)}</p>
               </div>
             </div>
           </div>

@@ -11,6 +11,7 @@ import { getImageUrl, formatPrice } from '../../utils';
 import { brandsAPI } from '../../api';
 import ProductImageManager from './ProductImageManager';
 import { logger } from '../../utils/logger';
+import { getUserFriendlyError } from '../../utils/errorMessages';
 
 const ProductManager = () => {
   const [showModal, setShowModal] = useState(false);
@@ -349,7 +350,7 @@ const ProductManager = () => {
                 Ошибка
               </h3>
               <div className="mt-2 text-sm text-red-700">
-                {error}
+                {getUserFriendlyError(error)}
               </div>
             </div>
           </div>
@@ -542,7 +543,7 @@ const ProductManager = () => {
 
               {error && (
                 <div className="mb-4 rounded-md bg-red-50 p-4">
-                  <div className="text-sm text-red-700">{error}</div>
+                  <div className="text-sm text-red-700">{getUserFriendlyError(error)}</div>
                 </div>
               )}
 

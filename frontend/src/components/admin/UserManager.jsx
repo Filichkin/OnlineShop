@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { adminUsersAPI } from '../../api';
 import EditUserModal from './EditUserModal';
 import { logger } from '../../utils/logger';
+import { getUserFriendlyError, getUserFriendlyErrorWithContext } from '../../utils/errorMessages';
 
 const UserManager = () => {
   const [users, setUsers] = useState([]);
@@ -38,7 +39,8 @@ const UserManager = () => {
         setTotalUsers(0);
       }
     } catch (err) {
-      setError(err.message || 'Не удалось загрузить пользователей');
+      const friendlyError = getUserFriendlyErrorWithContext(err, 'при загрузке пользователей');
+      setError(friendlyError);
       logger.error('Error fetching users:', err);
     } finally {
       setLoading(false);
@@ -140,7 +142,7 @@ const UserManager = () => {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-800">{error}</p>
+              <p className="text-sm text-red-800">{getUserFriendlyError(error)}</p>
             </div>
           </div>
         </div>

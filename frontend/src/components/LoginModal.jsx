@@ -16,6 +16,7 @@ import {
 import { sanitizeText } from '../utils/sanitize';
 import { logger } from '../utils/logger';
 import { useDebounceCallback } from '../hooks/useDebounceCallback';
+import { getUserFriendlyError } from '../utils/errorMessages';
 
 /**
  * LoginModal компонент для входа/регистрации пользователя
@@ -365,7 +366,7 @@ function LoginModal({ isOpen, onClose }) {
               {/* Error Message - don't show "Токен не найден" error */}
               {error && error !== 'Токен не найден' && !error.includes('Сессия истекла') && (
                 <div className="mb-4 p-3 bg-red-100 text-red-800 rounded-md text-sm">
-                  {sanitizeText(error)}
+                  {sanitizeText(getUserFriendlyError(error))}
                 </div>
               )}
 
