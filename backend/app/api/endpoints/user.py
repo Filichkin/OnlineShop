@@ -81,7 +81,7 @@ router.include_router(
         'Returns JWT token for immediate authentication.'
     )
 )
-@limiter.limit('3/hour')
+@limiter.limit('5/hour')
 async def custom_register(
     user_create: UserCreate,
     request: Request,
@@ -183,7 +183,7 @@ async def custom_register(
         path='/'
     )
 
-    # Return user data only (no token in response body)
+    # Return user data only (token is in cookie, not response body)
     return {
         'user': {
             'id': user.id,
@@ -200,8 +200,7 @@ async def custom_register(
             'is_active': user.is_active,
             'is_superuser': user.is_superuser,
             'is_verified': user.is_verified
-        },
-        'csrf_token': csrf_token  # For backward compatibility
+        }
     }
 
 

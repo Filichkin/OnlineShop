@@ -1,15 +1,18 @@
 import asyncio
+import uuid
 from contextlib import asynccontextmanager
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.routers import main_router
 from app.core.config import settings
@@ -32,6 +35,35 @@ setup_logging()
 
 # Initialize scheduler for background tasks
 scheduler = AsyncIOScheduler()
+
+
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware that adds unique request ID to each request.
+
+    Features:
+    - Generates UUID for each request
+    - Adds request_id to request.state for access in endpoints
+    - Includes X-Request-ID in response headers
+    - Integrates with loguru context for logging
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        # Generate unique request ID
+        request_id = str(uuid.uuid4())
+
+        # Add to request state for access in endpoints
+        request.state.request_id = request_id
+
+        # Add to loguru context for logging
+        with logger.contextualize(request_id=request_id):
+            # Process request
+            response = await call_next(request)
+
+            # Add request ID to response headers
+            response.headers['X-Request-ID'] = request_id
+
+            return response
 
 
 async def cleanup_expired_carts_task():
@@ -96,15 +128,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS
+# Add HTTPS redirect middleware in production
+if settings.environment == 'production':
+    app.add_middleware(HTTPSRedirectMiddleware)
+    logger.info('HTTPS redirect middleware enabled for production')
+
+# Add Request ID middleware
+app.add_middleware(RequestIDMiddleware)
+
+# Configure CORS with environment-based origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-    ],  # Frontend URLs
+    allow_origins=settings.get_allowed_origins_list(),
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
@@ -221,6 +256,53 @@ async def user_inactive_exception_handler(
 
 
 app.include_router(main_router)
+
+
+# Health check endpoint
+@app.get('/health', tags=['Health'], summary='Health check endpoint')
+async def health_check():
+    """
+    Health check endpoint for monitoring and load balancers.
+
+    Verifies:
+    - Service is running
+    - Database connectivity
+
+    Returns:
+        Status information including service status and database connection
+    """
+    from sqlalchemy import text
+
+    health_status = {
+        'status': 'healthy',
+        'service': 'online',
+        'database': 'unknown'
+    }
+
+    # Check database connectivity
+    try:
+        async for session in get_async_session():
+            try:
+                # Simple query to verify database connection
+                await session.execute(text('SELECT 1'))
+                health_status['database'] = 'connected'
+                logger.debug('Health check: database connection successful')
+            except Exception as db_error:
+                health_status['status'] = 'unhealthy'
+                health_status['database'] = 'disconnected'
+                logger.error(
+                    f'Health check: database connection failed: {db_error}'
+                )
+            finally:
+                await session.close()
+            break  # Only need one session for health check
+    except Exception as e:
+        health_status['status'] = 'unhealthy'
+        health_status['database'] = 'error'
+        logger.error(f'Health check: failed to get database session: {e}')
+
+    return health_status
+
 
 # Mount static files
 app.mount('/media', StaticFiles(directory='media'), name='media')

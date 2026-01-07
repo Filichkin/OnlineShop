@@ -41,6 +41,51 @@ from app.utils import (
 router = APIRouter()
 
 
+def build_order_item_response(order_item) -> OrderItemResponse:
+    """
+    Build OrderItemResponse from order item with product details.
+
+    Extracts main image and creates standardized response format.
+    Handles cases where product may have been deleted.
+
+    Args:
+        order_item: OrderItem model instance with loaded product relationship
+
+    Returns:
+        OrderItemResponse with enriched product data (if available)
+    """
+    main_image = None
+    product_data = None
+
+    if order_item.product:
+        if order_item.product.images:
+            main_image = next(
+                (img.url for img in order_item.product.images if img.is_main),
+                (order_item.product.images[0].url
+                 if order_item.product.images else None)
+            )
+
+        product_data = ProductInOrder(
+            id=order_item.product.id,
+            name=order_item.product.name,
+            price=order_item.product.price,
+            main_image=main_image,
+            part_number=order_item.product.part_number
+        )
+
+    return OrderItemResponse(
+        id=order_item.id,
+        product_id=order_item.product_id,
+        quantity=order_item.quantity,
+        price_at_purchase=order_item.price_at_purchase,
+        product_name=order_item.product_name,
+        subtotal=order_item.quantity * order_item.price_at_purchase,
+        product=product_data,
+        created_at=order_item.created_at,
+        updated_at=order_item.updated_at
+    )
+
+
 @router.post(
     '/',
     response_model=OrderCreateResponse,
@@ -236,42 +281,10 @@ async def get_order_details(
             detail=f'Order {order_id} not found'
         )
 
-    # Build response with enriched order items
-    order_items_response = []
-    for item in order.items:
-        # Get main image for product (if product still exists)
-        main_image = None
-        product_data = None
-
-        if item.product:
-            if item.product.images:
-                main_image = next(
-                    (img.url for img in item.product.images if img.is_main),
-                    (item.product.images[0].url
-                     if item.product.images else None)
-                )
-
-            product_data = ProductInOrder(
-                id=item.product.id,
-                name=item.product.name,
-                price=item.product.price,
-                main_image=main_image,
-                part_number=item.product.part_number
-            )
-
-        order_items_response.append(
-            OrderItemResponse(
-                id=item.id,
-                product_id=item.product_id,
-                quantity=item.quantity,
-                price_at_purchase=item.price_at_purchase,
-                product_name=item.product_name,
-                subtotal=item.quantity * item.price_at_purchase,
-                product=product_data,
-                created_at=item.created_at,
-                updated_at=item.updated_at
-            )
-        )
+    # Build response with enriched order items using helper function
+    order_items_response = [
+        build_order_item_response(item) for item in order.items
+    ]
 
     logger.bind(user_id=user.id).info(
         f'Возвращены детали заказа: order_id={order_id}'
@@ -511,47 +524,10 @@ async def update_order_status(
             f'new_status={updated_order.status}'
         )
 
-        # Build response with enriched order items
-        order_items_response = []
-        for item in updated_order.items:
-            main_image = None
-            product_data = None
-
-            if item.product:
-                if item.product.images:
-                    main_image = next(
-                        (
-                            img.url
-                            for img in item.product.images
-                            if img.is_main
-                        ),
-                        (
-                            item.product.images[0].url
-                            if item.product.images else None
-                        )
-                    )
-
-                product_data = ProductInOrder(
-                    id=item.product.id,
-                    name=item.product.name,
-                    price=item.product.price,
-                    main_image=main_image,
-                    part_number=item.product.part_number
-                )
-
-            order_items_response.append(
-                OrderItemResponse(
-                    id=item.id,
-                    product_id=item.product_id,
-                    quantity=item.quantity,
-                    price_at_purchase=item.price_at_purchase,
-                    product_name=item.product_name,
-                    subtotal=item.quantity * item.price_at_purchase,
-                    product=product_data,
-                    created_at=item.created_at,
-                    updated_at=item.updated_at
-                )
-            )
+        # Build response with enriched order items using helper function
+        order_items_response = [
+            build_order_item_response(item) for item in updated_order.items
+        ]
 
         return OrderResponse(
             id=updated_order.id,

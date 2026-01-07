@@ -140,29 +140,8 @@ async def get_products(
             is_active=is_active
         )
 
-    # Получаем главные изображения для всех продуктов одним запросом
-    product_ids = [p.id for p in products]
-    main_images = await session.execute(
-        select(Media)
-        .where(
-            Media.product_id.in_(product_ids),
-            Media.is_main.is_(True)
-        )
-    )
-    main_images_dict = {
-        img.product_id: img.url
-        for img in main_images.scalars().all()
-    }
-
-    # Загружаем бренды для всех продуктов одним запросом
-    brand_ids = list(set(p.brand_id for p in products))
-    brands = await session.execute(
-        select(Brand)
-        .where(Brand.id.in_(brand_ids))
-    )
-    brands_dict = {brand.id: brand for brand in brands.scalars().all()}
-
-    # Преобразуем в ProductListResponse с главным изображением
+    # Use already eager-loaded relationships from CRUD method
+    # No need to query again - images and brand are already loaded
     result = [
         ProductListResponse(
             id=p.id,
@@ -172,8 +151,13 @@ async def get_products(
             price=p.price,
             is_active=p.is_active,
             brand_id=p.brand_id,
-            main_image=main_images_dict.get(p.id),
-            brand=brands_dict.get(p.brand_id)
+            main_image=(
+                next(
+                    (img.url for img in p.images if img.is_main),
+                    p.images[0].url if p.images else None
+                )
+            ),
+            brand=p.brand
         ) for p in products
     ]
     logger.info(f'Возвращено продуктов: {len(result)}')

@@ -8,6 +8,7 @@ from email.mime.text import MIMEText
 from loguru import logger
 
 from app.core.config import settings
+from app.core.utils import safe_background_task
 from app.models.order import Order
 
 
@@ -153,7 +154,8 @@ def _create_order_email_html(order: Order) -> str:
     return html_body
 
 
-def send_order_confirmation_email(order: Order) -> bool:
+@safe_background_task
+async def send_order_confirmation_email(order: Order) -> bool:
     """
     Send order confirmation email to customer.
 
@@ -227,7 +229,8 @@ def send_order_confirmation_email(order: Order) -> bool:
         return False
 
 
-def send_order_status_update_email(order: Order, old_status: str) -> bool:
+@safe_background_task
+async def send_order_status_update_email(order: Order, old_status: str) -> bool:
     """
     Send order status update notification email to customer.
 

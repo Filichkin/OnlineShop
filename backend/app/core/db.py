@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, Integer
+from loguru import logger
+from sqlalchemy import Boolean, Column, DateTime, Integer, event, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import (
     declarative_base,
@@ -67,6 +68,26 @@ AsyncSessionLocal = sessionmaker(
     # Enable autoflush for better control
     autoflush=True,
 )
+
+
+# Add statement timeout event listener
+@event.listens_for(engine.sync_engine, "connect")
+def set_statement_timeout(dbapi_connection, connection_record):
+    """
+    Set statement timeout for PostgreSQL connections.
+
+    Prevents long-running queries from blocking resources.
+    Timeout is set to 30 seconds by default.
+
+    Args:
+        dbapi_connection: Database connection
+        connection_record: Connection record
+    """
+    cursor = dbapi_connection.cursor()
+    # Set statement timeout to 30 seconds (30000 milliseconds)
+    cursor.execute("SET statement_timeout = '30000'")
+    cursor.close()
+    logger.debug('Statement timeout set to 30 seconds for database connection')
 
 
 async def get_async_session():

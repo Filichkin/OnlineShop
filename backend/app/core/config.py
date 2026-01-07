@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     # Environment configuration
     environment: str = 'development'  # 'development' or 'production'
 
+    # CORS Settings
+    allowed_origins: str = 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000'  # Comma-separated list of allowed origins
+
     # Cookie Security Settings
     cookie_secure: bool = False  # Set to True in production for HTTPS only
     cookie_httponly: bool = True  # Prevent JavaScript access
@@ -38,6 +41,10 @@ class Settings(BaseSettings):
     smtp_host: str = 'smtp.yandex.ru'
     smtp_port: int = 587
 
+    def get_allowed_origins_list(self) -> list[str]:
+        """Parse comma-separated allowed_origins into a list"""
+        return [origin.strip() for origin in self.allowed_origins.split(',') if origin.strip()]
+
     @field_validator('secret')
     @classmethod
     def validate_secret(cls, v: str, info: ValidationInfo) -> str:
@@ -54,12 +61,13 @@ class Settings(BaseSettings):
                 f'characters long. Current length: {len(v)}'
             )
 
-        # Check for common weak patterns
+        # Check for common weak patterns (case-insensitive)
         weak_patterns = [
             'password', 'secret', '12345', 'qwerty',
             'admin', 'root', 'test'
         ]
-        if any(pattern in v.lower() for pattern in weak_patterns):
+        v_lower = v.lower()
+        if any(pattern in v_lower for pattern in weak_patterns):
             raise ValueError(
                 'SECRET contains common weak patterns. '
                 'Use a cryptographically secure random string.'
