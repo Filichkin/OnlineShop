@@ -432,7 +432,11 @@ async def delete_image_file(url: str) -> None:
         # Check if file is in products, categories, or brands directory
         is_in_allowed_dir = False
 
-        for allowed_dir in [abs_products_dir, abs_categories_dir, abs_brands_dir]:
+        for allowed_dir in [
+            abs_products_dir,
+            abs_categories_dir,
+            abs_brands_dir
+        ]:
             try:
                 abs_file_path.relative_to(allowed_dir)
                 is_in_allowed_dir = True

@@ -108,7 +108,8 @@ class CRUDProduct(CRUDBase):
             skip: Количество элементов для пропуска
             limit: Количество элементов для возврата
             is_active: Фильтр по статусу активности
-            sort_by: Тип сортировки (price_asc, price_desc, name_asc, name_desc)
+            sort_by: Тип сортировки
+            (price_asc, price_desc, name_asc, name_desc)
         """
         query = (
             select(Product)

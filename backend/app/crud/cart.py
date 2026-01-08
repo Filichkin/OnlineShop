@@ -71,7 +71,7 @@ class CRUDCart:
                     cart,
                     attribute_names=['items']
                 )
-            except Exception as e:
+            except Exception:
                 await session.rollback()
                 raise
 

@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from loguru import logger
-from sqlalchemy import Boolean, Column, DateTime, Integer, event, text
+from sqlalchemy import Boolean, Column, DateTime, event, Integer
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import (
     declarative_base,
