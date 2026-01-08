@@ -143,3 +143,7 @@ class Constants:
     EMAIL_MAX_LEN = 320
     ORDER_NOTES_MAX_LEN = 500
     POSTAL_CODE_PATTERN: str = r'^\d{5,10}$'
+
+    CSRF_TOKEN_LENGTH = 32
+    CSRF_COOKIE_NAME = 'csrf_token'
+    CSRF_HEADER_NAME = 'X-CSRF-Token'

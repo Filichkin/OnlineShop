@@ -11,10 +11,7 @@ from fastapi import Cookie, HTTPException, Request, Response, status
 from loguru import logger
 
 from app.core.config import settings
-
-CSRF_TOKEN_LENGTH = 32
-CSRF_COOKIE_NAME = 'csrf_token'
-CSRF_HEADER_NAME = 'X-CSRF-Token'
+from app.core.constants import Constants
 
 
 def generate_csrf_token() -> str:
@@ -26,7 +23,7 @@ def generate_csrf_token() -> str:
     Returns:
         Random CSRF token string
     """
-    return secrets.token_urlsafe(CSRF_TOKEN_LENGTH)
+    return secrets.token_urlsafe(Constants.CSRF_TOKEN_LENGTH)
 
 
 def set_csrf_cookie(response: Response, token: str) -> None:
@@ -41,7 +38,7 @@ def set_csrf_cookie(response: Response, token: str) -> None:
         token: CSRF token to set in cookie
     """
     response.set_cookie(
-        key=CSRF_COOKIE_NAME,
+        key=Constants.CSRF_COOKIE_NAME,
         value=token,
         httponly=False,  # JavaScript must read this for header
         secure=settings.secure_cookies,
@@ -54,7 +51,10 @@ def set_csrf_cookie(response: Response, token: str) -> None:
 
 async def verify_csrf_token(
     request: Request,
-    csrf_token_cookie: Optional[str] = Cookie(None, alias=CSRF_COOKIE_NAME)
+    csrf_token_cookie: Optional[str] = Cookie(
+        None,
+        alias=Constants.CSRF_COOKIE_NAME
+        )
 ) -> None:
     """
     Verify CSRF token for state-changing operations.
@@ -86,7 +86,7 @@ async def verify_csrf_token(
         return
 
     # CSRF token is REQUIRED for ALL state-changing operations
-    csrf_token_header = request.headers.get(CSRF_HEADER_NAME)
+    csrf_token_header = request.headers.get(Constants.CSRF_HEADER_NAME)
 
     if not csrf_token_cookie or not csrf_token_header:
         logger.warning(
@@ -109,4 +109,3 @@ async def verify_csrf_token(
         )
 
     logger.debug(f'CSRF токен проверен успешно для {request.url.path}')
-
