@@ -142,7 +142,10 @@ class ProductListResponse(ProductResponse):
 class CatalogFilters(BaseModel):
     """Фильтры для каталога продуктов"""
 
-    brand_slug: Optional[str] = Field(None, description='Фильтр по slug бренда')
+    brand_slug: Optional[str] = Field(
+        None,
+        description='Фильтр по slug бренда'
+        )
     search: Optional[str] = Field(
         None,
         max_length=Constants.SEARCH_STRING_MAX_LENGTH,
@@ -162,7 +165,10 @@ class CatalogFilters(BaseModel):
     )
     is_active: Optional[bool] = Field(
         True,
-        description='Фильтр по статусу активности (по умолчанию только активные)'
+        description=(
+            'Фильтр по статусу активности'
+            ' (по умолчанию только активные)'
+        )
     )
     sort_by: str = Field(
         'created_at',

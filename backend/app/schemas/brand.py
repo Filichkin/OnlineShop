@@ -32,7 +32,8 @@ class BrandCreate(BaseModel):
 
 
 class BrandUpdate(BaseModel):
-    """Схема для обновления бренда (slug обновляется автоматически при изменении name)"""
+    """Схема для обновления бренда
+    (slug обновляется автоматически при изменении name)"""
 
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=1000)
