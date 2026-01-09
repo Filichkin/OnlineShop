@@ -35,6 +35,45 @@ from app.schemas.cart import (
 router = APIRouter()
 
 
+def build_cart_item_response(cart_item) -> CartItemResponse:
+    """
+    Build CartItemResponse from cart item with product details.
+
+    Extracts main image and creates standardized response format.
+
+    Args:
+        cart_item: CartItem model instance with loaded product relationship
+
+    Returns:
+        CartItemResponse with enriched product data
+    """
+    # Get main image for product
+    main_image = None
+    if cart_item.product.images:
+        main_image = next(
+            (img.url for img in cart_item.product.images if img.is_main),
+            (cart_item.product.images[0].url
+             if cart_item.product.images else None)
+        )
+
+    return CartItemResponse(
+        id=cart_item.id,
+        product_id=cart_item.product_id,
+        quantity=cart_item.quantity,
+        price_at_addition=cart_item.price_at_addition,
+        subtotal=cart_item.quantity * cart_item.price_at_addition,
+        product={
+            'id': cart_item.product.id,
+            'name': cart_item.product.name,
+            'price': cart_item.product.price,
+            'main_image': main_image,
+            'part_number': cart_item.product.part_number
+        },
+        created_at=cart_item.created_at,
+        updated_at=cart_item.updated_at
+    )
+
+
 def get_or_create_session_id(
     session_id: Optional[str] = Cookie(
         None,
@@ -164,35 +203,10 @@ async def get_cart(
         item.quantity * item.price_at_addition for item in cart.items
     )
 
-    # Build response with enriched cart items
-    cart_items_response = []
-    for item in cart.items:
-        # Get main image for product
-        main_image = None
-        if item.product.images:
-            main_image = next(
-                (img.url for img in item.product.images if img.is_main),
-                item.product.images[0].url if item.product.images else None
-            )
-
-        cart_items_response.append(
-            CartItemResponse(
-                id=item.id,
-                product_id=item.product_id,
-                quantity=item.quantity,
-                price_at_addition=item.price_at_addition,
-                subtotal=item.quantity * item.price_at_addition,
-                product={
-                    'id': item.product.id,
-                    'name': item.product.name,
-                    'price': item.product.price,
-                    'main_image': main_image,
-                    'part_number': item.product.part_number
-                },
-                created_at=item.created_at,
-                updated_at=item.updated_at
-            )
-        )
+    # Build response with enriched cart items using helper function
+    cart_items_response = [
+        build_cart_item_response(item) for item in cart.items
+    ]
 
     if user:
         logger.bind(user_id=user.id).info(
@@ -359,31 +373,7 @@ async def add_item_to_cart(
             detail='Failed to add item to cart'
         )
 
-    # Get main image for product
-    main_image = None
-    if cart_item.product.images:
-        main_image = next(
-            (img.url for img in cart_item.product.images if img.is_main),
-            (cart_item.product.images[0].url
-             if cart_item.product.images else None)
-        )
-
-    return CartItemResponse(
-        id=cart_item.id,
-        product_id=cart_item.product_id,
-        quantity=cart_item.quantity,
-        price_at_addition=cart_item.price_at_addition,
-        subtotal=cart_item.quantity * cart_item.price_at_addition,
-        product={
-            'id': cart_item.product.id,
-            'name': cart_item.product.name,
-            'price': cart_item.product.price,
-            'main_image': main_image,
-            'part_number': cart_item.product.part_number
-        },
-        created_at=cart_item.created_at,
-        updated_at=cart_item.updated_at
-    )
+    return build_cart_item_response(cart_item)
 
 
 @router.patch(
@@ -457,15 +447,6 @@ async def update_cart_item(
             detail=f'Product {product_id} not found in cart'
         )
 
-    # Get main image for product
-    main_image = None
-    if cart_item.product.images:
-        main_image = next(
-            (img.url for img in cart_item.product.images if img.is_main),
-            (cart_item.product.images[0].url
-             if cart_item.product.images else None)
-        )
-
     if user:
         logger.bind(user_id=user.id).info(
             f'Товар в корзине обновлен: product_id={product_id}, '
@@ -477,22 +458,7 @@ async def update_cart_item(
             f'quantity={cart_item.quantity}'
         )
 
-    return CartItemResponse(
-        id=cart_item.id,
-        product_id=cart_item.product_id,
-        quantity=cart_item.quantity,
-        price_at_addition=cart_item.price_at_addition,
-        subtotal=cart_item.quantity * cart_item.price_at_addition,
-        product={
-            'id': cart_item.product.id,
-            'name': cart_item.product.name,
-            'price': cart_item.product.price,
-            'main_image': main_image,
-            'part_number': cart_item.product.part_number
-        },
-        created_at=cart_item.created_at,
-        updated_at=cart_item.updated_at
-    )
+    return build_cart_item_response(cart_item)
 
 
 @router.delete(
@@ -501,8 +467,10 @@ async def update_cart_item(
     summary='Remove item from cart',
     description='Remove a specific product from cart'
 )
+@limiter.limit('30/minute')
 async def remove_cart_item(
     product_id: int,
+    request: Request,
     user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
     session: AsyncSession = Depends(get_async_session),
@@ -584,7 +552,9 @@ async def remove_cart_item(
     summary='Clear cart',
     description='Remove all items from cart'
 )
+@limiter.limit('10/hour')
 async def clear_cart(
+    request: Request,
     user: Optional[User] = Depends(current_user_optional),
     session_id: str = Depends(get_or_create_session_id),
     session: AsyncSession = Depends(get_async_session),

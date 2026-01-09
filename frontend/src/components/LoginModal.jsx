@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { register, login, forgotPassword, getCurrentUser, clearError, clearSuccessMessage } from '../store/slices/authSlice';
-import { fetchCart } from '../store/slices/cartSlice';
-import { fetchFavorites } from '../store/slices/favoritesSlice';
+import { syncGuestCart, fetchCart } from '../store/slices/cartSlice';
+import { syncGuestFavorites, fetchFavorites } from '../store/slices/favoritesSlice';
 import {
   isValidPhone,
   isValidEmail,
@@ -46,6 +46,9 @@ function LoginModal({ isOpen, onClose }) {
   const [rateLimitTimer, setRateLimitTimer] = useState(null);
   const [isRateLimited, setIsRateLimited] = useState(false);
 
+  // Ref to prevent double-sync (must be declared before useEffect that uses it)
+  const syncCalledRef = useRef(false);
+
   // Сброс формы при закрытии модального окна
   useEffect(() => {
     if (!isOpen) {
@@ -66,6 +69,8 @@ function LoginModal({ isOpen, onClose }) {
       setIsRateLimited(false);
       dispatch(clearError());
       dispatch(clearSuccessMessage());
+      // Reset sync flag when modal closes
+      syncCalledRef.current = false;
     }
   }, [isOpen, dispatch]);
 
@@ -84,15 +89,94 @@ function LoginModal({ isOpen, onClose }) {
   // Закрытие после успешного действия
   useEffect(() => {
     if (successMessage && (mode === 'login' || mode === 'register')) {
-      // User data already returned from backend
-      // Reload cart and favorites with new user data
-      dispatchRef.current(fetchCart());
-      dispatchRef.current(fetchFavorites());
+      // Prevent double-sync (React StrictMode runs effects twice in development)
+      if (syncCalledRef.current) {
+        logger.log('Sync already called, skipping duplicate');
+        return;
+      }
+      syncCalledRef.current = true;
+      
+      // Sync guest cart and favorites with server after successful login/registration
+      // This merges guest data (from localStorage) with server data
+      const syncData = async () => {
+        try {
+          // Small delay to ensure session cookie is fully set
+          await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Close modal after short delay
-      setTimeout(() => {
+          // Check localStorage for guest data
+          const guestCartRaw = localStorage.getItem('guest_cart');
+          const guestFavoritesRaw = localStorage.getItem('guest_favorites');
+          
+          logger.log('=== Starting sync after login ===');
+          logger.log('Guest cart in localStorage:', guestCartRaw ? 'exists' : 'empty');
+          logger.log('Guest favorites in localStorage:', guestFavoritesRaw ? 'exists' : 'empty');
+          
+          if (guestCartRaw) {
+            try {
+              const parsed = JSON.parse(guestCartRaw);
+              logger.log('Guest cart items count:', parsed.items?.length || 0);
+            } catch (e) {
+              logger.error('Failed to parse guest cart:', e);
+            }
+          }
+
+          // Sync cart - this will merge guest items with server cart
+          logger.log('Calling syncGuestCart...');
+          const cartResult = await dispatchRef.current(syncGuestCart()).unwrap();
+          logger.log('syncGuestCart completed, items:', cartResult?.items?.length || 0);
+
+          // Sync favorites - this will merge guest favorites with server favorites
+          logger.log('Calling syncGuestFavorites...');
+          const favResult = await dispatchRef.current(syncGuestFavorites()).unwrap();
+          logger.log('syncGuestFavorites completed, items:', favResult?.items?.length || 0);
+
+          logger.log('=== Sync completed successfully ===');
+          
+          // Force re-fetch from server to ensure UI is updated
+          // This handles cases where sync may have incomplete data
+          logger.log('Fetching latest cart and favorites from server...');
+          try {
+            const cartData = await dispatchRef.current(fetchCart()).unwrap();
+            logger.log('fetchCart completed, items:', cartData?.items?.length || 0, 'totalItems:', cartData?.total_items);
+          } catch (cartError) {
+            logger.error('fetchCart failed:', cartError);
+          }
+          
+          try {
+            const favData = await dispatchRef.current(fetchFavorites()).unwrap();
+            logger.log('fetchFavorites completed, items:', favData?.items?.length || 0);
+          } catch (favError) {
+            logger.error('fetchFavorites failed:', favError);
+          }
+          
+          logger.log('All fetches completed - UI should now be updated');
+        } catch (error) {
+          // If sync fails, log error but still close modal
+          logger.error('Error syncing data:', error);
+          logger.error('Error details:', JSON.stringify(error, null, 2));
+          logger.error('Error message:', error?.message);
+          logger.error('Error stack:', error?.stack);
+          
+          // Even if sync fails, try to fetch current data from server
+          try {
+            await dispatchRef.current(fetchCart());
+            await dispatchRef.current(fetchFavorites());
+          } catch (fetchErr) {
+            logger.error('Fallback fetch also failed:', fetchErr);
+          }
+        }
+
+        // Small delay to ensure Redux state is fully propagated before closing
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Close modal
         onCloseRef.current();
-      }, 1500);
+        
+        // Dispatch custom event to trigger UI refresh (if needed)
+        window.dispatchEvent(new CustomEvent('auth-state-changed'));
+      };
+
+      syncData();
     }
   }, [successMessage, mode]);
 
@@ -145,7 +229,8 @@ function LoginModal({ isOpen, onClose }) {
     }
   }, [rateLimitTimer]);
 
-  const handleInputChange = (e) => {
+  // Memoized input change handler to prevent unnecessary re-renders
+  const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
 
     // Форматирование телефона
@@ -173,9 +258,10 @@ function LoginModal({ isOpen, onClose }) {
         return newErrors;
       });
     }
-  };
+  }, [mode, validationErrors]);
 
-  const validateForm = () => {
+  // Memoized form validation to prevent unnecessary recalculations
+  const validateForm = useCallback(() => {
     const errors = {};
 
     if (mode === 'register') {
@@ -230,7 +316,7 @@ function LoginModal({ isOpen, onClose }) {
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+  }, [mode, formData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -274,7 +360,8 @@ function LoginModal({ isOpen, onClose }) {
   };
 
   // Debounced submit handler to prevent multiple clicks
-  const handleSubmitDebounced = useDebounceCallback(handleSubmit, 1000);
+  // Security: Increased from 1000ms to 2000ms to prevent brute-force attacks
+  const handleSubmitDebounced = useDebounceCallback(handleSubmit, 2000);
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {

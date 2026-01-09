@@ -8,6 +8,7 @@ from email.mime.text import MIMEText
 from loguru import logger
 
 from app.core.config import settings
+from app.core.utils import safe_background_task
 from app.models.order import Order
 
 
@@ -153,7 +154,8 @@ def _create_order_email_html(order: Order) -> str:
     return html_body
 
 
-def send_order_confirmation_email(order: Order) -> bool:
+@safe_background_task
+async def send_order_confirmation_email(order: Order) -> bool:
     """
     Send order confirmation email to customer.
 
@@ -227,7 +229,11 @@ def send_order_confirmation_email(order: Order) -> bool:
         return False
 
 
-def send_order_status_update_email(order: Order, old_status: str) -> bool:
+@safe_background_task
+async def send_order_status_update_email(
+    order: Order,
+    old_status: str
+) -> bool:
     """
     Send order status update notification email to customer.
 
@@ -249,7 +255,10 @@ def send_order_status_update_email(order: Order, old_status: str) -> bool:
         }
 
         old_status_label = status_labels.get(old_status, old_status)
-        new_status_label = status_labels.get(order.status.value, order.status.value)
+        new_status_label = status_labels.get(
+            order.status.value,
+            order.status.value
+            )
 
         # Create message
         msg = MIMEMultipart('alternative')
@@ -287,7 +296,9 @@ def send_order_status_update_email(order: Order, old_status: str) -> bool:
                 <div style="background-color: white; padding: 15px;
                             border-left: 4px solid #2196F3; margin: 20px 0;">
                     <p style="margin: 5px 0;">
-                        <strong>Предыдущий статус:</strong> {html.escape(old_status_label)}
+                        <strong>Предыдущий статус:</strong> {
+                            html.escape(old_status_label)
+                            }
                     </p>
                     <p style="margin: 5px 0;">
                         <strong>Текущий статус:</strong>
@@ -302,9 +313,13 @@ def send_order_status_update_email(order: Order, old_status: str) -> bool:
                 <h3>Информация о заказе:</h3>
                 <p>
                     <strong>Получатель:</strong>
-                    {html.escape(order.first_name)} {html.escape(order.last_name)}<br>
+                    {html.escape(order.first_name)} {
+                        html.escape(order.last_name)
+                        }<br>
                     <strong>Адрес доставки:</strong>
-                    {html.escape(order.city)}, {html.escape(order.postal_code)}, {html.escape(order.address)}<br>
+                    {html.escape(order.city)},
+                    {html.escape(order.postal_code)},
+                    {html.escape(order.address)}<br>
                     <strong>Телефон:</strong> {html.escape(order.phone)}
                 </p>
                 <p>
@@ -322,7 +337,8 @@ def send_order_status_update_email(order: Order, old_status: str) -> bool:
                     пожалуйста, свяжитесь с нами.
                 </p>
                 <p style="margin: 10px 0 0 0; color: #999; font-size: 12px;">
-                    Это автоматическое письмо. Пожалуйста, не отвечайте на него.
+                    Это автоматическое письмо.
+                    Пожалуйста, не отвечайте на него.
                 </p>
             </div>
         </body>

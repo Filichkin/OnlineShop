@@ -22,7 +22,9 @@ const loadFavoritesFromStorage = () => {
   try {
     const savedFavorites = localStorage.getItem(FAVORITES_STORAGE_KEY);
     if (savedFavorites) {
-      return JSON.parse(savedFavorites);
+      const parsed = JSON.parse(savedFavorites);
+      logger.log('loadFavoritesFromStorage: Found', parsed?.items?.length || 0, 'items');
+      return parsed;
     }
   } catch (error) {
     logger.error('Error loading favorites from localStorage:', error);
@@ -32,22 +34,47 @@ const loadFavoritesFromStorage = () => {
 
 const saveFavoritesToStorage = (items) => {
   try {
+    logger.log('Saving favorites to localStorage, items count:', items?.length || 0);
+    
+    if (!items || !Array.isArray(items)) {
+      logger.warn('saveFavoritesToStorage: items is not an array');
+      return;
+    }
+    
+    // Save only minimal data needed for sync and display
+    // Avoid saving nested objects like brand to prevent circular reference issues
+    const minimalItems = items.map(item => ({
+      id: item?.id,
+      name: item?.name || '',
+      price: item?.price || 0,
+      main_image: item?.main_image || '',
+      slug: item?.slug || '',
+    }));
+    
     const favorites = {
-      items,
-      favoriteIds: items.map(item => item.id),
-      totalItems: items.length,
+      items: minimalItems,
+      favoriteIds: minimalItems.map(item => item.id).filter(Boolean),
+      totalItems: minimalItems.length,
     };
-    localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites));
+    
+    const favoritesJson = JSON.stringify(favorites);
+    localStorage.setItem(FAVORITES_STORAGE_KEY, favoritesJson);
+    logger.log('Favorites saved to localStorage successfully, data:', favoritesJson.substring(0, 200));
   } catch (error) {
-    logger.error('Error saving favorites to localStorage:', error);
+    logger.error('Error saving favorites to localStorage:', error?.message || error);
   }
 };
 
 const clearFavoritesFromStorage = () => {
   try {
-    localStorage.removeItem(FAVORITES_STORAGE_KEY);
+    logger.log('Clearing favorites from localStorage...');
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(FAVORITES_STORAGE_KEY);
+      logger.log('Favorites localStorage cleared successfully');
+    }
   } catch (error) {
-    logger.error('Error clearing favorites from localStorage:', error);
+    // Log detailed error info
+    logger.error('Error clearing favorites from localStorage:', error?.message || JSON.stringify(error) || error);
   }
 };
 
@@ -77,12 +104,28 @@ const initialState = {
 // Async thunks
 
 /**
- * Загрузка списка избранных товаров с сервера
- * Используется один раз при загрузке приложения или страницы избранного
+ * Загрузка списка избранных товаров с сервера или из localStorage
+ * Для авторизованных пользователей - загружает с сервера
+ * Для гостей - загружает из localStorage
  */
 export const fetchFavorites = createAsyncThunk(
   'favorites/fetchFavorites',
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
+    const state = getState();
+    const isAuthenticated = state.auth?.isAuthenticated === true;
+    
+    // For guests, load from localStorage instead of server
+    if (!isAuthenticated) {
+      logger.log('fetchFavorites: User not authenticated, loading from localStorage');
+      const guestFavorites = loadFavoritesFromStorage();
+      return {
+        items: guestFavorites.items,
+        total_items: guestFavorites.totalItems,
+        isGuest: true,
+      };
+    }
+    
+    // For authenticated users, fetch from server
     try {
       const data = await favoritesAPI.getFavorites();
       // Validate response data
@@ -113,11 +156,18 @@ export const addToFavorites = createAsyncThunk(
     const productData = typeof payload === 'object' ? payload.productData : null;
 
     const state = getState();
-    const isGuest = state.favorites.isUnauthorized || state.favorites.isGuest;
+    // Check auth state to determine if user is really authenticated
+    // Don't rely on favorites.isGuest because backend returns 200 for session-based favorites
+    const isAuthenticated = state.auth?.isAuthenticated === true;
+    const isGuest = !isAuthenticated;
+    
+    logger.log('addToFavorites: isAuthenticated=', isAuthenticated, 'isGuest=', isGuest, 'productId=', productId);
 
     if (isGuest) {
+      logger.log('addToFavorites: Guest mode - saving to localStorage');
       // Guest user - use localStorage
-      const currentItems = state.favorites.items;
+      // Use JSON.parse/stringify to break Proxy references from Redux/Immer
+      const currentItems = JSON.parse(JSON.stringify(state.favorites.items || []));
       const existingItem = currentItems.find(item => item.id === productId);
 
       if (existingItem) {
@@ -125,14 +175,21 @@ export const addToFavorites = createAsyncThunk(
         return { productId, isGuest: true, alreadyExists: true };
       }
 
-      // Add new item
-      const newItem = productData || { id: productId };
-      const updatedItems = [...currentItems, newItem];
+      // Add new item - create clean object without Proxy
+      const cleanProductData = productData ? {
+        id: productData.id,
+        name: productData.name,
+        price: productData.price,
+        main_image: productData.main_image,
+        slug: productData.slug,
+      } : { id: productId };
+      
+      const updatedItems = [...currentItems, cleanProductData];
 
       saveFavoritesToStorage(updatedItems);
       return {
         productId,
-        item: { product: newItem },
+        item: { product: cleanProductData },
         isGuest: true,
         alreadyExists: false,
       };
@@ -159,11 +216,14 @@ export const removeFromFavorites = createAsyncThunk(
   'favorites/removeFromFavorites',
   async (productId, { getState, rejectWithValue }) => {
     const state = getState();
-    const isGuest = state.favorites.isUnauthorized || state.favorites.isGuest;
+    // Check auth state to determine if user is really authenticated
+    const isAuthenticated = state.auth?.isAuthenticated === true;
+    const isGuest = !isAuthenticated;
 
     if (isGuest) {
       // Guest user - use localStorage
-      const currentItems = state.favorites.items;
+      // Use JSON.parse/stringify to break Proxy references from Redux/Immer
+      const currentItems = JSON.parse(JSON.stringify(state.favorites.items || []));
       const updatedItems = currentItems.filter(item => item.id !== productId);
 
       saveFavoritesToStorage(updatedItems);
@@ -230,30 +290,99 @@ export const toggleFavorite = createAsyncThunk(
  */
 export const syncGuestFavorites = createAsyncThunk(
   'favorites/syncGuestFavorites',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState();
-      const guestItems = state.favorites.items;
-
+      // Read raw data from localStorage first
+      const rawFavoritesData = localStorage.getItem(FAVORITES_STORAGE_KEY);
+      logger.log('syncGuestFavorites: Raw localStorage data:', rawFavoritesData);
+      
+      // IMMEDIATELY clear localStorage to prevent double-sync (React StrictMode runs effects twice)
+      clearFavoritesFromStorage();
+      logger.log('syncGuestFavorites: localStorage cleared immediately after reading');
+      
+      if (!rawFavoritesData) {
+        logger.log('syncGuestFavorites: No data in localStorage, fetching server favorites');
+        const data = await favoritesAPI.getFavorites();
+        return data;
+      }
+      
+      // Parse raw data
+      let parsedFavorites;
+      try {
+        parsedFavorites = JSON.parse(rawFavoritesData);
+        logger.log('syncGuestFavorites: Parsed favorites:', JSON.stringify(parsedFavorites));
+        logger.log('syncGuestFavorites: Items in parsed favorites:', parsedFavorites?.items?.length || 0);
+      } catch (parseError) {
+        logger.error('syncGuestFavorites: Failed to parse localStorage:', parseError);
+        const data = await favoritesAPI.getFavorites();
+        return data;
+      }
+      
+      // Get items directly from parsed data
+      const guestItems = parsedFavorites?.items || [];
+      
       if (guestItems.length === 0) {
-        return { items: [], total_items: 0 };
+        logger.log('syncGuestFavorites: No items to sync, fetching server favorites');
+        const data = await favoritesAPI.getFavorites();
+        return data;
       }
 
-      // Send guest favorite items to backend for merging
-      // We need to add each item individually to merge with existing server favorites
-      const promises = guestItems.map(item =>
-        favoritesAPI.addToFavorites(item.id)
-      );
+      // Fetch current server favorites to avoid duplicates
+      logger.log('syncGuestFavorites: Fetching server favorites to check for existing items...');
+      const serverFavorites = await favoritesAPI.getFavorites();
+      const serverProductIds = new Set((serverFavorites.items || []).map(item => item.product?.id || item.id));
+      logger.log('syncGuestFavorites: Server favorites has', serverProductIds.size, 'unique products');
 
-      await Promise.all(promises);
+      // Filter guest items - only add items that are NOT already on server
+      const itemsToAdd = guestItems.filter(item => {
+        const productId = item.id;
+        const alreadyOnServer = serverProductIds.has(productId);
+        if (alreadyOnServer) {
+          logger.log('syncGuestFavorites: Skipping product', productId, '- already on server');
+        }
+        return !alreadyOnServer;
+      });
 
-      // Clear localStorage after successful sync
-      clearFavoritesFromStorage();
+      logger.log('syncGuestFavorites:', itemsToAdd.length, 'new items to add (', guestItems.length - itemsToAdd.length, 'skipped as duplicates)');
+
+      // Send only NEW items to backend
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (const item of itemsToAdd) {
+        const productId = item.id;
+        logger.log('syncGuestFavorites: Adding item - productId:', productId);
+        
+        if (productId) {
+          try {
+            await favoritesAPI.addToFavorites(productId);
+            logger.log('syncGuestFavorites: Item added successfully');
+            successCount++;
+          } catch (itemError) {
+            // 409 Conflict means item already in favorites - count as success
+            if (itemError?.status === 409 || itemError?.isConflict) {
+              logger.log('syncGuestFavorites: Item already in favorites (conflict)');
+              successCount++;
+            } else {
+              logger.error('syncGuestFavorites: Failed to add item:', itemError?.message || itemError);
+              failCount++;
+            }
+          }
+        } else {
+          logger.warn('syncGuestFavorites: Invalid item data - productId:', productId);
+          failCount++;
+        }
+      }
+      
+      logger.log('syncGuestFavorites: Processed', successCount, 'success,', failCount, 'failed');
 
       // Fetch updated favorites from server
+      logger.log('syncGuestFavorites: Fetching final favorites from server...');
       const data = await favoritesAPI.getFavorites();
+      logger.log('syncGuestFavorites: Sync completed, total items:', data.items?.length || 0);
       return data;
     } catch (error) {
+      logger.error('syncGuestFavorites: Error during sync:', error);
       return rejectWithValue(error.message || 'Не удалось синхронизировать избранное');
     }
   }
@@ -274,17 +403,21 @@ const favoritesSlice = createSlice({
     },
     // Сброс избранного (при logout)
     resetFavorites: (state) => {
+      // CRITICAL: Clear localStorage FIRST before clearing state
+      // This prevents race conditions where state changes trigger saves to localStorage
+      clearFavoritesFromStorage();
+
+      // Then clear all state
       state.items = [];
       state.favoriteIds = [];
       state.totalItems = 0;
       state.isLoading = false;
       state.error = null;
       state.updatingItems = [];
-      state.isLoaded = false;
-      state.isUnauthorized = false;
-      state.isGuest = false;
+      state.isLoaded = true; // Mark as loaded to prevent fetchFavorites from being called
+      state.isUnauthorized = true; // User is now unauthorized (logged out)
+      state.isGuest = true; // User is now in guest mode
       state.isSyncing = false;
-      clearFavoritesFromStorage();
     },
     // Переключение в гостевой режим (при logout)
     setGuestMode: (state) => {
@@ -307,17 +440,27 @@ const favoritesSlice = createSlice({
       })
       .addCase(fetchFavorites.fulfilled, (state, action) => {
         state.isLoading = false;
-        // API возвращает объект {items: [], total_items: N, ...}
-        const items = action.payload?.items || [];
-        // Извлекаем product из каждого item
-        state.items = items.map(item => item.product);
-        state.favoriteIds = state.items.map(product => product.id);
-        state.totalItems = action.payload?.total_items || state.items.length;
         state.isLoaded = true;
         state.isUnauthorized = false;
-        state.isGuest = false; // User is authenticated
-        // Clear guest favorites from storage after successful fetch
-        clearFavoritesFromStorage();
+        
+        // Check if this is guest data from localStorage
+        if (action.payload.isGuest) {
+          // Guest data - items are stored directly (not wrapped in product objects)
+          state.items = action.payload?.items || [];
+          state.favoriteIds = state.items.map(item => item.id);
+          state.totalItems = action.payload?.total_items || state.items.length;
+          state.isGuest = true;
+        } else {
+          // Server data - API returns {items: [{product: {...}}, ...], total_items: N}
+          const items = action.payload?.items || [];
+          // Extract product from each item
+          state.items = items.map(item => item.product);
+          state.favoriteIds = state.items.map(product => product.id);
+          state.totalItems = action.payload?.total_items || state.items.length;
+          state.isGuest = false; // User is authenticated
+        }
+        // NOTE: Don't clear localStorage here - let syncGuestFavorites handle it
+        // This prevents race conditions where fetch runs before sync and loses guest data
       })
       .addCase(fetchFavorites.rejected, (state, action) => {
         state.isLoading = false;
@@ -445,18 +588,22 @@ const favoritesSlice = createSlice({
         state.error = null;
       })
       .addCase(syncGuestFavorites.fulfilled, (state, action) => {
+        logger.log('syncGuestFavorites.fulfilled: payload received:', JSON.stringify(action.payload).substring(0, 500));
+        logger.log('syncGuestFavorites.fulfilled: items count:', action.payload?.items?.length || 0);
+        
         state.isSyncing = false;
         state.isGuest = false;
         state.isUnauthorized = false;
+        state.isLoaded = true; // Mark as loaded to prevent duplicate fetches
 
         // Update with merged favorites from server
         const items = action.payload?.items || [];
         state.items = items.map(item => item.product);
-        state.favoriteIds = state.items.map(product => product.id);
+        state.favoriteIds = state.items.map(product => product?.id).filter(Boolean);
         state.totalItems = action.payload?.total_items || state.items.length;
-
-        // Clear localStorage after successful sync
-        clearFavoritesFromStorage();
+        
+        logger.log('syncGuestFavorites.fulfilled: state updated, items:', state.items.length);
+        // NOTE: localStorage is cleared in the thunk, not here
       })
       .addCase(syncGuestFavorites.rejected, (state, action) => {
         state.isSyncing = false;

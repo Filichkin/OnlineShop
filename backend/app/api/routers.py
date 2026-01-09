@@ -13,7 +13,8 @@ from app.api.endpoints import (
 from app.core.config import Constants
 
 
-main_router = APIRouter()
+# API version 1 router
+main_router = APIRouter(prefix='/api/v1')
 
 main_router.include_router(user_router)
 main_router.include_router(

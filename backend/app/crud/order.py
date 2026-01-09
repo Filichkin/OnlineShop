@@ -1,11 +1,11 @@
 from typing import List, Optional
 
 from loguru import logger
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import Order, OrderItem, OrderStatus, Product, User
+from app.models import Order, OrderItem, OrderStatus, Product
 from app.utils import (
     generate_order_number,
     send_order_confirmation_email,

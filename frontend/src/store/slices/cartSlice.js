@@ -22,32 +22,101 @@ const loadCartFromStorage = () => {
   try {
     const savedCart = localStorage.getItem(CART_STORAGE_KEY);
     if (savedCart) {
-      return JSON.parse(savedCart);
+      const parsedCart = JSON.parse(savedCart);
+
+      // Validate the structure of loaded data
+      if (!parsedCart || typeof parsedCart !== 'object') {
+        logger.warn('Invalid cart data structure in localStorage');
+        // DON'T remove - let sync decide what to do
+        return { items: [], totalItems: 0, totalPrice: 0 };
+      }
+
+      // Ensure items is an array
+      if (!Array.isArray(parsedCart.items)) {
+        logger.warn('Cart items is not an array in localStorage');
+        // DON'T remove - let sync decide what to do
+        return { items: [], totalItems: 0, totalPrice: 0 };
+      }
+
+      // Return items without strict validation - let sync handle raw data
+      // This prevents guest data from being lost before sync can process it
+      logger.log('loadCartFromStorage: Found', parsedCart.items.length, 'items');
+      return {
+        items: parsedCart.items,
+        totalItems: parsedCart.totalItems || parsedCart.items.reduce((sum, item) => sum + (item.quantity || 0), 0),
+        totalPrice: parsedCart.totalPrice || parsedCart.items.reduce((sum, item) => sum + ((item.price_at_addition || 0) * (item.quantity || 0)), 0),
+      };
     }
   } catch (error) {
     logger.error('Error loading cart from localStorage:', error);
+    // Only clear on JSON parse errors (truly corrupted data)
+    try {
+      localStorage.removeItem(CART_STORAGE_KEY);
+    } catch (e) {
+      logger.error('Error clearing corrupted cart data:', e);
+    }
   }
   return { items: [], totalItems: 0, totalPrice: 0 };
 };
 
 const saveCartToStorage = (items) => {
   try {
+    logger.log('Saving cart to localStorage, items count:', items?.length || 0);
+    
+    if (!items || !Array.isArray(items)) {
+      logger.warn('saveCartToStorage: items is not an array');
+      return;
+    }
+    
+    // Save only minimal data needed for sync and display
+    // Avoid saving nested objects like brand to prevent circular reference issues
+    // Use JSON.parse(JSON.stringify()) to break Proxy references from Redux
+    const minimalItems = items.map(item => {
+      // Extract product data safely
+      const product = item?.product;
+      const productId = product?.id;
+      const productName = product?.name || '';
+      const productPrice = product?.price || 0;
+      const productImage = product?.main_image || '';
+      const productSlug = product?.slug || '';
+      
+      return {
+        product: {
+          id: productId,
+          name: productName,
+          price: productPrice,
+          main_image: productImage,
+          slug: productSlug,
+        },
+        quantity: item?.quantity || 1,
+        price_at_addition: item?.price_at_addition || productPrice || 0,
+      };
+    });
+    
     const cart = {
-      items,
-      totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
-      totalPrice: items.reduce((sum, item) => sum + (item.price_at_addition || 0) * item.quantity, 0),
+      items: minimalItems,
+      totalItems: minimalItems.reduce((sum, item) => sum + (item.quantity || 0), 0),
+      totalPrice: minimalItems.reduce((sum, item) => sum + ((item.price_at_addition || 0) * (item.quantity || 0)), 0),
     };
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    
+    const cartJson = JSON.stringify(cart);
+    localStorage.setItem(CART_STORAGE_KEY, cartJson);
+    logger.log('Cart saved to localStorage successfully, data:', cartJson.substring(0, 200));
   } catch (error) {
-    logger.error('Error saving cart to localStorage:', error);
+    logger.error('Error saving cart to localStorage:', error?.message || error);
   }
 };
 
 const clearCartFromStorage = () => {
   try {
-    localStorage.removeItem(CART_STORAGE_KEY);
+    logger.log('Clearing cart from localStorage...');
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(CART_STORAGE_KEY);
+      logger.log('Cart localStorage cleared successfully');
+    }
   } catch (error) {
-    logger.error('Error clearing cart from localStorage:', error);
+    // Log detailed error info
+    logger.error('Error clearing cart from localStorage:', error?.message || JSON.stringify(error) || error);
   }
 };
 
@@ -74,12 +143,29 @@ const initialState = {
 // Async thunks
 
 /**
- * Загрузка корзины с сервера
- * Используется один раз при загрузке приложения
+ * Загрузка корзины с сервера или из localStorage
+ * Для авторизованных пользователей - загружает с сервера
+ * Для гостей - загружает из localStorage
  */
 export const fetchCart = createAsyncThunk(
   'cart/fetchCart',
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
+    const state = getState();
+    const isAuthenticated = state.auth?.isAuthenticated === true;
+    
+    // For guests, load from localStorage instead of server
+    if (!isAuthenticated) {
+      logger.log('fetchCart: User not authenticated, loading from localStorage');
+      const guestCart = loadCartFromStorage();
+      return {
+        items: guestCart.items,
+        total_items: guestCart.totalItems,
+        total_price: guestCart.totalPrice,
+        isGuest: true,
+      };
+    }
+    
+    // For authenticated users, fetch from server
     try {
       const data = await cartAPI.getCart();
       // Validate response data
@@ -107,11 +193,18 @@ export const addToCart = createAsyncThunk(
   'cart/addToCart',
   async ({ productId, quantity = 1, productData }, { getState, rejectWithValue }) => {
     const state = getState();
-    const isGuest = state.cart.isUnauthorized || state.cart.isGuest;
+    // Check auth state to determine if user is really authenticated
+    // Don't rely on cart.isGuest because backend returns 200 for session-based carts
+    const isAuthenticated = state.auth?.isAuthenticated === true;
+    const isGuest = !isAuthenticated;
+    
+    logger.log('addToCart: isAuthenticated=', isAuthenticated, 'isGuest=', isGuest, 'productId=', productId);
 
     if (isGuest) {
+      logger.log('addToCart: Guest mode - saving to localStorage');
       // Guest user - use localStorage
-      const currentItems = state.cart.items;
+      // Use JSON.parse/stringify to break Proxy references from Redux/Immer
+      const currentItems = JSON.parse(JSON.stringify(state.cart.items || []));
       const existingItemIndex = currentItems.findIndex(
         item => item.product?.id === productId
       );
@@ -125,9 +218,17 @@ export const addToCart = createAsyncThunk(
           quantity: updatedItems[existingItemIndex].quantity + quantity,
         };
       } else {
-        // Add new item
+        // Add new item - create clean object without Proxy
+        const cleanProductData = productData ? {
+          id: productData.id,
+          name: productData.name,
+          price: productData.price,
+          main_image: productData.main_image,
+          slug: productData.slug,
+        } : { id: productId };
+        
         const newItem = {
-          product: productData || { id: productId },
+          product: cleanProductData,
           quantity,
           price_at_addition: productData?.price || 0,
         };
@@ -156,11 +257,14 @@ export const updateQuantity = createAsyncThunk(
   'cart/updateQuantity',
   async ({ productId, quantity }, { getState, rejectWithValue }) => {
     const state = getState();
-    const isGuest = state.cart.isUnauthorized || state.cart.isGuest;
+    // Check auth state to determine if user is really authenticated
+    const isAuthenticated = state.auth?.isAuthenticated === true;
+    const isGuest = !isAuthenticated;
 
     if (isGuest) {
       // Guest user - use localStorage
-      const currentItems = state.cart.items;
+      // Use JSON.parse/stringify to break Proxy references from Redux/Immer
+      const currentItems = JSON.parse(JSON.stringify(state.cart.items || []));
       const itemIndex = currentItems.findIndex(item => item.product?.id === productId);
 
       if (itemIndex === -1) {
@@ -201,11 +305,14 @@ export const removeFromCart = createAsyncThunk(
   'cart/removeFromCart',
   async (productId, { getState, rejectWithValue }) => {
     const state = getState();
-    const isGuest = state.cart.isUnauthorized || state.cart.isGuest;
+    // Check auth state to determine if user is really authenticated
+    const isAuthenticated = state.auth?.isAuthenticated === true;
+    const isGuest = !isAuthenticated;
 
     if (isGuest) {
       // Guest user - use localStorage
-      const currentItems = state.cart.items;
+      // Use JSON.parse/stringify to break Proxy references from Redux/Immer
+      const currentItems = JSON.parse(JSON.stringify(state.cart.items || []));
       const updatedItems = currentItems.filter(item => item.product?.id !== productId);
 
       saveCartToStorage(updatedItems);
@@ -232,7 +339,9 @@ export const clearCart = createAsyncThunk(
   'cart/clearCart',
   async (_, { getState, rejectWithValue }) => {
     const state = getState();
-    const isGuest = state.cart.isUnauthorized || state.cart.isGuest;
+    // Check auth state to determine if user is really authenticated
+    const isAuthenticated = state.auth?.isAuthenticated === true;
+    const isGuest = !isAuthenticated;
 
     if (isGuest) {
       // Guest user - clear localStorage
@@ -256,30 +365,94 @@ export const clearCart = createAsyncThunk(
  */
 export const syncGuestCart = createAsyncThunk(
   'cart/syncGuestCart',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState();
-      const guestItems = state.cart.items;
-
+      // Read raw data from localStorage first
+      const rawCartData = localStorage.getItem(CART_STORAGE_KEY);
+      logger.log('syncGuestCart: Raw localStorage data:', rawCartData);
+      
+      // IMMEDIATELY clear localStorage to prevent double-sync (React StrictMode runs effects twice)
+      clearCartFromStorage();
+      logger.log('syncGuestCart: localStorage cleared immediately after reading');
+      
+      if (!rawCartData) {
+        logger.log('syncGuestCart: No data in localStorage, fetching server cart');
+        const data = await cartAPI.getCart();
+        return data;
+      }
+      
+      // Parse raw data
+      let parsedCart;
+      try {
+        parsedCart = JSON.parse(rawCartData);
+        logger.log('syncGuestCart: Parsed cart:', JSON.stringify(parsedCart));
+        logger.log('syncGuestCart: Items in parsed cart:', parsedCart?.items?.length || 0);
+      } catch (parseError) {
+        logger.error('syncGuestCart: Failed to parse localStorage:', parseError);
+        const data = await cartAPI.getCart();
+        return data;
+      }
+      
+      // Get items directly from parsed data
+      const guestItems = parsedCart?.items || [];
+      
       if (guestItems.length === 0) {
-        return { items: [] };
+        logger.log('syncGuestCart: No items to sync, fetching server cart');
+        const data = await cartAPI.getCart();
+        return data;
       }
 
-      // Send guest cart items to backend for merging
-      // We need to add each item individually to merge with existing server cart
-      const promises = guestItems.map(item =>
-        cartAPI.addItem(item.product.id, item.quantity)
-      );
+      // Fetch current server cart to avoid duplicates
+      logger.log('syncGuestCart: Fetching server cart to check for existing items...');
+      const serverCart = await cartAPI.getCart();
+      const serverProductIds = new Set((serverCart.items || []).map(item => item.product?.id));
+      logger.log('syncGuestCart: Server cart has', serverProductIds.size, 'unique products');
 
-      await Promise.all(promises);
+      // Filter guest items - only add items that are NOT already on server
+      const itemsToAdd = guestItems.filter(item => {
+        const productId = item.product?.id;
+        const alreadyOnServer = serverProductIds.has(productId);
+        if (alreadyOnServer) {
+          logger.log('syncGuestCart: Skipping product', productId, '- already on server');
+        }
+        return !alreadyOnServer;
+      });
 
-      // Clear localStorage after successful sync
-      clearCartFromStorage();
+      logger.log('syncGuestCart:', itemsToAdd.length, 'new items to add (', guestItems.length - itemsToAdd.length, 'skipped as duplicates)');
+
+      // Send only NEW items to backend
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (const item of itemsToAdd) {
+        const productId = item.product?.id;
+        const quantity = item.quantity;
+        logger.log('syncGuestCart: Adding item - productId:', productId, 'quantity:', quantity);
+        
+        if (productId && quantity > 0) {
+          try {
+            await cartAPI.addItem(productId, quantity);
+            logger.log('syncGuestCart: Item added successfully');
+            successCount++;
+          } catch (itemError) {
+            logger.error('syncGuestCart: Failed to add item:', itemError?.message || itemError);
+            failCount++;
+          }
+        } else {
+          logger.warn('syncGuestCart: Invalid item data - productId:', productId, 'quantity:', quantity);
+          failCount++;
+        }
+      }
+      
+      logger.log('syncGuestCart: Processed', successCount, 'success,', failCount, 'failed');
 
       // Fetch updated cart from server
+      logger.log('syncGuestCart: Fetching final cart from server...');
       const data = await cartAPI.getCart();
+      logger.log('syncGuestCart: Sync completed, total items:', data.items?.length || 0);
       return data;
     } catch (error) {
+      logger.error('syncGuestCart: Error during sync:', error);
       return rejectWithValue(error.message || 'Не удалось синхронизировать корзину');
     }
   }
@@ -306,17 +479,21 @@ const cartSlice = createSlice({
     },
     // Сброс корзины (при logout)
     resetCart: (state) => {
+      // CRITICAL: Clear localStorage FIRST before clearing state
+      // This prevents race conditions where state changes trigger saves to localStorage
+      clearCartFromStorage();
+
+      // Then clear all state
       state.items = [];
       state.totalItems = 0;
       state.totalPrice = 0;
       state.isLoading = false;
       state.error = null;
       state.updatingItems = [];
-      state.isLoaded = false;
-      state.isUnauthorized = false;
-      state.isGuest = false;
+      state.isLoaded = true; // Mark as loaded to prevent fetchCart from being called
+      state.isUnauthorized = true; // User is now unauthorized (logged out)
+      state.isGuest = true; // User is now in guest mode
       state.isSyncing = false;
-      clearCartFromStorage();
     },
     // Переключение в гостевой режим (при logout)
     setGuestMode: (state) => {
@@ -342,15 +519,22 @@ const cartSlice = createSlice({
         state.items = action.payload.items || [];
         state.isLoaded = true;
         state.isUnauthorized = false;
-        state.isGuest = false; // User is authenticated
+        
+        // Check if this is guest data from localStorage
+        if (action.payload.isGuest) {
+          state.isGuest = true;
+        } else {
+          state.isGuest = false; // User is authenticated
+        }
+        
         // Вычисляем общую информацию
         state.totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
         state.totalPrice = state.items.reduce(
           (sum, item) => sum + item.price_at_addition * item.quantity,
           0
         );
-        // Clear guest cart from storage after successful fetch
-        clearCartFromStorage();
+        // NOTE: Don't clear localStorage here - let syncGuestCart handle it
+        // This prevents race conditions where fetch runs before sync and loses guest data
       })
       .addCase(fetchCart.rejected, (state, action) => {
         state.isLoading = false;
@@ -521,20 +705,24 @@ const cartSlice = createSlice({
         state.error = null;
       })
       .addCase(syncGuestCart.fulfilled, (state, action) => {
+        logger.log('syncGuestCart.fulfilled: payload received:', JSON.stringify(action.payload).substring(0, 500));
+        logger.log('syncGuestCart.fulfilled: items count:', action.payload?.items?.length || 0);
+        
         state.isSyncing = false;
         state.isGuest = false;
         state.isUnauthorized = false;
+        state.isLoaded = true; // Mark as loaded to prevent duplicate fetches
 
         // Update with merged cart from server
-        state.items = action.payload.items || [];
-        state.totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
+        state.items = action.payload?.items || [];
+        state.totalItems = state.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
         state.totalPrice = state.items.reduce(
-          (sum, item) => sum + item.price_at_addition * item.quantity,
+          (sum, item) => sum + ((item.price_at_addition || 0) * (item.quantity || 0)),
           0
         );
-
-        // Clear localStorage after successful sync
-        clearCartFromStorage();
+        
+        logger.log('syncGuestCart.fulfilled: state updated, items:', state.items.length, 'totalItems:', state.totalItems);
+        // NOTE: localStorage is cleared in the thunk, not here
       })
       .addCase(syncGuestCart.rejected, (state, action) => {
         state.isSyncing = false;

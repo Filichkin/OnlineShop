@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchCatalogProducts,
@@ -105,29 +105,9 @@ const ProductManager = () => {
     }
   }, [showModal]);
 
-  // Фильтрация продуктов
-  const filteredProducts = useMemo(() => {
-    return products.filter(product => {
-      if (!product || !product.name) {
-        return false;
-      }
-
-      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                           (product.part_number && product.part_number.toLowerCase().includes(searchTerm.toLowerCase()));
-
-      const matchesBrand = !selectedBrandSlug || (product.brand && product.brand.slug === selectedBrandSlug);
-
-      let matchesStatus = true;
-      if (statusFilter === 'active') {
-        matchesStatus = product.is_active === true;
-      } else if (statusFilter === 'inactive') {
-        matchesStatus = product.is_active === false;
-      }
-
-      return matchesSearch && matchesBrand && matchesStatus;
-    });
-  }, [products, searchTerm, selectedBrandSlug, statusFilter]);
+  // Performance: Client-side filtering removed - using only server-side filtering via API
+  // This prevents unnecessary re-renders and improves performance with large datasets
+  const filteredProducts = products;
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -137,10 +117,42 @@ const ProductManager = () => {
     }));
   };
 
+  // File validation constants
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
   const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+
+    // Validate each file
+    const validFiles = [];
+    const errors = [];
+
+    files.forEach((file) => {
+      // Check file size
+      if (file.size > MAX_FILE_SIZE) {
+        errors.push(`Файл "${file.name}" слишком большой (максимум 5MB)`);
+        return;
+      }
+
+      // Check file type
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        errors.push(`Файл "${file.name}" имеет неподдерживаемый формат (разрешены: JPEG, PNG, WebP)`);
+        return;
+      }
+
+      validFiles.push(file);
+    });
+
+    // Show errors if any
+    if (errors.length > 0) {
+      alert('Ошибка валидации файлов:\n\n' + errors.join('\n'));
+    }
+
+    // Only set valid files
     setFormData(prev => ({
       ...prev,
-      images: Array.from(e.target.files)
+      images: validFiles.length > 0 ? validFiles : null
     }));
   };
 
@@ -660,12 +672,15 @@ const ProductManager = () => {
 
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp"
                         multiple
                         onChange={handleFileChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                       />
 
+                      <div className="text-xs text-gray-500 mt-1">
+                        Форматы: JPEG, PNG, WebP. Максимум 5MB на файл.
+                      </div>
                       <div className="text-xs text-blue-600 mt-1">
                         Изображения будут добавлены после сохранения продукта
                       </div>
@@ -674,11 +689,14 @@ const ProductManager = () => {
                     <div>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp"
                         multiple
                         onChange={handleFileChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                       />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Форматы: JPEG, PNG, WebP. Максимум 5MB на файл.
+                      </p>
                       <p className="mt-1 text-xs text-gray-500">
                         Выберите изображения для загрузки при создании продукта
                       </p>

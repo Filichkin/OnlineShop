@@ -270,7 +270,7 @@ async def login_user(
         path='/'
     )
 
-    # Return user data only (no token in response body)
+    # Return user data only (token is in cookie, not response body)
     return {
         'user': {
             'id': user.id,
@@ -287,6 +287,5 @@ async def login_user(
             'is_active': user.is_active,
             'is_superuser': user.is_superuser,
             'is_verified': user.is_verified
-        },
-        'csrf_token': csrf_token  # For backward compatibility
+        }
     }

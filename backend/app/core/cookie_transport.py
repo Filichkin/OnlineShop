@@ -4,7 +4,6 @@ Custom cookie-based transport for JWT authentication.
 Provides secure cookie-based token transport with fallback
 to Authorization header for backward compatibility.
 """
-from typing import Optional
 
 from fastapi import Response
 from fastapi.security import APIKeyCookie

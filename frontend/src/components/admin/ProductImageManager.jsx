@@ -4,6 +4,7 @@ import { productsImageAPI } from '../../api';
 import { sanitizeText } from '../../utils/sanitize';
 import { logger } from '../../utils/logger';
 import { handleApiError } from '../../utils/errorHandler';
+import { getImageUrl } from '../../utils/imageUrl';
 
 /**
  * Компонент для управления изображениями продукта
@@ -382,9 +383,13 @@ const ProductImageManager = ({ productId, onClose }) => {
 
                   {/* Изображение */}
                   <img
-                    src={image.url.startsWith('http') ? image.url : `${import.meta.env.VITE_API_BASE_URL || '/api'}/../${image.url}`}
+                    src={getImageUrl(image.url)}
                     alt={`Product ${image.order}`}
                     className='w-full h-48 object-cover'
+                    onError={(e) => {
+                      logger.error('Failed to load image:', image.url);
+                      e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23f3f4f6" width="200" height="200"/%3E%3Ctext fill="%239ca3af" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3EНе удалось загрузить%3C/text%3E%3C/svg%3E';
+                    }}
                   />
 
                   {/* Действия */}

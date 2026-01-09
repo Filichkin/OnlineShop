@@ -24,6 +24,9 @@ function Header({ onOpenLoginModal }) {
   const totalFavorites = useSelector(selectFavoritesTotalItems);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
   const user = useSelector((state) => state.auth.user);
+  
+  // Debug: log when Header re-renders with new values
+  console.log('[Header] Re-render - totalItems:', totalItems, 'totalFavorites:', totalFavorites, 'isAuthenticated:', isAuthenticated);
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const navigate = useNavigate();

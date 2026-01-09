@@ -5,7 +5,7 @@ import Header from "./Header";
 import Footer from "./Footer";
 import SessionExpiredHandler from "./SessionExpiredHandler";
 import LoginModal from "./LoginModal";
-import { fetchFavorites } from "../store/slices/favoritesSlice";
+import { fetchFavorites, selectFavoritesIsLoaded, selectFavoritesIsLoading } from "../store/slices/favoritesSlice";
 import { getCurrentUser } from "../store/slices/authSlice";
 
 /**
@@ -24,6 +24,8 @@ function Layout() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
   const user = useSelector((state) => state.auth.user);
+  const favoritesLoaded = useSelector(selectFavoritesIsLoaded);
+  const favoritesLoading = useSelector(selectFavoritesIsLoading);
 
   // Загрузка данных пользователя при первом монтировании приложения
   // Это гарантирует, что имя пользователя и статус администратора
@@ -36,9 +38,12 @@ function Layout() {
 
   // Загрузка избранного при первом монтировании приложения
   // Это гарантирует, что badge счетчик будет отображаться правильно
+  // Добавлена проверка на isLoaded и isLoading для предотвращения дублирующих запросов
   useEffect(() => {
-    dispatch(fetchFavorites());
-  }, [dispatch]);
+    if (!favoritesLoaded && !favoritesLoading) {
+      dispatch(fetchFavorites());
+    }
+  }, [dispatch, favoritesLoaded, favoritesLoading]);
 
   const handleOpenLoginModal = () => {
     setIsLoginModalOpen(true);

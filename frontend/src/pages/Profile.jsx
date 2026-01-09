@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { logout, updateProfile, getCurrentUser, clearError, clearSuccessMessage } from '../store/slices/authSlice';
-import { selectFavoriteItems, selectFavoritesIsLoading, fetchFavorites } from '../store/slices/favoritesSlice';
+import { selectFavoriteItems, selectFavoritesIsLoading, selectFavoritesIsLoaded, fetchFavorites } from '../store/slices/favoritesSlice';
 import { isValidPhone, isValidTelegramId, isValidBirthDate, formatPhoneNumber } from '../utils/validation';
 import { getImageUrl, formatPrice } from '../utils';
 import { ordersAPI } from '../api';
@@ -25,9 +25,10 @@ function Profile() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, loading, error, successMessage, isAuthenticated } = useSelector((state) => state.auth);
+  const { user, loading, error, successMessage, isAuthenticated, authChecked } = useSelector((state) => state.auth);
   const favoriteItems = useSelector(selectFavoriteItems);
   const favoritesLoading = useSelector(selectFavoritesIsLoading);
+  const favoritesLoaded = useSelector(selectFavoritesIsLoaded);
 
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
@@ -59,19 +60,20 @@ function Profile() {
   // Check authentication and redirect if needed
   // NOTE: Token validation happens in Header before navigation
   // This is a fallback for edge cases
+  // Wait for authChecked to be true before redirecting to avoid flickering
   useEffect(() => {
-    if (!isAuthenticated && !loading) {
+    if (authChecked && !isAuthenticated && !loading) {
       // Session expired or user not logged in - redirect to home
       navigate('/', { replace: true });
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, loading, navigate, authChecked]);
 
-  // Load favorites when user is authenticated
+  // Load favorites when user is authenticated and favorites not yet loaded
   useEffect(() => {
-    if (user) {
+    if (user && !favoritesLoaded && !favoritesLoading) {
       dispatch(fetchFavorites());
     }
-  }, [user, dispatch]);
+  }, [user, dispatch, favoritesLoaded, favoritesLoading]);
 
   // Load orders when orders tab is active
   useEffect(() => {
@@ -267,14 +269,31 @@ function Profile() {
     { id: 'favorites', label: 'Избранное', icon: favoriteIcon },
   ];
 
-  // If not authenticated, don't render anything (redirect will happen via useEffect)
-  // This prevents showing empty profile data
+  // Show loading state while auth is being checked or user data is being fetched
+  // Wait for authChecked before deciding what to show
+  if (!authChecked || loading || (!isAuthenticated && !authChecked)) {
+    return (
+      <div className="container py-8">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-center">
+            <svg className="animate-spin h-12 w-12 text-blue-600 mx-auto mb-4" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <p className="text-gray-600">Загрузка профиля...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated after auth check completed, don't render anything (redirect will happen via useEffect)
   if (!isAuthenticated) {
     return null;
   }
 
   // Show loading state while user data is being fetched
-  if (loading || !user) {
+  if (!user) {
     return (
       <div className="container py-8">
         <div className="flex justify-center items-center min-h-[400px]">

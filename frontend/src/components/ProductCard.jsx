@@ -33,6 +33,8 @@ function ProductCard({ product, brandId, linkPrefix = "/product", onAddToCart })
         <img
           src={getImageUrl(product.main_image)}
           alt={product.name}
+          loading="lazy"
+          decoding="async"
           className="
             object-cover
             w-full h-full

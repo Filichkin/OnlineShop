@@ -28,7 +28,8 @@ export default [
       ...react.configs.recommended.rules,
       ...react.configs["jsx-runtime"].rules,
       ...reactHooks.configs.recommended.rules,
-      "react/jsx-no-target-blank": "off",
+      // Security: Enforce rel="noopener noreferrer" on links with target="_blank"
+      "react/jsx-no-target-blank": "warn",
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "no-unused-vars": "warn",
       "react/prop-types": "off",

@@ -87,9 +87,16 @@ export const updateProfile = createAsyncThunk(
 export const logout = createAsyncThunk(
   'auth/logout',
   async (_, { dispatch }) => {
+    // Reset cart and favorites FIRST to clear state and localStorage
+    // This prevents any race conditions during logout
+    dispatch(resetCart());
+    dispatch(resetFavorites());
+
     // Call backend logout endpoint to clear httpOnly cookies
+    // Use /api/v1 prefix only - VITE_API_BASE_URL already includes it
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
     try {
-      await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/user/auth/logout`, {
+      await fetch(`${baseUrl}/auth/logout`, {
         method: 'POST',
         credentials: 'include', // Important for sending cookies
       });
@@ -98,7 +105,8 @@ export const logout = createAsyncThunk(
       logger.error('Logout API error:', err);
     }
 
-    // Reset cart and favorites
+    // Double-check: Reset cart and favorites again after backend call
+    // This ensures localStorage is cleared even if any async operations occurred
     dispatch(resetCart());
     dispatch(resetFavorites());
 
@@ -108,12 +116,13 @@ export const logout = createAsyncThunk(
 
 const initialState = {
   user: null, // User object with: first_name, last_name, email, phone, date_of_birth, city, telegram_id, address
-  csrfToken: null, // CSRF token for protected operations
+  // CSRF token removed - now using only httpOnly cookies via getCsrfTokenFromCookie()
   isAuthenticated: false, // Check user existence instead of token
   loading: false,
   error: null,
   successMessage: null,
   sessionExpired: false, // Flag to distinguish explicit logout from session expiration
+  authChecked: false, // Flag to indicate initial auth check has completed
 };
 
 const authSlice = createSlice({
@@ -132,9 +141,7 @@ const authSlice = createSlice({
     clearSessionExpired: (state) => {
       state.sessionExpired = false;
     },
-    setCsrfToken: (state, action) => {
-      state.csrfToken = action.payload;
-    },
+    // setCsrfToken removed - CSRF tokens now managed via httpOnly cookies only
   },
   extraReducers: (builder) => {
     builder
@@ -147,7 +154,7 @@ const authSlice = createSlice({
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user; // Save user data from response
-        state.csrfToken = action.payload.csrf_token; // Save CSRF token
+        // CSRF token no longer stored in state - using httpOnly cookies
         state.isAuthenticated = true;
         state.successMessage = 'Регистрация прошла успешно!';
         state.sessionExpired = false; // Clear session expired flag on successful registration
@@ -167,7 +174,7 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user; // Save user data from response
-        state.csrfToken = action.payload.csrf_token; // Save CSRF token
+        // CSRF token no longer stored in state - using httpOnly cookies
         state.isAuthenticated = true;
         state.successMessage = 'Вход выполнен успешно!';
         state.sessionExpired = false; // Clear session expired flag on successful login
@@ -202,17 +209,28 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload;
         state.isAuthenticated = true;
+        state.authChecked = true; // Auth check completed
       })
       .addCase(getCurrentUser.rejected, (state, action) => {
         state.loading = false;
+        state.authChecked = true; // Auth check completed (even if failed)
+        
         // Check if session expired (401 error)
+        // Only mark as session expired if user WAS previously authenticated
+        // This prevents showing "session expired" message after explicit logout
+        const wasAuthenticated = state.isAuthenticated || state.user !== null;
+        
         if (action.payload?.includes('Сессия истекла') || action.payload?.includes('Токен не найден')) {
           // Clear authentication state
           state.isAuthenticated = false;
-          state.csrfToken = null;
           state.user = null;
           state.error = null; // Don't show error message, just redirect
-          state.sessionExpired = true; // Mark as session expired
+          
+          // Only mark session as expired if user was previously logged in
+          if (wasAuthenticated) {
+            state.sessionExpired = true; // Mark as session expired
+          }
+          // If user was never authenticated, just silently fail (normal case for guests)
         } else {
           state.error = action.payload || 'Не удалось загрузить данные пользователя';
         }
@@ -232,13 +250,13 @@ const authSlice = createSlice({
       .addCase(updateProfile.rejected, (state, action) => {
         state.loading = false;
         // Check if session expired (401 error)
+        // User must have been authenticated to call updateProfile, so always mark as expired
         if (action.payload?.includes('Сессия истекла') || action.payload?.includes('Токен не найден')) {
           // Clear authentication state
           state.isAuthenticated = false;
-          state.csrfToken = null;
           state.user = null;
           state.error = null;
-          state.sessionExpired = true; // Mark as session expired
+          state.sessionExpired = true; // Mark as session expired (user was definitely logged in before)
         } else {
           state.error = action.payload || 'Ошибка при обновлении профиля';
         }
@@ -247,7 +265,6 @@ const authSlice = createSlice({
       // Выход
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
-        state.csrfToken = null;
         state.isAuthenticated = false;
         state.error = null;
         state.successMessage = null;
@@ -256,5 +273,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, clearSuccessMessage, setUser, clearSessionExpired, setCsrfToken } = authSlice.actions;
+export const { clearError, clearSuccessMessage, setUser, clearSessionExpired } = authSlice.actions;
 export default authSlice.reducer;
