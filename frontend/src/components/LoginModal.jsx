@@ -88,17 +88,33 @@ function LoginModal({ isOpen, onClose }) {
     if (successMessage && (mode === 'login' || mode === 'register')) {
       // Sync guest cart and favorites with server after successful login/registration
       // This merges guest data (from localStorage) with server data
-      if (isCartGuest) {
-        dispatchRef.current(syncGuestCart());
-      }
-      if (isFavoritesGuest) {
-        dispatchRef.current(syncGuestFavorites());
-      }
+      const syncData = async () => {
+        try {
+          // Wait for sync operations to complete before closing modal
+          // This ensures counters in Header are updated before user sees them
+          const syncPromises = [];
 
-      // Close modal after short delay
-      setTimeout(() => {
-        onCloseRef.current();
-      }, 1500);
+          if (isCartGuest) {
+            syncPromises.push(dispatchRef.current(syncGuestCart()).unwrap());
+          }
+          if (isFavoritesGuest) {
+            syncPromises.push(dispatchRef.current(syncGuestFavorites()).unwrap());
+          }
+
+          // Wait for all syncs to complete
+          await Promise.all(syncPromises);
+        } catch (error) {
+          // If sync fails, log error but still close modal
+          logger.error('Error syncing guest data:', error);
+        }
+
+        // Close modal after sync completes
+        setTimeout(() => {
+          onCloseRef.current();
+        }, 500);
+      };
+
+      syncData();
     }
   }, [successMessage, mode, isCartGuest, isFavoritesGuest]);
 

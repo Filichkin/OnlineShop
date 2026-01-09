@@ -87,6 +87,11 @@ export const updateProfile = createAsyncThunk(
 export const logout = createAsyncThunk(
   'auth/logout',
   async (_, { dispatch }) => {
+    // Reset cart and favorites FIRST to clear state and localStorage
+    // This prevents any race conditions during logout
+    dispatch(resetCart());
+    dispatch(resetFavorites());
+
     // Call backend logout endpoint to clear httpOnly cookies
     try {
       await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/user/auth/logout`, {
@@ -98,7 +103,8 @@ export const logout = createAsyncThunk(
       logger.error('Logout API error:', err);
     }
 
-    // Reset cart and favorites
+    // Double-check: Reset cart and favorites again after backend call
+    // This ensures localStorage is cleared even if any async operations occurred
     dispatch(resetCart());
     dispatch(resetFavorites());
 

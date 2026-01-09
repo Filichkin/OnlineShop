@@ -336,6 +336,11 @@ const cartSlice = createSlice({
     },
     // Сброс корзины (при logout)
     resetCart: (state) => {
+      // CRITICAL: Clear localStorage FIRST before clearing state
+      // This prevents race conditions where state changes trigger saves to localStorage
+      clearCartFromStorage();
+
+      // Then clear all state
       state.items = [];
       state.totalItems = 0;
       state.totalPrice = 0;
@@ -346,7 +351,6 @@ const cartSlice = createSlice({
       state.isUnauthorized = false;
       state.isGuest = false;
       state.isSyncing = false;
-      clearCartFromStorage();
     },
     // Переключение в гостевой режим (при logout)
     setGuestMode: (state) => {

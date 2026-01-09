@@ -274,6 +274,11 @@ const favoritesSlice = createSlice({
     },
     // Сброс избранного (при logout)
     resetFavorites: (state) => {
+      // CRITICAL: Clear localStorage FIRST before clearing state
+      // This prevents race conditions where state changes trigger saves to localStorage
+      clearFavoritesFromStorage();
+
+      // Then clear all state
       state.items = [];
       state.favoriteIds = [];
       state.totalItems = 0;
@@ -284,7 +289,6 @@ const favoritesSlice = createSlice({
       state.isUnauthorized = false;
       state.isGuest = false;
       state.isSyncing = false;
-      clearFavoritesFromStorage();
     },
     // Переключение в гостевой режим (при logout)
     setGuestMode: (state) => {
