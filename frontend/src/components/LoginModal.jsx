@@ -363,11 +363,8 @@ function LoginModal({ isOpen, onClose }) {
   // Security: Increased from 1000ms to 2000ms to prevent brute-force attacks
   const handleSubmitDebounced = useDebounceCallback(handleSubmit, 2000);
 
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
+  // Removed handleBackdropClick - modal should not close on backdrop click
+  // Users must explicitly close the modal using the close button or Escape key
 
   if (!isOpen) return null;
 
@@ -376,7 +373,6 @@ function LoginModal({ isOpen, onClose }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
-      onClick={handleBackdropClick}
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
