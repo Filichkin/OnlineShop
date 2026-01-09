@@ -22,10 +22,40 @@ const loadCartFromStorage = () => {
   try {
     const savedCart = localStorage.getItem(CART_STORAGE_KEY);
     if (savedCart) {
-      return JSON.parse(savedCart);
+      const parsedCart = JSON.parse(savedCart);
+
+      // Validate the structure of loaded data
+      if (!parsedCart || typeof parsedCart !== 'object') {
+        logger.warn('Invalid cart data structure in localStorage');
+        localStorage.removeItem(CART_STORAGE_KEY);
+        return { items: [], totalItems: 0, totalPrice: 0 };
+      }
+
+      // Ensure items is an array
+      if (!Array.isArray(parsedCart.items)) {
+        logger.warn('Cart items is not an array in localStorage');
+        localStorage.removeItem(CART_STORAGE_KEY);
+        return { items: [], totalItems: 0, totalPrice: 0 };
+      }
+
+      // Validate each cart item using existing validator
+      try {
+        const validatedCart = validateCartResponse(parsedCart);
+        return validatedCart;
+      } catch (validationError) {
+        logger.warn('Cart validation failed for localStorage data:', validationError);
+        localStorage.removeItem(CART_STORAGE_KEY);
+        return { items: [], totalItems: 0, totalPrice: 0 };
+      }
     }
   } catch (error) {
     logger.error('Error loading cart from localStorage:', error);
+    // Clear corrupted data
+    try {
+      localStorage.removeItem(CART_STORAGE_KEY);
+    } catch (e) {
+      logger.error('Error clearing corrupted cart data:', e);
+    }
   }
   return { items: [], totalItems: 0, totalPrice: 0 };
 };

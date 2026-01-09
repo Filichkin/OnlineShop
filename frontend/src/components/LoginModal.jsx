@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { register, login, forgotPassword, getCurrentUser, clearError, clearSuccessMessage } from '../store/slices/authSlice';
 import { fetchCart } from '../store/slices/cartSlice';
@@ -145,7 +145,8 @@ function LoginModal({ isOpen, onClose }) {
     }
   }, [rateLimitTimer]);
 
-  const handleInputChange = (e) => {
+  // Memoized input change handler to prevent unnecessary re-renders
+  const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
 
     // Форматирование телефона
@@ -173,9 +174,10 @@ function LoginModal({ isOpen, onClose }) {
         return newErrors;
       });
     }
-  };
+  }, [mode, validationErrors]);
 
-  const validateForm = () => {
+  // Memoized form validation to prevent unnecessary recalculations
+  const validateForm = useCallback(() => {
     const errors = {};
 
     if (mode === 'register') {
@@ -230,7 +232,7 @@ function LoginModal({ isOpen, onClose }) {
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+  }, [mode, formData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -274,7 +276,8 @@ function LoginModal({ isOpen, onClose }) {
   };
 
   // Debounced submit handler to prevent multiple clicks
-  const handleSubmitDebounced = useDebounceCallback(handleSubmit, 1000);
+  // Security: Increased from 1000ms to 2000ms to prevent brute-force attacks
+  const handleSubmitDebounced = useDebounceCallback(handleSubmit, 2000);
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {

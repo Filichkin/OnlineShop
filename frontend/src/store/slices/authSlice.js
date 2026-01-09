@@ -108,7 +108,7 @@ export const logout = createAsyncThunk(
 
 const initialState = {
   user: null, // User object with: first_name, last_name, email, phone, date_of_birth, city, telegram_id, address
-  csrfToken: null, // CSRF token for protected operations
+  // CSRF token removed - now using only httpOnly cookies via getCsrfTokenFromCookie()
   isAuthenticated: false, // Check user existence instead of token
   loading: false,
   error: null,
@@ -132,9 +132,7 @@ const authSlice = createSlice({
     clearSessionExpired: (state) => {
       state.sessionExpired = false;
     },
-    setCsrfToken: (state, action) => {
-      state.csrfToken = action.payload;
-    },
+    // setCsrfToken removed - CSRF tokens now managed via httpOnly cookies only
   },
   extraReducers: (builder) => {
     builder
@@ -147,7 +145,7 @@ const authSlice = createSlice({
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user; // Save user data from response
-        state.csrfToken = action.payload.csrf_token; // Save CSRF token
+        // CSRF token no longer stored in state - using httpOnly cookies
         state.isAuthenticated = true;
         state.successMessage = 'Регистрация прошла успешно!';
         state.sessionExpired = false; // Clear session expired flag on successful registration
@@ -167,7 +165,7 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user; // Save user data from response
-        state.csrfToken = action.payload.csrf_token; // Save CSRF token
+        // CSRF token no longer stored in state - using httpOnly cookies
         state.isAuthenticated = true;
         state.successMessage = 'Вход выполнен успешно!';
         state.sessionExpired = false; // Clear session expired flag on successful login
@@ -209,7 +207,6 @@ const authSlice = createSlice({
         if (action.payload?.includes('Сессия истекла') || action.payload?.includes('Токен не найден')) {
           // Clear authentication state
           state.isAuthenticated = false;
-          state.csrfToken = null;
           state.user = null;
           state.error = null; // Don't show error message, just redirect
           state.sessionExpired = true; // Mark as session expired
@@ -235,7 +232,6 @@ const authSlice = createSlice({
         if (action.payload?.includes('Сессия истекла') || action.payload?.includes('Токен не найден')) {
           // Clear authentication state
           state.isAuthenticated = false;
-          state.csrfToken = null;
           state.user = null;
           state.error = null;
           state.sessionExpired = true; // Mark as session expired
@@ -247,7 +243,6 @@ const authSlice = createSlice({
       // Выход
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
-        state.csrfToken = null;
         state.isAuthenticated = false;
         state.error = null;
         state.successMessage = null;
@@ -256,5 +251,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, clearSuccessMessage, setUser, clearSessionExpired, setCsrfToken } = authSlice.actions;
+export const { clearError, clearSuccessMessage, setUser, clearSessionExpired } = authSlice.actions;
 export default authSlice.reducer;
