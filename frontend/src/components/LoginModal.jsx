@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { register, login, forgotPassword, getCurrentUser, clearError, clearSuccessMessage } from '../store/slices/authSlice';
-import { fetchCart } from '../store/slices/cartSlice';
-import { fetchFavorites } from '../store/slices/favoritesSlice';
+import { syncGuestCart, selectCartIsGuest } from '../store/slices/cartSlice';
+import { syncGuestFavorites, selectFavoritesIsGuest } from '../store/slices/favoritesSlice';
 import {
   isValidPhone,
   isValidEmail,
@@ -29,6 +29,8 @@ import { getUserFriendlyError } from '../utils/errorMessages';
 function LoginModal({ isOpen, onClose }) {
   const dispatch = useDispatch();
   const { loading, error, successMessage } = useSelector((state) => state.auth);
+  const isCartGuest = useSelector(selectCartIsGuest);
+  const isFavoritesGuest = useSelector(selectFavoritesIsGuest);
 
   const [mode, setMode] = useState('login');
   const [formData, setFormData] = useState({
@@ -84,17 +86,21 @@ function LoginModal({ isOpen, onClose }) {
   // Закрытие после успешного действия
   useEffect(() => {
     if (successMessage && (mode === 'login' || mode === 'register')) {
-      // User data already returned from backend
-      // Reload cart and favorites with new user data
-      dispatchRef.current(fetchCart());
-      dispatchRef.current(fetchFavorites());
+      // Sync guest cart and favorites with server after successful login/registration
+      // This merges guest data (from localStorage) with server data
+      if (isCartGuest) {
+        dispatchRef.current(syncGuestCart());
+      }
+      if (isFavoritesGuest) {
+        dispatchRef.current(syncGuestFavorites());
+      }
 
       // Close modal after short delay
       setTimeout(() => {
         onCloseRef.current();
       }, 1500);
     }
-  }, [successMessage, mode]);
+  }, [successMessage, mode, isCartGuest, isFavoritesGuest]);
 
   // Закрытие модального окна при нажатии Escape
   useEffect(() => {
