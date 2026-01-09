@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { register, login, forgotPassword, getCurrentUser, clearError, clearSuccessMessage } from '../store/slices/authSlice';
-import { syncGuestCart, selectCartIsGuest } from '../store/slices/cartSlice';
-import { syncGuestFavorites, selectFavoritesIsGuest } from '../store/slices/favoritesSlice';
+import { syncGuestCart } from '../store/slices/cartSlice';
+import { syncGuestFavorites } from '../store/slices/favoritesSlice';
 import {
   isValidPhone,
   isValidEmail,
@@ -29,8 +29,6 @@ import { getUserFriendlyError } from '../utils/errorMessages';
 function LoginModal({ isOpen, onClose }) {
   const dispatch = useDispatch();
   const { loading, error, successMessage } = useSelector((state) => state.auth);
-  const isCartGuest = useSelector(selectCartIsGuest);
-  const isFavoritesGuest = useSelector(selectFavoritesIsGuest);
 
   const [mode, setMode] = useState('login');
   const [formData, setFormData] = useState({
@@ -94,15 +92,26 @@ function LoginModal({ isOpen, onClose }) {
           // This ensures counters in Header are updated before user sees them
           const syncPromises = [];
 
-          if (isCartGuest) {
+          // CRITICAL: Check localStorage directly, not Redux state flags
+          // By the time successMessage arrives, Redux flags may already be false
+          // due to parallel fetchCart/fetchFavorites calls
+          const hasGuestCart = localStorage.getItem('guest_cart');
+          const hasGuestFavorites = localStorage.getItem('guest_favorites');
+
+          if (hasGuestCart) {
+            logger.info('Syncing guest cart with server...');
             syncPromises.push(dispatchRef.current(syncGuestCart()).unwrap());
           }
-          if (isFavoritesGuest) {
+          if (hasGuestFavorites) {
+            logger.info('Syncing guest favorites with server...');
             syncPromises.push(dispatchRef.current(syncGuestFavorites()).unwrap());
           }
 
           // Wait for all syncs to complete
-          await Promise.all(syncPromises);
+          if (syncPromises.length > 0) {
+            await Promise.all(syncPromises);
+            logger.info('Guest data sync completed successfully');
+          }
         } catch (error) {
           // If sync fails, log error but still close modal
           logger.error('Error syncing guest data:', error);
@@ -116,7 +125,7 @@ function LoginModal({ isOpen, onClose }) {
 
       syncData();
     }
-  }, [successMessage, mode, isCartGuest, isFavoritesGuest]);
+  }, [successMessage, mode]);
 
   // Закрытие модального окна при нажатии Escape
   useEffect(() => {

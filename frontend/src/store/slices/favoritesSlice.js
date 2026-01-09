@@ -32,12 +32,14 @@ const loadFavoritesFromStorage = () => {
 
 const saveFavoritesToStorage = (items) => {
   try {
+    logger.info('Saving favorites to localStorage, items count:', items.length);
     const favorites = {
       items,
       favoriteIds: items.map(item => item.id),
       totalItems: items.length,
     };
     localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites));
+    logger.info('Favorites saved to localStorage successfully');
   } catch (error) {
     logger.error('Error saving favorites to localStorage:', error);
   }
@@ -45,7 +47,9 @@ const saveFavoritesToStorage = (items) => {
 
 const clearFavoritesFromStorage = () => {
   try {
+    logger.info('Clearing favorites from localStorage...');
     localStorage.removeItem(FAVORITES_STORAGE_KEY);
+    logger.info('Favorites localStorage cleared successfully');
   } catch (error) {
     logger.error('Error clearing favorites from localStorage:', error);
   }
@@ -285,9 +289,9 @@ const favoritesSlice = createSlice({
       state.isLoading = false;
       state.error = null;
       state.updatingItems = [];
-      state.isLoaded = false;
-      state.isUnauthorized = false;
-      state.isGuest = false;
+      state.isLoaded = true; // Mark as loaded to prevent fetchFavorites from being called
+      state.isUnauthorized = true; // User is now unauthorized (logged out)
+      state.isGuest = true; // User is now in guest mode
       state.isSyncing = false;
     },
     // Переключение в гостевой режим (при logout)

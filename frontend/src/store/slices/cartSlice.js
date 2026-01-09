@@ -62,12 +62,14 @@ const loadCartFromStorage = () => {
 
 const saveCartToStorage = (items) => {
   try {
+    logger.info('Saving cart to localStorage, items count:', items.length);
     const cart = {
       items,
       totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
       totalPrice: items.reduce((sum, item) => sum + (item.price_at_addition || 0) * item.quantity, 0),
     };
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    logger.info('Cart saved to localStorage successfully');
   } catch (error) {
     logger.error('Error saving cart to localStorage:', error);
   }
@@ -75,7 +77,9 @@ const saveCartToStorage = (items) => {
 
 const clearCartFromStorage = () => {
   try {
+    logger.info('Clearing cart from localStorage...');
     localStorage.removeItem(CART_STORAGE_KEY);
+    logger.info('Cart localStorage cleared successfully');
   } catch (error) {
     logger.error('Error clearing cart from localStorage:', error);
   }
@@ -347,9 +351,9 @@ const cartSlice = createSlice({
       state.isLoading = false;
       state.error = null;
       state.updatingItems = [];
-      state.isLoaded = false;
-      state.isUnauthorized = false;
-      state.isGuest = false;
+      state.isLoaded = true; // Mark as loaded to prevent fetchCart from being called
+      state.isUnauthorized = true; // User is now unauthorized (logged out)
+      state.isGuest = true; // User is now in guest mode
       state.isSyncing = false;
     },
     // Переключение в гостевой режим (при logout)
