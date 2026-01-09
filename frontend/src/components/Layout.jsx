@@ -24,6 +24,7 @@ function Layout() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
   const user = useSelector((state) => state.auth.user);
+  const authChecked = useSelector((state) => state.auth.authChecked);
   const favoritesLoaded = useSelector(selectFavoritesIsLoaded);
   const favoritesLoading = useSelector(selectFavoritesIsLoading);
 
@@ -39,11 +40,12 @@ function Layout() {
   // Загрузка избранного при первом монтировании приложения
   // Это гарантирует, что badge счетчик будет отображаться правильно
   // Добавлена проверка на isLoaded и isLoading для предотвращения дублирующих запросов
+  // Wait for auth check to complete before fetching (handled in main.jsx, but this is a fallback)
   useEffect(() => {
-    if (!favoritesLoaded && !favoritesLoading) {
+    if (authChecked && !favoritesLoaded && !favoritesLoading) {
       dispatch(fetchFavorites());
     }
-  }, [dispatch, favoritesLoaded, favoritesLoading]);
+  }, [dispatch, authChecked, favoritesLoaded, favoritesLoading]);
 
   const handleOpenLoginModal = () => {
     setIsLoginModalOpen(true);
