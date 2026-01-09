@@ -40,7 +40,7 @@ const loadCartFromStorage = () => {
 
       // Return items without strict validation - let sync handle raw data
       // This prevents guest data from being lost before sync can process it
-      logger.info('loadCartFromStorage: Found', parsedCart.items.length, 'items');
+      logger.log('loadCartFromStorage: Found', parsedCart.items.length, 'items');
       return {
         items: parsedCart.items,
         totalItems: parsedCart.totalItems || parsedCart.items.reduce((sum, item) => sum + (item.quantity || 0), 0),
@@ -61,7 +61,7 @@ const loadCartFromStorage = () => {
 
 const saveCartToStorage = (items) => {
   try {
-    logger.info('Saving cart to localStorage, items count:', items?.length || 0);
+    logger.log('Saving cart to localStorage, items count:', items?.length || 0);
     
     if (!items || !Array.isArray(items)) {
       logger.warn('saveCartToStorage: items is not an array');
@@ -101,7 +101,7 @@ const saveCartToStorage = (items) => {
     
     const cartJson = JSON.stringify(cart);
     localStorage.setItem(CART_STORAGE_KEY, cartJson);
-    logger.info('Cart saved to localStorage successfully, data:', cartJson.substring(0, 200));
+    logger.log('Cart saved to localStorage successfully, data:', cartJson.substring(0, 200));
   } catch (error) {
     logger.error('Error saving cart to localStorage:', error?.message || error);
   }
@@ -109,10 +109,10 @@ const saveCartToStorage = (items) => {
 
 const clearCartFromStorage = () => {
   try {
-    logger.info('Clearing cart from localStorage...');
+    logger.log('Clearing cart from localStorage...');
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.removeItem(CART_STORAGE_KEY);
-      logger.info('Cart localStorage cleared successfully');
+      logger.log('Cart localStorage cleared successfully');
     }
   } catch (error) {
     // Log detailed error info
@@ -143,12 +143,29 @@ const initialState = {
 // Async thunks
 
 /**
- * Загрузка корзины с сервера
- * Используется один раз при загрузке приложения
+ * Загрузка корзины с сервера или из localStorage
+ * Для авторизованных пользователей - загружает с сервера
+ * Для гостей - загружает из localStorage
  */
 export const fetchCart = createAsyncThunk(
   'cart/fetchCart',
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
+    const state = getState();
+    const isAuthenticated = state.auth?.isAuthenticated === true;
+    
+    // For guests, load from localStorage instead of server
+    if (!isAuthenticated) {
+      logger.log('fetchCart: User not authenticated, loading from localStorage');
+      const guestCart = loadCartFromStorage();
+      return {
+        items: guestCart.items,
+        total_items: guestCart.totalItems,
+        total_price: guestCart.totalPrice,
+        isGuest: true,
+      };
+    }
+    
+    // For authenticated users, fetch from server
     try {
       const data = await cartAPI.getCart();
       // Validate response data
@@ -176,9 +193,15 @@ export const addToCart = createAsyncThunk(
   'cart/addToCart',
   async ({ productId, quantity = 1, productData }, { getState, rejectWithValue }) => {
     const state = getState();
-    const isGuest = state.cart.isUnauthorized || state.cart.isGuest;
+    // Check auth state to determine if user is really authenticated
+    // Don't rely on cart.isGuest because backend returns 200 for session-based carts
+    const isAuthenticated = state.auth?.isAuthenticated === true;
+    const isGuest = !isAuthenticated;
+    
+    logger.log('addToCart: isAuthenticated=', isAuthenticated, 'isGuest=', isGuest, 'productId=', productId);
 
     if (isGuest) {
+      logger.log('addToCart: Guest mode - saving to localStorage');
       // Guest user - use localStorage
       // Use JSON.parse/stringify to break Proxy references from Redux/Immer
       const currentItems = JSON.parse(JSON.stringify(state.cart.items || []));
@@ -234,7 +257,9 @@ export const updateQuantity = createAsyncThunk(
   'cart/updateQuantity',
   async ({ productId, quantity }, { getState, rejectWithValue }) => {
     const state = getState();
-    const isGuest = state.cart.isUnauthorized || state.cart.isGuest;
+    // Check auth state to determine if user is really authenticated
+    const isAuthenticated = state.auth?.isAuthenticated === true;
+    const isGuest = !isAuthenticated;
 
     if (isGuest) {
       // Guest user - use localStorage
@@ -280,7 +305,9 @@ export const removeFromCart = createAsyncThunk(
   'cart/removeFromCart',
   async (productId, { getState, rejectWithValue }) => {
     const state = getState();
-    const isGuest = state.cart.isUnauthorized || state.cart.isGuest;
+    // Check auth state to determine if user is really authenticated
+    const isAuthenticated = state.auth?.isAuthenticated === true;
+    const isGuest = !isAuthenticated;
 
     if (isGuest) {
       // Guest user - use localStorage
@@ -312,7 +339,9 @@ export const clearCart = createAsyncThunk(
   'cart/clearCart',
   async (_, { getState, rejectWithValue }) => {
     const state = getState();
-    const isGuest = state.cart.isUnauthorized || state.cart.isGuest;
+    // Check auth state to determine if user is really authenticated
+    const isAuthenticated = state.auth?.isAuthenticated === true;
+    const isGuest = !isAuthenticated;
 
     if (isGuest) {
       // Guest user - clear localStorage
@@ -338,52 +367,72 @@ export const syncGuestCart = createAsyncThunk(
   'cart/syncGuestCart',
   async (_, { rejectWithValue }) => {
     try {
-      // Read raw data from localStorage first to debug
+      // Read raw data from localStorage first
       const rawCartData = localStorage.getItem(CART_STORAGE_KEY);
-      logger.info('syncGuestCart: Raw localStorage data:', rawCartData);
+      logger.log('syncGuestCart: Raw localStorage data:', rawCartData);
+      
+      // IMMEDIATELY clear localStorage to prevent double-sync (React StrictMode runs effects twice)
+      clearCartFromStorage();
+      logger.log('syncGuestCart: localStorage cleared immediately after reading');
       
       if (!rawCartData) {
-        logger.info('syncGuestCart: No data in localStorage, fetching server cart');
+        logger.log('syncGuestCart: No data in localStorage, fetching server cart');
         const data = await cartAPI.getCart();
         return data;
       }
       
-      // Parse raw data without validation to see what's there
+      // Parse raw data
       let parsedCart;
       try {
         parsedCart = JSON.parse(rawCartData);
-        logger.info('syncGuestCart: Parsed cart:', JSON.stringify(parsedCart));
-        logger.info('syncGuestCart: Items in parsed cart:', parsedCart?.items?.length || 0);
+        logger.log('syncGuestCart: Parsed cart:', JSON.stringify(parsedCart));
+        logger.log('syncGuestCart: Items in parsed cart:', parsedCart?.items?.length || 0);
       } catch (parseError) {
         logger.error('syncGuestCart: Failed to parse localStorage:', parseError);
         const data = await cartAPI.getCart();
         return data;
       }
       
-      // Get items directly from parsed data (skip validation for sync)
+      // Get items directly from parsed data
       const guestItems = parsedCart?.items || [];
       
       if (guestItems.length === 0) {
-        logger.info('syncGuestCart: No items to sync, fetching server cart');
+        logger.log('syncGuestCart: No items to sync, fetching server cart');
         const data = await cartAPI.getCart();
         return data;
       }
 
-      // Send guest cart items to backend for merging
-      logger.info('syncGuestCart: Sending', guestItems.length, 'items to server for merge...');
-      
+      // Fetch current server cart to avoid duplicates
+      logger.log('syncGuestCart: Fetching server cart to check for existing items...');
+      const serverCart = await cartAPI.getCart();
+      const serverProductIds = new Set((serverCart.items || []).map(item => item.product?.id));
+      logger.log('syncGuestCart: Server cart has', serverProductIds.size, 'unique products');
+
+      // Filter guest items - only add items that are NOT already on server
+      const itemsToAdd = guestItems.filter(item => {
+        const productId = item.product?.id;
+        const alreadyOnServer = serverProductIds.has(productId);
+        if (alreadyOnServer) {
+          logger.log('syncGuestCart: Skipping product', productId, '- already on server');
+        }
+        return !alreadyOnServer;
+      });
+
+      logger.log('syncGuestCart:', itemsToAdd.length, 'new items to add (', guestItems.length - itemsToAdd.length, 'skipped as duplicates)');
+
+      // Send only NEW items to backend
       let successCount = 0;
       let failCount = 0;
       
-      for (const item of guestItems) {
+      for (const item of itemsToAdd) {
         const productId = item.product?.id;
         const quantity = item.quantity;
-        logger.info('syncGuestCart: Adding item - productId:', productId, 'quantity:', quantity);
+        logger.log('syncGuestCart: Adding item - productId:', productId, 'quantity:', quantity);
         
         if (productId && quantity > 0) {
           try {
             await cartAPI.addItem(productId, quantity);
-            logger.info('syncGuestCart: Item added successfully');
+            logger.log('syncGuestCart: Item added successfully');
             successCount++;
           } catch (itemError) {
             logger.error('syncGuestCart: Failed to add item:', itemError?.message || itemError);
@@ -395,20 +444,12 @@ export const syncGuestCart = createAsyncThunk(
         }
       }
       
-      logger.info('syncGuestCart: Processed', successCount, 'success,', failCount, 'failed');
-
-      // Only clear localStorage if at least some items were synced successfully
-      if (successCount > 0) {
-        clearCartFromStorage();
-        logger.info('syncGuestCart: localStorage cleared after successful sync');
-      } else if (failCount > 0) {
-        logger.warn('syncGuestCart: NOT clearing localStorage - all items failed to sync');
-      }
+      logger.log('syncGuestCart: Processed', successCount, 'success,', failCount, 'failed');
 
       // Fetch updated cart from server
-      logger.info('syncGuestCart: Fetching merged cart from server...');
+      logger.log('syncGuestCart: Fetching final cart from server...');
       const data = await cartAPI.getCart();
-      logger.info('syncGuestCart: Sync completed, total items:', data.items?.length || 0);
+      logger.log('syncGuestCart: Sync completed, total items:', data.items?.length || 0);
       return data;
     } catch (error) {
       logger.error('syncGuestCart: Error during sync:', error);
@@ -478,7 +519,14 @@ const cartSlice = createSlice({
         state.items = action.payload.items || [];
         state.isLoaded = true;
         state.isUnauthorized = false;
-        state.isGuest = false; // User is authenticated
+        
+        // Check if this is guest data from localStorage
+        if (action.payload.isGuest) {
+          state.isGuest = true;
+        } else {
+          state.isGuest = false; // User is authenticated
+        }
+        
         // Вычисляем общую информацию
         state.totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
         state.totalPrice = state.items.reduce(
@@ -657,8 +705,8 @@ const cartSlice = createSlice({
         state.error = null;
       })
       .addCase(syncGuestCart.fulfilled, (state, action) => {
-        logger.info('syncGuestCart.fulfilled: payload received:', JSON.stringify(action.payload).substring(0, 500));
-        logger.info('syncGuestCart.fulfilled: items count:', action.payload?.items?.length || 0);
+        logger.log('syncGuestCart.fulfilled: payload received:', JSON.stringify(action.payload).substring(0, 500));
+        logger.log('syncGuestCart.fulfilled: items count:', action.payload?.items?.length || 0);
         
         state.isSyncing = false;
         state.isGuest = false;
@@ -673,7 +721,7 @@ const cartSlice = createSlice({
           0
         );
         
-        logger.info('syncGuestCart.fulfilled: state updated, items:', state.items.length, 'totalItems:', state.totalItems);
+        logger.log('syncGuestCart.fulfilled: state updated, items:', state.items.length, 'totalItems:', state.totalItems);
         // NOTE: localStorage is cleared in the thunk, not here
       })
       .addCase(syncGuestCart.rejected, (state, action) => {

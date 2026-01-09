@@ -122,6 +122,7 @@ const initialState = {
   error: null,
   successMessage: null,
   sessionExpired: false, // Flag to distinguish explicit logout from session expiration
+  authChecked: false, // Flag to indicate initial auth check has completed
 };
 
 const authSlice = createSlice({
@@ -208,16 +209,28 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload;
         state.isAuthenticated = true;
+        state.authChecked = true; // Auth check completed
       })
       .addCase(getCurrentUser.rejected, (state, action) => {
         state.loading = false;
+        state.authChecked = true; // Auth check completed (even if failed)
+        
         // Check if session expired (401 error)
+        // Only mark as session expired if user WAS previously authenticated
+        // This prevents showing "session expired" message after explicit logout
+        const wasAuthenticated = state.isAuthenticated || state.user !== null;
+        
         if (action.payload?.includes('Сессия истекла') || action.payload?.includes('Токен не найден')) {
           // Clear authentication state
           state.isAuthenticated = false;
           state.user = null;
           state.error = null; // Don't show error message, just redirect
-          state.sessionExpired = true; // Mark as session expired
+          
+          // Only mark session as expired if user was previously logged in
+          if (wasAuthenticated) {
+            state.sessionExpired = true; // Mark as session expired
+          }
+          // If user was never authenticated, just silently fail (normal case for guests)
         } else {
           state.error = action.payload || 'Не удалось загрузить данные пользователя';
         }
@@ -237,12 +250,13 @@ const authSlice = createSlice({
       .addCase(updateProfile.rejected, (state, action) => {
         state.loading = false;
         // Check if session expired (401 error)
+        // User must have been authenticated to call updateProfile, so always mark as expired
         if (action.payload?.includes('Сессия истекла') || action.payload?.includes('Токен не найден')) {
           // Clear authentication state
           state.isAuthenticated = false;
           state.user = null;
           state.error = null;
-          state.sessionExpired = true; // Mark as session expired
+          state.sessionExpired = true; // Mark as session expired (user was definitely logged in before)
         } else {
           state.error = action.payload || 'Ошибка при обновлении профиля';
         }

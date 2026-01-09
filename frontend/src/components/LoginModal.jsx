@@ -46,6 +46,9 @@ function LoginModal({ isOpen, onClose }) {
   const [rateLimitTimer, setRateLimitTimer] = useState(null);
   const [isRateLimited, setIsRateLimited] = useState(false);
 
+  // Ref to prevent double-sync (must be declared before useEffect that uses it)
+  const syncCalledRef = useRef(false);
+
   // Сброс формы при закрытии модального окна
   useEffect(() => {
     if (!isOpen) {
@@ -66,6 +69,8 @@ function LoginModal({ isOpen, onClose }) {
       setIsRateLimited(false);
       dispatch(clearError());
       dispatch(clearSuccessMessage());
+      // Reset sync flag when modal closes
+      syncCalledRef.current = false;
     }
   }, [isOpen, dispatch]);
 
@@ -84,6 +89,13 @@ function LoginModal({ isOpen, onClose }) {
   // Закрытие после успешного действия
   useEffect(() => {
     if (successMessage && (mode === 'login' || mode === 'register')) {
+      // Prevent double-sync (React StrictMode runs effects twice in development)
+      if (syncCalledRef.current) {
+        logger.log('Sync already called, skipping duplicate');
+        return;
+      }
+      syncCalledRef.current = true;
+      
       // Sync guest cart and favorites with server after successful login/registration
       // This merges guest data (from localStorage) with server data
       const syncData = async () => {
@@ -95,49 +107,49 @@ function LoginModal({ isOpen, onClose }) {
           const guestCartRaw = localStorage.getItem('guest_cart');
           const guestFavoritesRaw = localStorage.getItem('guest_favorites');
           
-          logger.info('=== Starting sync after login ===');
-          logger.info('Guest cart in localStorage:', guestCartRaw ? 'exists' : 'empty');
-          logger.info('Guest favorites in localStorage:', guestFavoritesRaw ? 'exists' : 'empty');
+          logger.log('=== Starting sync after login ===');
+          logger.log('Guest cart in localStorage:', guestCartRaw ? 'exists' : 'empty');
+          logger.log('Guest favorites in localStorage:', guestFavoritesRaw ? 'exists' : 'empty');
           
           if (guestCartRaw) {
             try {
               const parsed = JSON.parse(guestCartRaw);
-              logger.info('Guest cart items count:', parsed.items?.length || 0);
+              logger.log('Guest cart items count:', parsed.items?.length || 0);
             } catch (e) {
               logger.error('Failed to parse guest cart:', e);
             }
           }
 
           // Sync cart - this will merge guest items with server cart
-          logger.info('Calling syncGuestCart...');
+          logger.log('Calling syncGuestCart...');
           const cartResult = await dispatchRef.current(syncGuestCart()).unwrap();
-          logger.info('syncGuestCart completed, items:', cartResult?.items?.length || 0);
+          logger.log('syncGuestCart completed, items:', cartResult?.items?.length || 0);
 
           // Sync favorites - this will merge guest favorites with server favorites
-          logger.info('Calling syncGuestFavorites...');
+          logger.log('Calling syncGuestFavorites...');
           const favResult = await dispatchRef.current(syncGuestFavorites()).unwrap();
-          logger.info('syncGuestFavorites completed, items:', favResult?.items?.length || 0);
+          logger.log('syncGuestFavorites completed, items:', favResult?.items?.length || 0);
 
-          logger.info('=== Sync completed successfully ===');
+          logger.log('=== Sync completed successfully ===');
           
           // Force re-fetch from server to ensure UI is updated
           // This handles cases where sync may have incomplete data
-          logger.info('Fetching latest cart and favorites from server...');
+          logger.log('Fetching latest cart and favorites from server...');
           try {
             const cartData = await dispatchRef.current(fetchCart()).unwrap();
-            logger.info('fetchCart completed, items:', cartData?.items?.length || 0, 'totalItems:', cartData?.total_items);
+            logger.log('fetchCart completed, items:', cartData?.items?.length || 0, 'totalItems:', cartData?.total_items);
           } catch (cartError) {
             logger.error('fetchCart failed:', cartError);
           }
           
           try {
             const favData = await dispatchRef.current(fetchFavorites()).unwrap();
-            logger.info('fetchFavorites completed, items:', favData?.items?.length || 0);
+            logger.log('fetchFavorites completed, items:', favData?.items?.length || 0);
           } catch (favError) {
             logger.error('fetchFavorites failed:', favError);
           }
           
-          logger.info('All fetches completed - UI should now be updated');
+          logger.log('All fetches completed - UI should now be updated');
         } catch (error) {
           // If sync fails, log error but still close modal
           logger.error('Error syncing data:', error);
