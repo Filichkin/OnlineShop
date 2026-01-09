@@ -27,30 +27,29 @@ const loadCartFromStorage = () => {
       // Validate the structure of loaded data
       if (!parsedCart || typeof parsedCart !== 'object') {
         logger.warn('Invalid cart data structure in localStorage');
-        localStorage.removeItem(CART_STORAGE_KEY);
+        // DON'T remove - let sync decide what to do
         return { items: [], totalItems: 0, totalPrice: 0 };
       }
 
       // Ensure items is an array
       if (!Array.isArray(parsedCart.items)) {
         logger.warn('Cart items is not an array in localStorage');
-        localStorage.removeItem(CART_STORAGE_KEY);
+        // DON'T remove - let sync decide what to do
         return { items: [], totalItems: 0, totalPrice: 0 };
       }
 
-      // Validate each cart item using existing validator
-      try {
-        const validatedCart = validateCartResponse(parsedCart);
-        return validatedCart;
-      } catch (validationError) {
-        logger.warn('Cart validation failed for localStorage data:', validationError);
-        localStorage.removeItem(CART_STORAGE_KEY);
-        return { items: [], totalItems: 0, totalPrice: 0 };
-      }
+      // Return items without strict validation - let sync handle raw data
+      // This prevents guest data from being lost before sync can process it
+      logger.info('loadCartFromStorage: Found', parsedCart.items.length, 'items');
+      return {
+        items: parsedCart.items,
+        totalItems: parsedCart.totalItems || parsedCart.items.reduce((sum, item) => sum + (item.quantity || 0), 0),
+        totalPrice: parsedCart.totalPrice || parsedCart.items.reduce((sum, item) => sum + ((item.price_at_addition || 0) * (item.quantity || 0)), 0),
+      };
     }
   } catch (error) {
     logger.error('Error loading cart from localStorage:', error);
-    // Clear corrupted data
+    // Only clear on JSON parse errors (truly corrupted data)
     try {
       localStorage.removeItem(CART_STORAGE_KEY);
     } catch (e) {
@@ -62,26 +61,62 @@ const loadCartFromStorage = () => {
 
 const saveCartToStorage = (items) => {
   try {
-    logger.info('Saving cart to localStorage, items count:', items.length);
+    logger.info('Saving cart to localStorage, items count:', items?.length || 0);
+    
+    if (!items || !Array.isArray(items)) {
+      logger.warn('saveCartToStorage: items is not an array');
+      return;
+    }
+    
+    // Save only minimal data needed for sync and display
+    // Avoid saving nested objects like brand to prevent circular reference issues
+    // Use JSON.parse(JSON.stringify()) to break Proxy references from Redux
+    const minimalItems = items.map(item => {
+      // Extract product data safely
+      const product = item?.product;
+      const productId = product?.id;
+      const productName = product?.name || '';
+      const productPrice = product?.price || 0;
+      const productImage = product?.main_image || '';
+      const productSlug = product?.slug || '';
+      
+      return {
+        product: {
+          id: productId,
+          name: productName,
+          price: productPrice,
+          main_image: productImage,
+          slug: productSlug,
+        },
+        quantity: item?.quantity || 1,
+        price_at_addition: item?.price_at_addition || productPrice || 0,
+      };
+    });
+    
     const cart = {
-      items,
-      totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
-      totalPrice: items.reduce((sum, item) => sum + (item.price_at_addition || 0) * item.quantity, 0),
+      items: minimalItems,
+      totalItems: minimalItems.reduce((sum, item) => sum + (item.quantity || 0), 0),
+      totalPrice: minimalItems.reduce((sum, item) => sum + ((item.price_at_addition || 0) * (item.quantity || 0)), 0),
     };
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-    logger.info('Cart saved to localStorage successfully');
+    
+    const cartJson = JSON.stringify(cart);
+    localStorage.setItem(CART_STORAGE_KEY, cartJson);
+    logger.info('Cart saved to localStorage successfully, data:', cartJson.substring(0, 200));
   } catch (error) {
-    logger.error('Error saving cart to localStorage:', error);
+    logger.error('Error saving cart to localStorage:', error?.message || error);
   }
 };
 
 const clearCartFromStorage = () => {
   try {
     logger.info('Clearing cart from localStorage...');
-    localStorage.removeItem(CART_STORAGE_KEY);
-    logger.info('Cart localStorage cleared successfully');
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(CART_STORAGE_KEY);
+      logger.info('Cart localStorage cleared successfully');
+    }
   } catch (error) {
-    logger.error('Error clearing cart from localStorage:', error);
+    // Log detailed error info
+    logger.error('Error clearing cart from localStorage:', error?.message || JSON.stringify(error) || error);
   }
 };
 
@@ -145,7 +180,8 @@ export const addToCart = createAsyncThunk(
 
     if (isGuest) {
       // Guest user - use localStorage
-      const currentItems = state.cart.items;
+      // Use JSON.parse/stringify to break Proxy references from Redux/Immer
+      const currentItems = JSON.parse(JSON.stringify(state.cart.items || []));
       const existingItemIndex = currentItems.findIndex(
         item => item.product?.id === productId
       );
@@ -159,9 +195,17 @@ export const addToCart = createAsyncThunk(
           quantity: updatedItems[existingItemIndex].quantity + quantity,
         };
       } else {
-        // Add new item
+        // Add new item - create clean object without Proxy
+        const cleanProductData = productData ? {
+          id: productData.id,
+          name: productData.name,
+          price: productData.price,
+          main_image: productData.main_image,
+          slug: productData.slug,
+        } : { id: productId };
+        
         const newItem = {
-          product: productData || { id: productId },
+          product: cleanProductData,
           quantity,
           price_at_addition: productData?.price || 0,
         };
@@ -194,7 +238,8 @@ export const updateQuantity = createAsyncThunk(
 
     if (isGuest) {
       // Guest user - use localStorage
-      const currentItems = state.cart.items;
+      // Use JSON.parse/stringify to break Proxy references from Redux/Immer
+      const currentItems = JSON.parse(JSON.stringify(state.cart.items || []));
       const itemIndex = currentItems.findIndex(item => item.product?.id === productId);
 
       if (itemIndex === -1) {
@@ -239,7 +284,8 @@ export const removeFromCart = createAsyncThunk(
 
     if (isGuest) {
       // Guest user - use localStorage
-      const currentItems = state.cart.items;
+      // Use JSON.parse/stringify to break Proxy references from Redux/Immer
+      const currentItems = JSON.parse(JSON.stringify(state.cart.items || []));
       const updatedItems = currentItems.filter(item => item.product?.id !== productId);
 
       saveCartToStorage(updatedItems);
@@ -292,32 +338,72 @@ export const syncGuestCart = createAsyncThunk(
   'cart/syncGuestCart',
   async (_, { rejectWithValue }) => {
     try {
-      // CRITICAL: Read from localStorage directly, not from Redux state
-      // Redux state may have been modified by parallel operations
-      const guestCart = loadCartFromStorage();
-      const guestItems = guestCart.items;
-
-      logger.info('syncGuestCart: Found items in localStorage:', guestItems.length);
-
+      // Read raw data from localStorage first to debug
+      const rawCartData = localStorage.getItem(CART_STORAGE_KEY);
+      logger.info('syncGuestCart: Raw localStorage data:', rawCartData);
+      
+      if (!rawCartData) {
+        logger.info('syncGuestCart: No data in localStorage, fetching server cart');
+        const data = await cartAPI.getCart();
+        return data;
+      }
+      
+      // Parse raw data without validation to see what's there
+      let parsedCart;
+      try {
+        parsedCart = JSON.parse(rawCartData);
+        logger.info('syncGuestCart: Parsed cart:', JSON.stringify(parsedCart));
+        logger.info('syncGuestCart: Items in parsed cart:', parsedCart?.items?.length || 0);
+      } catch (parseError) {
+        logger.error('syncGuestCart: Failed to parse localStorage:', parseError);
+        const data = await cartAPI.getCart();
+        return data;
+      }
+      
+      // Get items directly from parsed data (skip validation for sync)
+      const guestItems = parsedCart?.items || [];
+      
       if (guestItems.length === 0) {
         logger.info('syncGuestCart: No items to sync, fetching server cart');
-        // No guest items, just fetch server cart
         const data = await cartAPI.getCart();
         return data;
       }
 
       // Send guest cart items to backend for merging
-      // We need to add each item individually to merge with existing server cart
-      logger.info('syncGuestCart: Sending items to server for merge...');
-      const promises = guestItems.map(item =>
-        cartAPI.addItem(item.product.id, item.quantity)
-      );
+      logger.info('syncGuestCart: Sending', guestItems.length, 'items to server for merge...');
+      
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (const item of guestItems) {
+        const productId = item.product?.id;
+        const quantity = item.quantity;
+        logger.info('syncGuestCart: Adding item - productId:', productId, 'quantity:', quantity);
+        
+        if (productId && quantity > 0) {
+          try {
+            await cartAPI.addItem(productId, quantity);
+            logger.info('syncGuestCart: Item added successfully');
+            successCount++;
+          } catch (itemError) {
+            logger.error('syncGuestCart: Failed to add item:', itemError?.message || itemError);
+            failCount++;
+          }
+        } else {
+          logger.warn('syncGuestCart: Invalid item data - productId:', productId, 'quantity:', quantity);
+          failCount++;
+        }
+      }
+      
+      logger.info('syncGuestCart: Processed', successCount, 'success,', failCount, 'failed');
 
-      await Promise.all(promises);
-      logger.info('syncGuestCart: Items sent successfully');
-
-      // Clear localStorage after successful sync
-      clearCartFromStorage();
+      // Only clear localStorage if at least some items were synced successfully
+      if (successCount > 0) {
+        clearCartFromStorage();
+        logger.info('syncGuestCart: localStorage cleared after successful sync');
+      } else if (failCount > 0) {
+        logger.warn('syncGuestCart: NOT clearing localStorage - all items failed to sync');
+      }
 
       // Fetch updated cart from server
       logger.info('syncGuestCart: Fetching merged cart from server...');
@@ -399,8 +485,8 @@ const cartSlice = createSlice({
           (sum, item) => sum + item.price_at_addition * item.quantity,
           0
         );
-        // Clear guest cart from storage after successful fetch
-        clearCartFromStorage();
+        // NOTE: Don't clear localStorage here - let syncGuestCart handle it
+        // This prevents race conditions where fetch runs before sync and loses guest data
       })
       .addCase(fetchCart.rejected, (state, action) => {
         state.isLoading = false;
@@ -571,21 +657,24 @@ const cartSlice = createSlice({
         state.error = null;
       })
       .addCase(syncGuestCart.fulfilled, (state, action) => {
+        logger.info('syncGuestCart.fulfilled: payload received:', JSON.stringify(action.payload).substring(0, 500));
+        logger.info('syncGuestCart.fulfilled: items count:', action.payload?.items?.length || 0);
+        
         state.isSyncing = false;
         state.isGuest = false;
         state.isUnauthorized = false;
         state.isLoaded = true; // Mark as loaded to prevent duplicate fetches
 
         // Update with merged cart from server
-        state.items = action.payload.items || [];
-        state.totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
+        state.items = action.payload?.items || [];
+        state.totalItems = state.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
         state.totalPrice = state.items.reduce(
-          (sum, item) => sum + item.price_at_addition * item.quantity,
+          (sum, item) => sum + ((item.price_at_addition || 0) * (item.quantity || 0)),
           0
         );
-
-        // Clear localStorage after successful sync
-        clearCartFromStorage();
+        
+        logger.info('syncGuestCart.fulfilled: state updated, items:', state.items.length, 'totalItems:', state.totalItems);
+        // NOTE: localStorage is cleared in the thunk, not here
       })
       .addCase(syncGuestCart.rejected, (state, action) => {
         state.isSyncing = false;

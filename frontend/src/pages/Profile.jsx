@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { logout, updateProfile, getCurrentUser, clearError, clearSuccessMessage } from '../store/slices/authSlice';
-import { selectFavoriteItems, selectFavoritesIsLoading, fetchFavorites } from '../store/slices/favoritesSlice';
+import { selectFavoriteItems, selectFavoritesIsLoading, selectFavoritesIsLoaded, fetchFavorites } from '../store/slices/favoritesSlice';
 import { isValidPhone, isValidTelegramId, isValidBirthDate, formatPhoneNumber } from '../utils/validation';
 import { getImageUrl, formatPrice } from '../utils';
 import { ordersAPI } from '../api';
@@ -28,6 +28,7 @@ function Profile() {
   const { user, loading, error, successMessage, isAuthenticated } = useSelector((state) => state.auth);
   const favoriteItems = useSelector(selectFavoriteItems);
   const favoritesLoading = useSelector(selectFavoritesIsLoading);
+  const favoritesLoaded = useSelector(selectFavoritesIsLoaded);
 
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
@@ -66,12 +67,12 @@ function Profile() {
     }
   }, [isAuthenticated, loading, navigate]);
 
-  // Load favorites when user is authenticated
+  // Load favorites when user is authenticated and favorites not yet loaded
   useEffect(() => {
-    if (user) {
+    if (user && !favoritesLoaded && !favoritesLoading) {
       dispatch(fetchFavorites());
     }
-  }, [user, dispatch]);
+  }, [user, dispatch, favoritesLoaded, favoritesLoading]);
 
   // Load orders when orders tab is active
   useEffect(() => {

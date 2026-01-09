@@ -93,8 +93,10 @@ export const logout = createAsyncThunk(
     dispatch(resetFavorites());
 
     // Call backend logout endpoint to clear httpOnly cookies
+    // Use /api/v1 prefix only - VITE_API_BASE_URL already includes it
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
     try {
-      await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/user/auth/logout`, {
+      await fetch(`${baseUrl}/auth/logout`, {
         method: 'POST',
         credentials: 'include', // Important for sending cookies
       });

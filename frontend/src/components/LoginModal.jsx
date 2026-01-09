@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { register, login, forgotPassword, getCurrentUser, clearError, clearSuccessMessage } from '../store/slices/authSlice';
-import { syncGuestCart } from '../store/slices/cartSlice';
-import { syncGuestFavorites } from '../store/slices/favoritesSlice';
+import { syncGuestCart, fetchCart } from '../store/slices/cartSlice';
+import { syncGuestFavorites, fetchFavorites } from '../store/slices/favoritesSlice';
 import {
   isValidPhone,
   isValidEmail,
@@ -88,33 +88,80 @@ function LoginModal({ isOpen, onClose }) {
       // This merges guest data (from localStorage) with server data
       const syncData = async () => {
         try {
-          // Wait for sync operations to complete before closing modal
-          // This ensures counters in Header are updated before user sees them
+          // Small delay to ensure session cookie is fully set
+          await new Promise(resolve => setTimeout(resolve, 100));
 
-          // CRITICAL: Check localStorage directly, not Redux state flags
-          // By the time successMessage arrives, Redux flags may already be false
-          // due to parallel fetchCart/fetchFavorites calls
-          const hasGuestCart = localStorage.getItem('guest_cart');
-          const hasGuestFavorites = localStorage.getItem('guest_favorites');
+          // Check localStorage for guest data
+          const guestCartRaw = localStorage.getItem('guest_cart');
+          const guestFavoritesRaw = localStorage.getItem('guest_favorites');
+          
+          logger.info('=== Starting sync after login ===');
+          logger.info('Guest cart in localStorage:', guestCartRaw ? 'exists' : 'empty');
+          logger.info('Guest favorites in localStorage:', guestFavoritesRaw ? 'exists' : 'empty');
+          
+          if (guestCartRaw) {
+            try {
+              const parsed = JSON.parse(guestCartRaw);
+              logger.info('Guest cart items count:', parsed.items?.length || 0);
+            } catch (e) {
+              logger.error('Failed to parse guest cart:', e);
+            }
+          }
 
-          // ALWAYS sync cart and favorites to ensure data is loaded from server
-          // If user has guest data, it will be merged; otherwise just loads server data
-          logger.info('Syncing cart with server (has guest data:', !!hasGuestCart, ')');
-          await dispatchRef.current(syncGuestCart()).unwrap();
+          // Sync cart - this will merge guest items with server cart
+          logger.info('Calling syncGuestCart...');
+          const cartResult = await dispatchRef.current(syncGuestCart()).unwrap();
+          logger.info('syncGuestCart completed, items:', cartResult?.items?.length || 0);
 
-          logger.info('Syncing favorites with server (has guest data:', !!hasGuestFavorites, ')');
-          await dispatchRef.current(syncGuestFavorites()).unwrap();
+          // Sync favorites - this will merge guest favorites with server favorites
+          logger.info('Calling syncGuestFavorites...');
+          const favResult = await dispatchRef.current(syncGuestFavorites()).unwrap();
+          logger.info('syncGuestFavorites completed, items:', favResult?.items?.length || 0);
 
-          logger.info('Sync completed successfully');
+          logger.info('=== Sync completed successfully ===');
+          
+          // Force re-fetch from server to ensure UI is updated
+          // This handles cases where sync may have incomplete data
+          logger.info('Fetching latest cart and favorites from server...');
+          try {
+            const cartData = await dispatchRef.current(fetchCart()).unwrap();
+            logger.info('fetchCart completed, items:', cartData?.items?.length || 0, 'totalItems:', cartData?.total_items);
+          } catch (cartError) {
+            logger.error('fetchCart failed:', cartError);
+          }
+          
+          try {
+            const favData = await dispatchRef.current(fetchFavorites()).unwrap();
+            logger.info('fetchFavorites completed, items:', favData?.items?.length || 0);
+          } catch (favError) {
+            logger.error('fetchFavorites failed:', favError);
+          }
+          
+          logger.info('All fetches completed - UI should now be updated');
         } catch (error) {
           // If sync fails, log error but still close modal
           logger.error('Error syncing data:', error);
+          logger.error('Error details:', JSON.stringify(error, null, 2));
+          logger.error('Error message:', error?.message);
+          logger.error('Error stack:', error?.stack);
+          
+          // Even if sync fails, try to fetch current data from server
+          try {
+            await dispatchRef.current(fetchCart());
+            await dispatchRef.current(fetchFavorites());
+          } catch (fetchErr) {
+            logger.error('Fallback fetch also failed:', fetchErr);
+          }
         }
 
-        // Close modal after sync completes
-        setTimeout(() => {
-          onCloseRef.current();
-        }, 500);
+        // Small delay to ensure Redux state is fully propagated before closing
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Close modal
+        onCloseRef.current();
+        
+        // Dispatch custom event to trigger UI refresh (if needed)
+        window.dispatchEvent(new CustomEvent('auth-state-changed'));
       };
 
       syncData();
