@@ -290,30 +290,42 @@ export const clearCart = createAsyncThunk(
  */
 export const syncGuestCart = createAsyncThunk(
   'cart/syncGuestCart',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState();
-      const guestItems = state.cart.items;
+      // CRITICAL: Read from localStorage directly, not from Redux state
+      // Redux state may have been modified by parallel operations
+      const guestCart = loadCartFromStorage();
+      const guestItems = guestCart.items;
+
+      logger.info('syncGuestCart: Found items in localStorage:', guestItems.length);
 
       if (guestItems.length === 0) {
-        return { items: [] };
+        logger.info('syncGuestCart: No items to sync, fetching server cart');
+        // No guest items, just fetch server cart
+        const data = await cartAPI.getCart();
+        return data;
       }
 
       // Send guest cart items to backend for merging
       // We need to add each item individually to merge with existing server cart
+      logger.info('syncGuestCart: Sending items to server for merge...');
       const promises = guestItems.map(item =>
         cartAPI.addItem(item.product.id, item.quantity)
       );
 
       await Promise.all(promises);
+      logger.info('syncGuestCart: Items sent successfully');
 
       // Clear localStorage after successful sync
       clearCartFromStorage();
 
       // Fetch updated cart from server
+      logger.info('syncGuestCart: Fetching merged cart from server...');
       const data = await cartAPI.getCart();
+      logger.info('syncGuestCart: Sync completed, total items:', data.items?.length || 0);
       return data;
     } catch (error) {
+      logger.error('syncGuestCart: Error during sync:', error);
       return rejectWithValue(error.message || 'Не удалось синхронизировать корзину');
     }
   }
@@ -562,6 +574,7 @@ const cartSlice = createSlice({
         state.isSyncing = false;
         state.isGuest = false;
         state.isUnauthorized = false;
+        state.isLoaded = true; // Mark as loaded to prevent duplicate fetches
 
         // Update with merged cart from server
         state.items = action.payload.items || [];

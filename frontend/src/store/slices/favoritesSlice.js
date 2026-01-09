@@ -234,30 +234,42 @@ export const toggleFavorite = createAsyncThunk(
  */
 export const syncGuestFavorites = createAsyncThunk(
   'favorites/syncGuestFavorites',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState();
-      const guestItems = state.favorites.items;
+      // CRITICAL: Read from localStorage directly, not from Redux state
+      // Redux state may have been modified by parallel operations
+      const guestFavorites = loadFavoritesFromStorage();
+      const guestItems = guestFavorites.items;
+
+      logger.info('syncGuestFavorites: Found items in localStorage:', guestItems.length);
 
       if (guestItems.length === 0) {
-        return { items: [], total_items: 0 };
+        logger.info('syncGuestFavorites: No items to sync, fetching server favorites');
+        // No guest items, just fetch server favorites
+        const data = await favoritesAPI.getFavorites();
+        return data;
       }
 
       // Send guest favorite items to backend for merging
       // We need to add each item individually to merge with existing server favorites
+      logger.info('syncGuestFavorites: Sending items to server for merge...');
       const promises = guestItems.map(item =>
         favoritesAPI.addToFavorites(item.id)
       );
 
       await Promise.all(promises);
+      logger.info('syncGuestFavorites: Items sent successfully');
 
       // Clear localStorage after successful sync
       clearFavoritesFromStorage();
 
       // Fetch updated favorites from server
+      logger.info('syncGuestFavorites: Fetching merged favorites from server...');
       const data = await favoritesAPI.getFavorites();
+      logger.info('syncGuestFavorites: Sync completed, total items:', data.items?.length || 0);
       return data;
     } catch (error) {
+      logger.error('syncGuestFavorites: Error during sync:', error);
       return rejectWithValue(error.message || 'Не удалось синхронизировать избранное');
     }
   }
@@ -456,6 +468,7 @@ const favoritesSlice = createSlice({
         state.isSyncing = false;
         state.isGuest = false;
         state.isUnauthorized = false;
+        state.isLoaded = true; // Mark as loaded to prevent duplicate fetches
 
         // Update with merged favorites from server
         const items = action.payload?.items || [];

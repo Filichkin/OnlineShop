@@ -90,7 +90,6 @@ function LoginModal({ isOpen, onClose }) {
         try {
           // Wait for sync operations to complete before closing modal
           // This ensures counters in Header are updated before user sees them
-          const syncPromises = [];
 
           // CRITICAL: Check localStorage directly, not Redux state flags
           // By the time successMessage arrives, Redux flags may already be false
@@ -98,23 +97,18 @@ function LoginModal({ isOpen, onClose }) {
           const hasGuestCart = localStorage.getItem('guest_cart');
           const hasGuestFavorites = localStorage.getItem('guest_favorites');
 
-          if (hasGuestCart) {
-            logger.info('Syncing guest cart with server...');
-            syncPromises.push(dispatchRef.current(syncGuestCart()).unwrap());
-          }
-          if (hasGuestFavorites) {
-            logger.info('Syncing guest favorites with server...');
-            syncPromises.push(dispatchRef.current(syncGuestFavorites()).unwrap());
-          }
+          // ALWAYS sync cart and favorites to ensure data is loaded from server
+          // If user has guest data, it will be merged; otherwise just loads server data
+          logger.info('Syncing cart with server (has guest data:', !!hasGuestCart, ')');
+          await dispatchRef.current(syncGuestCart()).unwrap();
 
-          // Wait for all syncs to complete
-          if (syncPromises.length > 0) {
-            await Promise.all(syncPromises);
-            logger.info('Guest data sync completed successfully');
-          }
+          logger.info('Syncing favorites with server (has guest data:', !!hasGuestFavorites, ')');
+          await dispatchRef.current(syncGuestFavorites()).unwrap();
+
+          logger.info('Sync completed successfully');
         } catch (error) {
           // If sync fails, log error but still close modal
-          logger.error('Error syncing guest data:', error);
+          logger.error('Error syncing data:', error);
         }
 
         // Close modal after sync completes
