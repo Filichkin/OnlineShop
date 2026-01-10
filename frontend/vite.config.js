@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import svgr from "vite-plugin-svgr";
 import viteImagemin from 'vite-plugin-imagemin'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    svgr(),
     viteImagemin({
         gifsicle: {
           optimizationLevel: 7,

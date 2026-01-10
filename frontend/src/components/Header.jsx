@@ -2,7 +2,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import NavMenuLink from "../UI/NavLinkMenu";
-import logo from "../assets/images/new_logo.webp";
+import logo from "../assets/images/vector_logo.svg";
 import cartIcon from "../assets/images/cart.webp";
 import favoriteIcon from "../assets/images/favorite_heart.webp";
 import profileIcon from "../assets/images/profile.webp";
@@ -71,7 +71,7 @@ function Header({ onOpenLoginModal }) {
             <img
               src={logo}
               alt="logo"
-              className="h-[160%] object-contain"
+              className="h-[100%] object-contain"
             />
           </div>
         </NavMenuLink>
