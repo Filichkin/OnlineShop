@@ -1,34 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { logout, updateProfile, getCurrentUser, clearError, clearSuccessMessage } from '../store/slices/authSlice';
-import { selectFavoriteItems, selectFavoritesIsLoading, selectFavoritesIsLoaded, fetchFavorites } from '../store/slices/favoritesSlice';
+import { logout, updateProfile, clearError, clearSuccessMessage } from '../store/slices/authSlice';
 import { isValidPhone, isValidTelegramId, isValidBirthDate, formatPhoneNumber } from '../utils/validation';
-import { getImageUrl, formatPrice } from '../utils';
+import { formatPrice } from '../utils';
 import { ordersAPI } from '../api';
 import ordersIcon from '../assets/images/orders.webp';
 import favoriteIcon from '../assets/images/favorite.webp';
 import profileIcon from '../assets/images/profile.webp';
-import AddToCartButton from '../UI/AddToCartButton';
-import FavoriteButton from '../UI/FavoriteButton';
 import { logger } from '../utils/logger';
 
 /**
  * Profile компонент - страница профиля пользователя
  *
- * Содержит три раздела:
+ * Содержит два раздела:
  * - Профайл: просмотр и редактирование профиля
  * - Заказы: список заказов пользователя
- * - Избранное: список избранных товаров
+ * - Избранное: ссылка для перехода на страницу избранного
  */
 function Profile() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, loading, error, successMessage, isAuthenticated, authChecked } = useSelector((state) => state.auth);
-  const favoriteItems = useSelector(selectFavoriteItems);
-  const favoritesLoading = useSelector(selectFavoritesIsLoading);
-  const favoritesLoaded = useSelector(selectFavoritesIsLoaded);
 
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
@@ -67,13 +61,6 @@ function Profile() {
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, loading, navigate, authChecked]);
-
-  // Load favorites when user is authenticated and favorites not yet loaded
-  useEffect(() => {
-    if (user && !favoritesLoaded && !favoritesLoading) {
-      dispatch(fetchFavorites());
-    }
-  }, [user, dispatch, favoritesLoaded, favoritesLoading]);
 
   // Load orders when orders tab is active
   useEffect(() => {
@@ -329,7 +316,13 @@ function Profile() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  if (tab.id === 'favorites') {
+                    navigate('/favorites');
+                  } else {
+                    setActiveTab(tab.id);
+                  }
+                }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors ${
                   activeTab === tab.id
                     ? 'bg-gray-100 text-gray-700 font-medium'
@@ -738,105 +731,6 @@ function Profile() {
                       );
                     })}
                   </div>
-                )}
-              </div>
-            )}
-
-            {/* Favorites Tab */}
-            {activeTab === 'favorites' && (
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-800">
-                    Избранное {favoriteItems.length > 0 && `(${favoriteItems.length})`}
-                  </h2>
-                  <button
-                    onClick={() => navigate('/favorites')}
-                    className="text-sm text-gray-500 hover:text-gray-700 hover:underline transition-colors"
-                  >
-                    Перейти на страницу избранного
-                  </button>
-                </div>
-
-                {favoritesLoading ? (
-                  <div className="flex justify-center items-center py-12">
-                    <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                  </div>
-                ) : favoriteItems.length === 0 ? (
-                  <div className="text-center py-12">
-                    <img
-                      src={favoriteIcon}
-                      alt="Избранное"
-                      className="w-24 h-24 mx-auto mb-4 opacity-50"
-                    />
-                    <p className="text-gray-500 mb-4">
-                      У вас пока нет избранных товаров
-                    </p>
-                    <button
-                      onClick={() => navigate('/')}
-                      className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-offset-2 transition-colors"
-                    >
-                      Перейти к покупкам
-                    </button>
-                  </div>
-                ) : (
-                  <ul className="space-y-4">
-                    {favoriteItems.map((product) => (
-                      <li
-                        key={product.id}
-                        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-200 hover:shadow-md"
-                      >
-                        <div className="flex flex-col sm:flex-row gap-4 p-4">
-                          {/* Изображение товара */}
-                          <div className="flex-shrink-0">
-                            <Link to={`/product/${product.id}`}>
-                              <img
-                                src={getImageUrl(product.main_image)}
-                                alt={product.name}
-                                className="w-full sm:w-24 h-24 object-cover rounded-md bg-gray-100"
-                                onError={(e) => {
-                                  e.target.src = 'https://via.placeholder.com/100?text=No+Image';
-                                }}
-                              />
-                            </Link>
-                          </div>
-
-                          {/* Информация о товаре */}
-                          <div className="flex-grow min-w-0">
-                            <Link
-                              to={`/product/${product.id}`}
-                              className="block mb-2"
-                            >
-                              <h3 className="text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors">
-                                {product.name}
-                              </h3>
-                            </Link>
-
-                            {/* Артикул и цена */}
-                            <div className="text-sm text-gray-500">
-                              {product.part_number && (
-                                <p className="mb-1">Арт: {product.part_number}</p>
-                              )}
-                              <p className="text-lg font-bold text-gray-900">
-                                {formatPrice(product.price)}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Кнопки действий */}
-                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2">
-                            <AddToCartButton
-                              product={product}
-                              className="px-4 py-2"
-                            />
-                            <FavoriteButton product={product} />
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
                 )}
               </div>
             )}
